@@ -1,0 +1,12 @@
+{
+  "name": "contracts",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "fmt": "forge fmt",
+    "export-abi": "node scripts/export-abi.mjs",
+    "lint": "forge fmt --check"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "meridian",
+  "private": true,
+  "workspaces": [
+    "contracts",
+    "backend",
+    "frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach -At run build",
+    "test": "yarn workspaces foreach -At run test",
+    "lint": "yarn workspaces foreach -At run lint",
+    "contracts:build": "yarn workspace contracts build",
+    "contracts:export-abi": "yarn workspace contracts export-abi"
+  },
+  "packageManager": "yarn@4.16.0"
+}

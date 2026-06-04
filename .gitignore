@@ -1,0 +1,26 @@
+# deps
+node_modules/
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/patches
+.pnp.*
+
+# TS build output
+**/dist/
+*.tsbuildinfo
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# env / logs
+.env
+.env.*
+!.env.example
+*.log

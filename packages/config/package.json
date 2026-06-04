@@ -1,0 +1,20 @@
+{
+  "name": "@meridian/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.config.base.mjs",
+    "./prettier": "./prettier.config.mjs"
+  },
+  "scripts": {
+    "build": "echo \"@meridian/config: nothing to build\"",
+    "test": "echo \"@meridian/config: no tests\"",
+    "lint": "echo \"@meridian/config: nothing to lint\""
+  },
+  "peerDependencies": {
+    "eslint": ">=9",
+    "prettier": ">=3",
+    "typescript-eslint": ">=8"
+  }
+}

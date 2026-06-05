@@ -24,3 +24,5 @@ frontend/out/
 .env.*
 !.env.example
 *.log
+
+research/

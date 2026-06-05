@@ -15,6 +15,7 @@
 | Уровень | Файл | Суть |
 |---|---|---|
 | L1 | [L1-static-in-kind.md](L1-static-in-kind.md) | Статичная in-kind корзина, без оракула (спина) |
+| L1b | [L1b-large-basket.md](L1b-large-basket.md) | Корзина на 50+ ассетов через дерево (идейный) — расширение L1, не новый уровень оси |
 | L2 | [L2-readonly-nav.md](L2-readonly-nav.md) | Read-only NAV в часы рынка (display-оракул) |
 | L3a | [L3a-reconstitution.md](L3a-reconstitution.md) | Смена состава по расписанию (reconstitution) |
 | L3b | [L3b-threshold-reweight.md](L3b-threshold-reweight.md) | Перевес к цели по порогу (equal/fixed-weight) |
@@ -56,7 +57,7 @@
 
 ## Сквозные правила (действуют на всех уровнях)
 
-- **Red lines:** никогда не custody чужих средств; никогда не подписываем value-moving tx вне on-chain прав пользователя; никогда не take-rate с объёма (только subscription/open-core).
+- **Red lines:** никогда не custody чужих средств; никогда не подписываем value-moving tx вне on-chain прав пользователя; никогда не take-rate с объёма транзакций. Монетизация: subscription / open-core / metering + платформенная доля от management-комиссии фонда (fee на активы, не на поток).
 - **Iron rule:** оценочная цена (estimate) **никогда** не цена расчёта (settlement). Estimate — для информации/риска; settlement — in-kind (без цены) или forward (по следующему открытию).
 - **Vault immutable:** сейф с активами не апгрейдится. Сложная логика — в сменных движках (registry + engines).
 - **Redeem не паузится:** in-kind погашение всегда доступно и пропорционально.

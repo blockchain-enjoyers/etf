@@ -1,0 +1,12 @@
+node_modules/
+artifacts/
+cache/
+typechain-types/
+abi/
+coverage/
+coverage.json
+dist/
+.env
+
+# keep Hardhat happy
+*.log

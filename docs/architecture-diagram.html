@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meridian — System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:        #070b14;
+    --ink-2:      #0b1120;
+    --panel:      #0e1729;
+    --panel-2:    #111d34;
+    --line:       #1c2c49;
+    --line-soft:  #15233d;
+    --text:       #c9d6ec;
+    --text-dim:   #6f82a6;
+    --text-faint: #41547a;
+    --gold:       #d9a441;
+    --gold-soft:  #6b5526;
+    --cyan:       #4fd1d9;
+    --cyan-soft:  #1f4f55;
+    --green:      #5fcf80;
+    --violet:     #8c7bd8;
+    --grid:       rgba(79, 209, 217, 0.045);
+    --grid-2:     rgba(79, 209, 217, 0.09);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- blueprint grid + atmosphere ---- */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      linear-gradient(var(--grid-2) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-2) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
+    z-index: 0;
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse 90% 75% at 50% 35%, #000 50%, transparent 100%);
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(60% 50% at 50% -5%, rgba(217,164,65,0.10), transparent 60%),
+      radial-gradient(50% 60% at 85% 110%, rgba(79,209,217,0.07), transparent 60%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 56px 36px 96px;
+  }
+
+  /* ============ HEADER ============ */
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 24px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 28px;
+    margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.38em;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    opacity: 0;
+    animation: rise .7s .05s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 34px; height: 1px;
+    background: var(--gold);
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(40px, 7vw, 86px);
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    color: #f3f6fc;
+    opacity: 0;
+    animation: rise .8s .12s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--gold);
+    font-weight: 400;
+  }
+  .lede {
+    max-width: 480px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--text-dim);
+    margin-top: 22px;
+    opacity: 0;
+    animation: rise .8s .2s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .meta {
+    text-align: right;
+    font-size: 11px;
+    line-height: 2.1;
+    color: var(--text-faint);
+    opacity: 0;
+    animation: rise .8s .28s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .meta b { color: var(--text-dim); font-weight: 500; }
+  .meta .tick { color: var(--cyan); }
+
+  /* ============ LEGEND ============ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 26px;
+    margin: 30px 0 44px;
+    padding: 14px 20px;
+    border: 1px solid var(--line-soft);
+    background: linear-gradient(180deg, rgba(17,29,52,0.5), rgba(17,29,52,0.15));
+    border-radius: 3px;
+    opacity: 0;
+    animation: rise .8s .36s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .legend .item {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 11px; letter-spacing: 0.04em; color: var(--text-dim);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .dot.v1   { background: var(--green); box-shadow: 0 0 9px rgba(95,207,128,.55); }
+  .dot.v2   { background: var(--violet); }
+  .dot.mock { background: var(--cyan); box-shadow: 0 0 8px rgba(79,209,217,.4); }
+  .dot.imm  { background: var(--gold); box-shadow: 0 0 9px rgba(217,164,65,.5); }
+  .dot.tbd  { background: transparent; border: 1px dashed var(--text-faint); }
+
+  /* ============ SWIMLANES ============ */
+  .lanes {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.25fr;
+    gap: 0;
+    position: relative;
+  }
+  /* connecting flow line between lanes */
+  .lanes::before,
+  .lanes::after {
+    content: "";
+    position: absolute;
+    top: 78px; bottom: 40px;
+    width: 1px;
+    background: repeating-linear-gradient(180deg, var(--line) 0 6px, transparent 6px 14px);
+    z-index: 1;
+  }
+  .lanes::before { left: 33.33%; }
+  .lanes::after  { left: 66.66%; }
+
+  .lane {
+    padding: 0 22px;
+    position: relative;
+  }
+  .lane:first-child { padding-left: 0; }
+  .lane:last-child  { padding-right: 0; }
+
+  .lane-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lane-head .idx {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--text-faint);
+  }
+  .lane-head h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .lane:nth-child(1) .lane-head h2 { color: var(--cyan); }
+  .lane:nth-child(2) .lane-head h2 { color: var(--violet); }
+  .lane:nth-child(3) .lane-head h2 { color: var(--gold); }
+
+  .group-label {
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 26px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .group-label::after {
+    content: ""; flex: 1; height: 1px;
+    background: var(--line-soft);
+  }
+  .group-label:first-of-type { margin-top: 0; }
+
+  /* ---- card ---- */
+  .card {
+    background: linear-gradient(165deg, var(--panel) 0%, var(--ink-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 13px 15px;
+    margin-bottom: 10px;
+    position: relative;
+    transition: transform .25s cubic-bezier(.2,.7,.3,1), border-color .25s, box-shadow .25s;
+    opacity: 0;
+    transform: translateY(14px);
+    animation: rise .6s var(--d, 0s) cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 12px; bottom: 12px;
+    width: 2px;
+    background: var(--accent, var(--line));
+    border-radius: 2px;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent, var(--cyan-soft));
+    box-shadow: 0 14px 34px -18px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.02) inset;
+  }
+  .card .top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+  }
+  .card .name {
+    font-size: 13px; font-weight: 500; color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .card .tag {
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 2px; flex: none;
+    border: 1px solid currentColor;
+  }
+  .tag.v1   { color: var(--green); }
+  .tag.v2   { color: var(--violet); }
+  .tag.mock { color: var(--cyan); }
+  .tag.imm  { color: var(--gold); }
+  .card .desc {
+    font-size: 10.5px; line-height: 1.6; color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .card .file {
+    font-size: 9.5px; color: var(--text-faint); margin-top: 7px;
+    letter-spacing: 0.02em;
+  }
+
+  /* accent variants */
+  .card.imm  { --accent: var(--gold); background: linear-gradient(165deg, #18213a 0%, #0c1424 100%); border-color: var(--gold-soft); }
+  .card.spine{ --accent: var(--cyan); }
+  .card.eng  { --accent: var(--violet); }
+  .card.adp  { --accent: var(--cyan); }
+  .card.mok  { --accent: var(--cyan-soft); opacity:.92; }
+
+  /* ---- empty / TBD slot ---- */
+  .slot {
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+    padding: 16px 15px;
+    margin-bottom: 10px;
+    min-height: 62px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.012) 0 8px, transparent 8px 16px);
+    transition: border-color .25s, background .25s;
+    opacity: 0;
+    animation: rise .6s var(--d, 0s) cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .slot:hover { border-color: var(--text-faint); background: rgba(255,255,255,.018); }
+  .slot .slot-id {
+    font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text-faint);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .slot .slot-id::before {
+    content: "＋"; color: var(--text-faint); font-size: 12px;
+  }
+  .slot .ghost {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 13px; color: var(--text-faint);
+  }
+  .slot .hint { font-size: 9.5px; color: var(--text-faint); opacity:.7; }
+
+  .lane-note {
+    font-size: 10px; color: var(--text-faint); line-height: 1.6;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+    font-style: italic;
+  }
+
+  /* ============ FOOTER ============ */
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    font-size: 10.5px; color: var(--text-faint); letter-spacing: 0.04em;
+  }
+  footer .rl { color: var(--gold); }
+
+  @keyframes rise {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 880px) {
+    .lanes { grid-template-columns: 1fr; }
+    .lanes::before, .lanes::after { display: none; }
+    .lane { padding: 0; margin-bottom: 40px; }
+    header { grid-template-columns: 1fr; }
+    .meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- ============ HEADER ============ -->
+    <header>
+      <div>
+        <div class="eyebrow">System Architecture &nbsp;·&nbsp; Block Diagram</div>
+        <h1>Meridian<br><em>NAV</em> &amp; create / redeem layer</h1>
+        <p class="lede">
+          A neutral 24/7 valuation and in-kind create/redeem layer for tokenized-equity
+          baskets. Three tiers: client, services, and on-chain protocol. Contracts are
+          built; frontend and backend are scaffolded as open slots.
+        </p>
+      </div>
+      <div class="meta">
+        <div><b>working name</b> &nbsp;Meridian</div>
+        <div><b>chain</b> &nbsp;Robinhood Chain / Arbitrum</div>
+        <div><b>stack</b> &nbsp;Foundry · Solidity ^0.8.20</div>
+        <div><b>status</b> &nbsp;<span class="tick">contracts: scaffold green</span></div>
+        <div><b>generated</b> &nbsp;2026-06-05</div>
+      </div>
+    </header>
+
+    <!-- ============ LEGEND ============ -->
+    <div class="legend">
+      <div class="item"><span class="dot imm"></span> Immutable spine</div>
+      <div class="item"><span class="dot v1"></span> v1 — market-hours, live</div>
+      <div class="item"><span class="dot v2"></span> v2 — 24/7 binding (planned)</div>
+      <div class="item"><span class="dot mock"></span> Mock / adapter (testnet)</div>
+      <div class="item"><span class="dot tbd"></span> Empty slot — to design</div>
+    </div>
+
+    <!-- ============ SWIMLANES ============ -->
+    <div class="lanes">
+
+      <!-- ---------- FRONTEND ---------- -->
+      <section class="lane">
+        <div class="lane-head"><h2>Frontend</h2><span class="idx">01</span></div>
+
+        <div class="group-label">Client / control plane</div>
+
+        <div class="slot" style="--d:.40s">
+          <div class="slot-id">FE · 01</div>
+          <div class="ghost">NAV dashboard</div>
+          <div class="hint">nav · confidence band · market-status</div>
+        </div>
+        <div class="slot" style="--d:.46s">
+          <div class="slot-id">FE · 02</div>
+          <div class="ghost">Proof-of-reserve view</div>
+          <div class="hint">vault composition vs supply</div>
+        </div>
+        <div class="slot" style="--d:.52s">
+          <div class="slot-id">FE · 03</div>
+          <div class="ghost">Back-test / chart</div>
+          <div class="hint">prediction-error vs naive · weekend study</div>
+        </div>
+        <div class="slot" style="--d:.58s">
+          <div class="slot-id">FE · 04</div>
+          <div class="ghost">empty</div>
+          <div class="hint">alerting · RBAC · approvals</div>
+        </div>
+
+        <p class="lane-note">
+          Open slots. Subscription control plane per state.md §8 — hosted,
+          off-chain, never custodial.
+        </p>
+      </section>
+
+      <!-- ---------- BACKEND ---------- -->
+      <section class="lane">
+        <div class="lane-head"><h2>Backend</h2><span class="idx">02</span></div>
+
+        <div class="group-label">Off-chain services</div>
+
+        <div class="slot" style="--d:.44s">
+          <div class="slot-id">BE · 01</div>
+          <div class="ghost">Signal ingestion</div>
+          <div class="hint">DEX · perps · close-of-day ground truth</div>
+        </div>
+        <div class="slot" style="--d:.50s">
+          <div class="slot-id">BE · 02</div>
+          <div class="ghost">Beta-fit job</div>
+          <div class="hint">off-chain regression → on-chain attestation</div>
+        </div>
+        <div class="slot" style="--d:.56s">
+          <div class="slot-id">BE · 03</div>
+          <div class="ghost">Indexer / API</div>
+          <div class="hint">BasketCreated events · read interface</div>
+        </div>
+        <div class="slot" style="--d:.62s">
+          <div class="slot-id">BE · 04</div>
+          <div class="ghost">empty</div>
+          <div class="hint">keeper bots · settle / rebalance triggers</div>
+        </div>
+
+        <p class="lane-note">
+          Open slots. Iron rule: betas are fit off-chain and pushed; an estimate is
+          never a settlement price.
+        </p>
+      </section>
+
+      <!-- ---------- CONTRACTS ---------- -->
+      <section class="lane">
+        <div class="lane-head"><h2>Contracts</h2><span class="idx">03</span></div>
+
+        <!-- spine -->
+        <div class="group-label">Spine — deploy &amp; custody</div>
+
+        <div class="card spine" style="--d:.42s">
+          <div class="top"><span class="name">BasketFactory</span><span class="tag v1">v1</span></div>
+          <div class="desc">CREATE2 deploy + on-chain PCF registry; deterministic vault addresses, no proxy.</div>
+          <div class="file">src/modules/BasketFactory.sol</div>
+        </div>
+        <div class="card imm" style="--d:.48s">
+          <div class="top"><span class="name">BasketVault[i]</span><span class="tag imm">immutable</span></div>
+          <div class="desc">Holds underlying; in-kind mint/burn; value-preserving + pro-rata invariants. Oracle-free.</div>
+          <div class="file">src/modules/BasketVault.sol</div>
+        </div>
+        <div class="card spine" style="--d:.54s">
+          <div class="top"><span class="name">ModuleRegistry</span><span class="tag v1">v1</span></div>
+          <div class="desc">role → engine addr; timelocked set(); lock() freezes a slot (road to immutability).</div>
+          <div class="file">src/modules/ModuleRegistry.sol</div>
+        </div>
+
+        <!-- engines -->
+        <div class="group-label">Engines — proxied, swappable</div>
+
+        <div class="card eng" style="--d:.58s">
+          <div class="top"><span class="name">OracleRouter</span><span class="tag v1">v1</span></div>
+          <div class="desc">Normalized reading; staleness + sequencer-uptime gate; market-status machine.</div>
+          <div class="file">src/modules/OracleRouter.sol</div>
+        </div>
+        <div class="card eng" style="--d:.62s">
+          <div class="top"><span class="name">NAVEngine</span><span class="tag v1">v1</span></div>
+          <div class="desc">Σ holdingᵢ·priceᵢ; emits nav / confidence / marketStatus. Weekend → estimated=true.</div>
+          <div class="file">src/modules/NAVEngine.sol</div>
+        </div>
+        <div class="card eng" style="--d:.66s">
+          <div class="top"><span class="name">CreationRedemption</span><span class="tag v1">v1</span></div>
+          <div class="desc">In-kind path (oracle-free) + forward-priced cash queue settling at next open.</div>
+          <div class="file">src/modules/CreationRedemption.sol</div>
+        </div>
+        <div class="card eng" style="--d:.70s">
+          <div class="top"><span class="name">RebalanceEngine</span><span class="tag v1">v1</span></div>
+          <div class="desc">Curator weights + timelock; fires only when market Regular &amp; fresh, else pauses.</div>
+          <div class="file">src/modules/RebalanceEngine.sol</div>
+        </div>
+        <div class="card eng" style="--d:.74s">
+          <div class="top"><span class="name">ProofOfReserve</span><span class="tag v1">v1</span></div>
+          <div class="desc">Verifiable backing: custodiedBalance ≥ supply requirement.</div>
+          <div class="file">src/modules/ProofOfReserve.sol</div>
+        </div>
+        <div class="card eng" style="--d:.78s">
+          <div class="top"><span class="name">CorporateActionsModule</span><span class="tag v2">v2</span></div>
+          <div class="desc">Splits (PCF unit-math) + dividends (cash accrual). Interface + mock in v1.</div>
+          <div class="file">src/modules/CorporateActionsModule.sol</div>
+        </div>
+        <div class="card eng" style="--d:.82s">
+          <div class="top"><span class="name">BufferedTriggerGuard</span><span class="tag v2">v2</span></div>
+          <div class="desc">Trigger-band, sustained-TWAP, listing gate, keeper tip+chip. Stub in v1.</div>
+          <div class="file">src/modules/BufferedTriggerGuard.sol</div>
+        </div>
+
+        <!-- adapters -->
+        <div class="group-label">Adapters &amp; mocks — testnet</div>
+
+        <div class="card adp" style="--d:.86s">
+          <div class="top"><span class="name">ChainlinkAdapter</span><span class="tag v1">v1</span></div>
+          <div class="desc">Equities Data Streams → normalized OracleReading. Pyth · RedStone · DEX-TWAP · PerpMark planned.</div>
+          <div class="file">src/modules/adapters/ChainlinkAdapter.sol</div>
+        </div>
+        <div class="card mok" style="--d:.90s">
+          <div class="top"><span class="name">Mock feeds ×9</span><span class="tag mock">mock</span></div>
+          <div class="desc">ChainlinkEquity · SequencerUptime · Pyth · PerpMark · DexPool · CorporateActions · RedStonePoR · ERC20Stock · USDC.</div>
+          <div class="file">src/mocks/</div>
+        </div>
+
+        <p class="lane-note">
+          Registry + immutable-vault pattern. Engines propose; the vault disposes
+          under its own invariants. 26 tests green — test/MeridianV1.t.sol.
+        </p>
+      </section>
+
+    </div>
+
+    <!-- ============ FOOTER ============ -->
+    <footer>
+      <div>MERIDIAN · neutral infrastructure · never custody · never settle on an estimate</div>
+      <div class="rl">RED LINES — no custody · no signing outside on-chain policy · no take-rate on volume</div>
+    </footer>
+
+  </div>
+</body>
+</html>

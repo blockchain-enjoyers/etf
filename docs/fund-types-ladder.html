@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meridian — Лестница типов фондов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:#070b14; --ink-2:#0b1120; --panel:#0e1729; --panel-2:#111d34;
+    --line:#1c2c49; --line-soft:#15233d;
+    --text:#c9d6ec; --text-dim:#6f82a6; --text-faint:#41547a;
+    --gold:#d9a441; --gold-soft:#6b5526; --cyan:#4fd1d9; --green:#5fcf80; --violet:#8c7bd8; --slate:#5b7090;
+    --grid:rgba(79,209,217,0.045); --grid-2:rgba(79,209,217,0.09);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--ink); color:var(--text); font-family:'IBM Plex Mono',monospace;
+    min-height:100vh; position:relative; -webkit-font-smoothing:antialiased; }
+  body::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px), linear-gradient(90deg,var(--grid) 1px,transparent 1px),
+      linear-gradient(var(--grid-2) 1px,transparent 1px), linear-gradient(90deg,var(--grid-2) 1px,transparent 1px);
+    background-size:28px 28px,28px 28px,140px 140px,140px 140px;
+    mask-image:radial-gradient(ellipse 95% 85% at 50% 20%,#000 60%,transparent 100%); }
+  body::after { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(45% 35% at 15% -5%,rgba(217,164,65,0.09),transparent 60%),
+               radial-gradient(45% 50% at 90% 105%,rgba(140,123,216,0.07),transparent 60%); }
+  .wrap { position:relative; z-index:2; max-width:1340px; margin:0 auto; padding:46px 28px 70px; }
+
+  .eyebrow { font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:var(--gold);
+    display:flex; align-items:center; gap:12px; margin-bottom:13px; }
+  .eyebrow::before { content:""; width:30px; height:1px; background:var(--gold); }
+  h1 { font-family:'Fraunces',serif; font-weight:300; font-size:clamp(30px,4.5vw,52px);
+    line-height:.96; letter-spacing:-.02em; color:#f3f6fc; }
+  h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+  .sub { max-width:720px; font-size:12.5px; line-height:1.7; color:var(--text-dim); margin-top:12px; }
+  .hint { font-size:11px; color:var(--gold); margin-top:8px; }
+
+  /* layout */
+  .layout { display:flex; gap:22px; margin-top:30px; align-items:stretch; }
+  .axis { width:54px; flex:none; border-radius:8px; position:relative;
+    background:linear-gradient(180deg, #8c7bd8 0%, #d9a441 30%, #4fd1d9 62%, #1c2c49 100%);
+    opacity:.85; }
+  .axis .al { position:absolute; left:50%; transform:translateX(-50%) rotate(180deg); writing-mode:vertical-rl;
+    font-size:8.5px; letter-spacing:.18em; text-transform:uppercase; color:#06101a; font-weight:600; }
+  .axis .top { top:14px; } .axis .mid { top:44%; } .axis .bot { bottom:14px; color:var(--text-dim); }
+  .axis-cap { position:absolute; left:60px; font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); white-space:nowrap; }
+
+  .tower { flex:1; display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .side { width:300px; flex:none; }
+
+  /* card */
+  .card { border:1px solid var(--line); border-radius:8px; overflow:hidden; position:relative;
+    background:linear-gradient(165deg,var(--panel),var(--ink-2)); cursor:pointer;
+    transition:transform .18s, border-color .18s, box-shadow .18s; }
+  .card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent,var(--line)); }
+  .card:hover { transform:translateY(-2px); box-shadow:0 14px 30px -18px #000; border-color:var(--accent); }
+  .card.wedge { border-color:var(--gold-soft); box-shadow:0 0 34px -20px var(--gold); }
+  .card.wedge:hover { box-shadow:0 14px 30px -16px #000, 0 0 30px -16px var(--gold); }
+  .card.zMVP{ --accent:var(--green);} .card.zSet{ --accent:var(--gold);} .card.zAdv{ --accent:var(--violet);} .card.zDef{ --accent:var(--slate); opacity:.82;}
+
+  .head { display:flex; align-items:flex-start; gap:14px; padding:13px 16px 11px 18px; }
+  .rung { flex:none; display:flex; flex-direction:column; align-items:center; gap:4px; width:46px; }
+  .rung .lv { font-family:'Fraunces',serif; font-size:20px; color:#f3f6fc; line-height:1; }
+  .rung .step { font-size:8px; letter-spacing:.06em; color:var(--text-faint); border:1px solid var(--line); border-radius:10px; padding:1px 6px; white-space:nowrap; }
+  .htext { flex:1; min-width:0; }
+  .htext .nm { font-size:14px; font-weight:600; color:#f3f6fc; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .htext .nm .star { color:var(--gold); font-size:12px; }
+  .htext .ob { font-size:8px; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; border-radius:3px; border:1px solid var(--accent); color:var(--accent); }
+  .htext .fiat { font-size:10.5px; color:var(--text-dim); margin-top:7px; line-height:1.5; }
+  .htext .fiat b { color:var(--text); font-weight:500; }
+  .zone { flex:none; font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent);
+    border:1px solid var(--accent); border-radius:3px; padding:2px 7px; align-self:flex-start; }
+
+  .module { margin:0 16px 0 18px; padding:9px 12px; border-left:2px solid var(--accent); border-radius:3px;
+    background:rgba(255,255,255,.025); font-size:11px; color:var(--text); line-height:1.45; }
+  .module b { color:var(--accent); }
+  .unlocks { margin:9px 16px 0 18px; font-size:10px; color:var(--text-dim); line-height:1.5; }
+  .unlocks .k { color:var(--text-faint); letter-spacing:.1em; text-transform:uppercase; font-size:8px; }
+
+  /* dev delta */
+  .dev { display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin:11px 16px 13px 18px; }
+  .dc { border:1px solid var(--line-soft); border-radius:5px; padding:8px 10px; background:rgba(11,17,32,.5); }
+  .dc .l { font-size:8px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
+  .dc .l::before { content:""; width:6px; height:6px; border-radius:50%; }
+  .dc.be .l{ color:var(--green);} .dc.be .l::before{ background:var(--green);}
+  .dc.fe .l{ color:var(--cyan);} .dc.fe .l::before{ background:var(--cyan);}
+  .dc.ct .l{ color:var(--gold);} .dc.ct .l::before{ background:var(--gold);}
+  .dc .t { font-size:10px; color:var(--text-dim); line-height:1.45; }
+
+  /* detail (expand) */
+  .detail { max-height:0; overflow:hidden; transition:max-height .3s ease; border-top:1px solid transparent; }
+  .card.open .detail { max-height:280px; border-top-color:var(--line-soft); }
+  .detail-in { padding:12px 16px 14px 18px; display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; }
+  .detail .b { font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:5px; }
+  .detail .v { font-size:10.5px; line-height:1.55; color:var(--text-dim); }
+  .detail .v.risk { color:#e0a07f; }
+  .detail .needs { grid-column:1/-1; font-size:9.5px; color:var(--text-faint); }
+  .detail .needs span { color:var(--violet); border:1px solid #3a3258; border-radius:3px; padding:1px 6px; margin-left:5px; }
+  .expand-cue { position:absolute; right:14px; bottom:12px; font-size:9px; color:var(--text-faint); letter-spacing:.06em; }
+  .card.open .expand-cue { color:var(--accent); }
+
+  /* sidebar */
+  .side .box { border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:16px;
+    background:linear-gradient(165deg,rgba(17,29,52,.5),rgba(11,17,32,.2)); position:sticky; }
+  .side h3 { font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-faint); margin-bottom:12px; }
+  .seq { display:flex; flex-direction:column; gap:0; }
+  .seq .s { display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text); padding:5px 0; position:relative; }
+  .seq .s .n { width:20px; height:20px; flex:none; border-radius:50%; border:1px solid var(--accent2); color:var(--accent2);
+    display:flex; align-items:center; justify-content:center; font-size:10px; }
+  .seq .s.mvp{ --accent2:var(--green);} .seq .s.set{ --accent2:var(--gold);} .seq .s.adv{ --accent2:var(--violet);} .seq .s.def{ --accent2:var(--slate);}
+  .seq .s .lbl b{ color:#f3f6fc; font-weight:500;} .seq .s .lbl small{ color:var(--text-faint); }
+  .seq .s:not(:last-child)::after{ content:""; position:absolute; left:9.5px; top:26px; height:14px; width:1px; background:var(--line); }
+  .mvpline { font-size:9px; color:var(--green); margin-top:8px; letter-spacing:.04em; }
+
+  .ortho .o { border:1px solid var(--line-soft); border-left:2px solid var(--violet); border-radius:4px; padding:9px 11px; margin-bottom:9px; }
+  .ortho .o.b1{ border-left-color:#e0775f;} .ortho .o.b2{ border-left-color:var(--violet);} .ortho .o.b3{ border-left-color:var(--cyan);}
+  .ortho .o .ot { font-size:10.5px; color:#f3f6fc; font-weight:500; }
+  .ortho .o .od { font-size:9px; color:var(--text-dim); line-height:1.45; margin-top:4px; }
+  .ortho .o .tag { font-size:8px; color:var(--text-faint); letter-spacing:.08em; }
+
+  .legend .li { display:flex; align-items:center; gap:9px; font-size:10px; color:var(--text-dim); margin-bottom:8px; }
+  .legend .sw { width:11px; height:11px; border-radius:3px; flex:none; }
+
+  footer { margin-top:30px; padding-top:18px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:14px; font-size:10px; color:var(--text-faint); letter-spacing:.04em; }
+  footer .rl { color:var(--gold); }
+
+  @media (max-width:980px){ .layout{ flex-direction:column; } .axis{ display:none; } .side{ width:100%; } .side .box{ position:static; } .dev{ grid-template-columns:1fr; } .detail-in{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Meridian · roadmap · типы фондов</div>
+    <h1>Лестница типов фондов <em>v1 → v7</em></h1>
+    <p class="sub">Ось — зависимость от оракула и насколько цена binding. Снизу вверх: от «оракул не нужен» (фундамент) до «непрерывная binding-оценка» (вершина). Источник: R8 deep research. Цвет = зона build-order (важно: порядок сборки ≠ порядок сложности). ★ = наш wedge (выходные).</p>
+    <p class="hint">▸ Клик по уровню — детали (главный риск + on-chain прецедент). Dev-дельта (бэк / фронт / контракты) видна всегда.</p>
+
+    <div class="layout">
+      <div class="axis">
+        <span class="al top">binding · continuous</span>
+        <span class="al mid">24/7 fair-value</span>
+        <span class="al bot">no oracle</span>
+      </div>
+      <div class="tower" id="tower"></div>
+      <div class="side">
+        <div class="box" style="top:16px;">
+          <h3>Порядок сборки</h3>
+          <div class="seq" id="seq"></div>
+          <div class="mvpline">MVP = шаги 1–3 (L1 · L2 · L4). Wedge = L4 · L6.</div>
+        </div>
+        <div class="box ortho" style="top:16px;">
+          <h3>Ортогональные слои (не уровни оси)</h3>
+          <div class="o b1"><div class="ot">B1 · Cross-asset collateral <span class="tag">интеграция</span></div><div class="od">Корзина как залог в lending. Потребитель NAV (L4+), не наш билд. Самый опасный: наш informational NAV → чужой liquidation-триггер. Прецедент: Kamino + xStocks.</div></div>
+          <div class="o b2"><div class="ot">B2 · Corporate actions <span class="tag">с L2+</span></div><div class="od">Сплиты/дивиденды. xStocks — rebasing, Ondo — total-return. Нужно каждому уровню выше L1.</div></div>
+          <div class="o b3"><div class="ot">B3 · Cash component <span class="tag">L3–L7</span></div><div class="od">Денежная часть / дробное добивание. Аналог ETF cash balancing amount (Rule 6c-11).</div></div>
+        </div>
+        <div class="box legend" style="top:16px;">
+          <h3>Зоны build-order</h3>
+          <div class="li"><span class="sw" style="background:var(--green)"></span> MVP (read-only, wedge)</div>
+          <div class="li"><span class="sw" style="background:var(--gold)"></span> Settlement-binding</div>
+          <div class="li"><span class="sw" style="background:var(--violet)"></span> Advanced</div>
+          <div class="li"><span class="sw" style="background:var(--slate)"></span> Deferred</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div>MERIDIAN · fund-type ladder · из R8 · 2026-06-05</div>
+      <div class="rl">wedge = выходные (L4 informational + L6 binding) · в TradFi такого нет</div>
+    </footer>
+  </div>
+
+<script>
+// top -> bottom (L7 вершина ... L1 фундамент)
+const LV = [
+ { lv:'L7', step:'шаг 7', zone:'zDef', zname:'Deferred', wedge:false, name:'Leverage / derivatives / structured', ob:'continuous',
+   fiat:'<b>TQQQ</b> ~$36B (daily 3x reset) · <b>Innovator buffer ETF</b> $29B (annual FLEX roll) · structured notes',
+   module:'Derivative legs + funding-учёт + continuous/daily rebalance + risk caps',
+   unlocks:'leveraged/inverse · defined-outcome/buffer · vol-target · perp-overlay',
+   be:'funding/risk-модели, continuous keeper, монитор vol-decay',
+   fe:'дашборд плеча/экспозиции, история funding, warning о decay',
+   ct:'derivative legs, начисление funding, daily-reset rebalance, risk caps',
+   risk:'path-dependence / vol-decay, учёт funding, ликвидация под плечом',
+   onchain:'Toros/dHEDGE leveraged tokens, Index Coop leverage (Aave/Morpho looping)',
+   needs:['B2','B3'] },
+
+ { lv:'L6', step:'шаг 6', zone:'zAdv', zname:'Advanced', wedge:true, name:'24/7 binding rebalance / forced-redeem', ob:'24/7 binding',
+   fiat:'<b>≈ нет в TradFi</b> (рынок закрыт) · ближе vol-target фонды + ликвидации lending',
+   module:'Buffered-trigger guard + listing gate + Dutch-auction liquidation + sequencer-downtime mitigation',
+   unlocks:'24/7 «самозащитные» корзины волатильных имён, weekend-binding продукты',
+   be:'TWAP-монитор, keeper-боты, sequencer-uptime watch, multi-source fusion',
+   fe:'конфиг триггеров, монитор аукциона, алерты ликвидаций',
+   ct:'buffered guard, Dutch-auction, listing gate, sequencer gate',
+   risk:'sequencer down во время forced-action, weekend illiquidity cascade, ложная ликвидация',
+   onchain:'Kamino ликвидирует xStocks 24/7; Mirror/Synthetix — графвярд synthetic-equity',
+   needs:['B2','B3'] },
+
+ { lv:'L5', step:'шаг 4', zone:'zSet', zname:'Settlement', wedge:false, name:'Forward-priced cash create / redeem', ob:'settlement-binding',
+   fiat:'<b>Mutual funds, Rule 22c-1</b> (~десятки $T) · заявка → цена следующего расчёта (4pm ET)',
+   module:'Forward-priced queue + settle-at-next-open + replay-protection (первый binding-оракул)',
+   unlocks:'cash-in/out корзины, fiat-like subscription UX, участие не только AP',
+   be:'индексатор очереди, settle-keeper, next-open оракул',
+   fe:'статус очереди, pending-погашения, таймер cutoff',
+   ct:'forward-queue, settle-on-reopen, nonce/replay',
+   risk:'replay/late-trade эксплойт, детерминированный «next open» on-chain, оракул становится settlement',
+   onchain:'Ondo Global Markets — $1B TVL <8 мес, 70%+ рынка, $18B объём, окно 24/5',
+   needs:['B2','B3'] },
+
+ { lv:'L4', step:'шаг 3', zone:'zMVP', zname:'MVP', wedge:true, name:'24/7 read-only fair-value NAV (weekend)', ob:'24/7 read-only',
+   fiat:'<b>ICE FVIS / fair-value pricing</b> (≈ все межд. фонды) · deprecated iNAV/IIV',
+   module:'Closed-market модель lastClose·(1+Σβ·signal) + confidence band + off-chain β-аттестация + market-status оракул',
+   unlocks:'24/7-цена для lender’ов (коллатерал не паузится), weekend-NAV корзины',
+   be:'ingestion сигналов (DEX/perp/EOD), beta-fit job, пушер аттестаций',
+   fe:'weekend NAV + расширяющаяся confidence band, backtest/error-чарт',
+   ct:'fair-value path, верификатор аттестации, market-status machine',
+   risk:'weekend liquidity/gap, устаревание β-модели, сигналить fair-value как binding',
+   onchain:'Solana xStocks (Backed/Kraken, Chainlink + PoR); RedStone флагнул ghost-price риск',
+   needs:['B2'] },
+
+ { lv:'L3a', step:'шаг 5', zone:'zAdv', zname:'Advanced', wedge:false, name:'Scheduled reconstitution (смена состава)', ob:'oracle-triggered',
+   fiat:'<b>S&P 500 / Russell</b> · Sep-2025 rebalance ~$250B · кварт. + listing-gate + комитет, торг на close',
+   module:'Reconstitution + listing gate + effective-date календарь + eligibility-логика',
+   unlocks:'поддерживаемые cap-weighted индексы, эволюционирующие sector/thematic',
+   be:'фид index-membership, планировщик effective-date, listing-gate сервис',
+   fe:'add/remove констуент, view расписания, результаты gate',
+   ct:'lifecycle констуент (add/remove), listing gate, open-market swap',
+   risk:'корректность membership/корп-действий, front-run известной effective-date',
+   onchain:'Index Coop monthly reconstitution, Reserve DTF Dutch-auction',
+   needs:['B2','B3'] },
+
+ { lv:'L3b', step:'шаг 5', zone:'zAdv', zname:'Advanced', wedge:false, name:'Threshold reweight (equal / fixed-weight)', ob:'oracle-triggered',
+   fiat:'<b>RSP equal-weight</b> (десятки $B) · reset к 1/N кварт. / по порогу, turnover ~20–25%',
+   module:'Reweight-to-target + trigger-evaluator (календарь или band) — дрейф меряется по NAV',
+   unlocks:'equal-weight, fixed-weight, vol-target (спокойные) корзины',
+   be:'монитор дрейфа, trigger-evaluator, планировщик ребаланса',
+   fe:'конфиг целевых весов, view дрейфа, лог ребалансов',
+   ct:'target-weight controller, drift-check (читает NAV), non-pro-rata swap',
+   risk:'манипуляция оракулом на триггере, проскальзывание ребаланса',
+   onchain:'Symmetry keeper Dutch-auctions (3% max slippage vs Pyth), Reserve DTF',
+   needs:['B3'] },
+
+ { lv:'L2', step:'шаг 2', zone:'zMVP', zname:'MVP', wedge:false, name:'Read-only NAV, market-hours', ob:'display only',
+   fiat:'<b>VOO / SPY</b> · VOO $1T (2 июн 2026), SPY ~$786B · self-track, daily NAV strike',
+   module:'Display NAV оракул — Σ qty·price + staleness-flag + market-status-flag',
+   unlocks:'cap-weighted индекс-токены с реальным USD-NAV readout',
+   be:'NAV read-API, индексатор, oracle-adapter',
+   fe:'NAV-дашборд, отображение confidence/status',
+   ct:'NAV engine (display), oracle router, Chainlink adapter',
+   risk:'staleness/манипуляция оракула, сигналить display-NAV как binding',
+   onchain:'Index Coop DPI, Symmetry (Pyth-priced, 350+ корзин)',
+   needs:['B2'] },
+
+ { lv:'L1', step:'шаг 1', zone:'zMVP', zname:'MVP', wedge:false, name:'Static in-kind, без оракула', ob:'no oracle',
+   fiat:'<b>UIT / defined portfolio</b> (низкие сотни $B) · депозит один раз, hold, dissolve на termination',
+   module:'In-kind vault + factory (спина) — 1:N mint/burn против фиксированных количеств',
+   unlocks:'тематические «set-once» корзины (класс EqualFi)',
+   be:'минимум (индексатор событий)',
+   fe:'create + redeem + view holdings',
+   ct:'in-kind vault, factory, инварианты mint/burn',
+   risk:'корректность backing/custody, баги redemption-gating (оракул-риск минимален)',
+   onchain:'Reserve DTF (oracle-free), EqualFi EqualIndex',
+   needs:[] },
+];
+
+const tower = document.getElementById('tower');
+LV.forEach(d=>{
+  const el = document.createElement('div');
+  el.className = 'card '+d.zone+(d.wedge?' wedge':'');
+  const needs = d.needs.length ? `<div class="needs">требует:${d.needs.map(n=>`<span>${n}</span>`).join('')}</div>` : `<div class="needs">самодостаточен</div>`;
+  el.innerHTML = `
+    <div class="head">
+      <div class="rung"><span class="lv">${d.lv}</span><span class="step">${d.step}</span></div>
+      <div class="htext">
+        <div class="nm">${d.name} ${d.wedge?'<span class="star">★ wedge</span>':''} <span class="ob">${d.ob}</span></div>
+        <div class="fiat">${d.fiat}</div>
+      </div>
+      <div class="zone">${d.zname}</div>
+    </div>
+    <div class="module"><b>+ модуль:</b> ${d.module}</div>
+    <div class="unlocks"><span class="k">разблокирует →</span> ${d.unlocks}</div>
+    <div class="dev">
+      <div class="dc be"><div class="l">backend</div><div class="t">${d.be}</div></div>
+      <div class="dc fe"><div class="l">frontend</div><div class="t">${d.fe}</div></div>
+      <div class="dc ct"><div class="l">contracts</div><div class="t">${d.ct}</div></div>
+    </div>
+    <div class="detail"><div class="detail-in">
+      <div><div class="b">главный риск</div><div class="v risk">${d.risk}</div></div>
+      <div><div class="b">on-chain прецедент</div><div class="v">${d.onchain}</div></div>
+      ${needs}
+    </div></div>
+    <div class="expand-cue">детали ▸</div>`;
+  el.addEventListener('click', ()=> el.classList.toggle('open'));
+  tower.appendChild(el);
+});
+
+// build sequence
+const SEQ = [
+  {n:1, lv:'L1', cls:'mvp', d:'Static in-kind (спина)'},
+  {n:2, lv:'L2', cls:'mvp', d:'Display NAV'},
+  {n:3, lv:'L4', cls:'mvp', d:'24/7 fair-value ★'},
+  {n:4, lv:'L5', cls:'set', d:'Forward-priced (+B2,B3)'},
+  {n:5, lv:'L3a·L3b', cls:'adv', d:'Rebalance engine'},
+  {n:6, lv:'L6', cls:'adv', d:'24/7 binding ★'},
+  {n:7, lv:'L7', cls:'def', d:'Leverage/derivatives'},
+];
+const seq = document.getElementById('seq');
+SEQ.forEach(s=>{
+  const r = document.createElement('div'); r.className='s '+s.cls;
+  r.innerHTML = `<span class="n">${s.n}</span><span class="lbl"><b>${s.lv}</b> <small>— ${s.d}</small></span>`;
+  seq.appendChild(r);
+});
+</script>
+</body>
+</html>

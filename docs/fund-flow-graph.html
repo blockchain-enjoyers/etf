@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meridian — Fund Flow Graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:#070b14; --ink-2:#0b1120; --panel:#0e1729;
+    --line:#1c2c49; --line-soft:#15233d;
+    --text:#c9d6ec; --text-dim:#6f82a6; --text-faint:#41547a;
+    --gold:#d9a441; --gold-soft:#6b5526;
+    --cyan:#4fd1d9; --green:#5fcf80; --violet:#8c7bd8; --slate:#5b7090;
+    --grid:rgba(79,209,217,0.045); --grid-2:rgba(79,209,217,0.09);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--ink); color:var(--text); font-family:'IBM Plex Mono',monospace;
+    min-height:100vh; position:relative; -webkit-font-smoothing:antialiased; }
+  body::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px), linear-gradient(90deg,var(--grid) 1px,transparent 1px),
+      linear-gradient(var(--grid-2) 1px,transparent 1px), linear-gradient(90deg,var(--grid-2) 1px,transparent 1px);
+    background-size:28px 28px,28px 28px,140px 140px,140px 140px;
+    mask-image:radial-gradient(ellipse 100% 90% at 50% 30%,#000 60%,transparent 100%); }
+  body::after { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(50% 40% at 12% -5%,rgba(217,164,65,0.10),transparent 60%),
+               radial-gradient(45% 55% at 92% 105%,rgba(140,123,216,0.07),transparent 60%); }
+  .wrap { position:relative; z-index:2; max-width:1380px; margin:0 auto; padding:44px 24px 70px; }
+
+  .eyebrow { font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:var(--gold);
+    display:flex; align-items:center; gap:12px; margin-bottom:13px; }
+  .eyebrow::before { content:""; width:30px; height:1px; background:var(--gold); }
+  h1 { font-family:'Fraunces',serif; font-weight:300; font-size:clamp(30px,4.5vw,52px);
+    line-height:.95; letter-spacing:-.02em; color:#f3f6fc; }
+  h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+  .sub { max-width:680px; font-size:12.5px; line-height:1.7; color:var(--text-dim); margin-top:12px; }
+  .hint { font-size:11px; color:var(--gold); margin-top:8px; }
+
+  .legend { display:flex; flex-wrap:wrap; gap:16px 24px; margin:20px 0 18px; font-size:10.5px; color:var(--text-dim); }
+  .legend .grp { display:flex; gap:16px; flex-wrap:wrap; padding-right:16px; border-right:1px solid var(--line-soft); }
+  .legend .grp:last-child { border:0; }
+  .legend .i { display:flex; align-items:center; gap:7px; letter-spacing:.03em; }
+  .ln { width:24px; height:0; border-top:2px solid; }
+  .ln.read{ color:var(--cyan);} .ln.write{ color:var(--gold);} .ln.att{ color:var(--violet);} .ln.ext{ color:var(--slate); border-top-style:dashed; }
+  .sw { width:11px; height:11px; border-radius:3px; }
+  .sw.fe{ background:var(--cyan);} .sw.api{ background:var(--green);} .sw.ct{ background:var(--gold);} .sw.ex{ background:var(--slate);}
+
+  .scroll { overflow:auto; padding-bottom:10px; }
+  .canvas { position:relative; width:1320px; height:880px; margin:0 auto; }
+  svg.edges { position:absolute; inset:0; width:1320px; height:880px; z-index:1; overflow:visible; pointer-events:none; }
+
+  .region { position:absolute; border:1px solid #243a5e; border-radius:9px; z-index:0;
+    background:linear-gradient(180deg,rgba(17,29,52,0.26),rgba(11,17,32,0.08)); }
+  .region.ext { border-style:dashed; border-color:#283449; }
+  .region .rl { position:absolute; top:9px; left:13px; font-size:9px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--text-faint); }
+
+  .node { position:absolute; z-index:2; cursor:pointer;
+    background:linear-gradient(165deg,var(--panel),var(--ink-2));
+    border:1px solid var(--line); border-radius:5px; padding:9px 11px 9px 13px;
+    transition:transform .18s,border-color .18s,box-shadow .18s; }
+  .node::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:2px; border-radius:2px; background:var(--accent,var(--line)); }
+  .node:hover { transform:translateY(-2px); border-color:var(--accent); box-shadow:0 12px 26px -16px #000; z-index:6; }
+  .node.sel { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 14px 30px -16px #000; z-index:7; }
+  .node .nm { font-size:11.5px; font-weight:500; color:var(--text); line-height:1.15; display:flex; align-items:center; gap:6px; }
+  .node .nm .v { width:7px; height:7px; border-radius:50%; flex:none; }
+  .v.v1{ background:var(--green);} .v.v2{ background:var(--violet);}
+  .node .ru { font-size:9px; color:var(--text-dim); line-height:1.4; margin-top:5px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .node .more { font-size:8px; color:var(--text-faint); margin-top:4px; letter-spacing:.08em; }
+  .node.fe{ --accent:var(--cyan);} .node.api{ --accent:var(--green);}
+  .node.ct{ --accent:var(--gold);} .node.ex{ --accent:var(--slate); background:linear-gradient(165deg,#0d1626,#0a1120);}
+  .node.imm{ --accent:var(--gold); border-color:var(--gold-soft); }
+  .node.dimNode { opacity:.32; }
+
+  .actor { position:absolute; z-index:3; cursor:pointer; display:flex; align-items:center; gap:12px;
+    background:linear-gradient(150deg,#1a2238,#0c1322); border:1px solid var(--gold-soft);
+    border-left:3px solid var(--gold); border-radius:6px; box-shadow:0 0 40px -22px var(--gold); padding:0 16px; }
+  .actor .g { width:34px; height:34px; border:1px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; color:var(--gold);
+    font-family:'Fraunces',serif; font-style:italic; font-size:17px; }
+  .actor .t { font-family:'Fraunces',serif; font-size:18px; color:#f3f6fc; line-height:1; }
+  .actor .d { font-size:9px; color:var(--text-dim); letter-spacing:.13em; text-transform:uppercase; margin-top:4px; }
+
+  /* edges */
+  svg .edge { fill:none; stroke-width:1.4; opacity:.5; transition:opacity .15s, stroke-width .15s; }
+  svg .edge.read{ stroke:var(--cyan);} svg .edge.write{ stroke:var(--gold);}
+  svg .edge.att{ stroke:var(--violet);} svg .edge.ext{ stroke:var(--slate); stroke-dasharray:5 4;} svg .edge.use{ stroke:var(--cyan); opacity:.3;}
+  svg .edge.dim{ opacity:.07; } svg .edge.hot{ opacity:1; stroke-width:2.2; }
+  svg .lab { font-family:'IBM Plex Mono',monospace; font-size:8.5px; fill:var(--text-dim); opacity:0; transition:opacity .15s; }
+  svg .labbg { fill:#0a0f1c; stroke:#1c2c49; stroke-width:.5; rx:2; opacity:0; transition:opacity .15s; }
+  svg .lab.hot, svg .labbg.hot { opacity:1; }
+  svg .lab.hot { fill:var(--text); }
+
+  /* popover */
+  .pop { position:absolute; z-index:30; width:300px; background:linear-gradient(165deg,#101a30,#0a1120);
+    border:1px solid var(--gold-soft); border-radius:7px; padding:15px 16px;
+    box-shadow:0 24px 60px -20px #000; display:none; }
+  .pop.show { display:block; animation:pop .18s ease; }
+  @keyframes pop { from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+  .pop h3 { font-size:13px; color:#f3f6fc; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .pop .kind { font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint);
+    border:1px solid var(--line); border-radius:2px; padding:1px 6px; margin-left:auto; }
+  .pop .body { font-size:11px; line-height:1.6; color:var(--text-dim); margin:10px 0 12px; }
+  .pop .acts-t { font-size:8px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-faint); margin-bottom:7px; }
+  .pop .act { display:flex; gap:8px; align-items:flex-start; font-size:10px; line-height:1.4; margin-bottom:6px; }
+  .pop .act .ad { width:7px; height:7px; border-radius:50%; margin-top:4px; flex:none; }
+  .pop .act .at { color:var(--text-dim); }
+  .pop .act .at b { color:var(--text); font-weight:500; }
+  .pop .act code { color:var(--gold); font-size:10px; }
+  .pop .none { font-size:10px; color:var(--text-faint); font-style:italic; }
+  .ad.read{ background:var(--cyan);} .ad.write{ background:var(--gold);} .ad.att{ background:var(--violet);} .ad.ext{ background:var(--slate);} .ad.use{ background:var(--cyan);}
+
+  footer { margin-top:30px; padding-top:18px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:14px; font-size:10px; color:var(--text-faint); letter-spacing:.04em; }
+  footer .rl { color:var(--gold); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Frontend · User Flow Graph · Fund (тип 01)</div>
+    <h1>Поток <em>Fund</em> — со всеми частями</h1>
+    <p class="sub">Граф: что делает издатель корзины и каждую часть, которой он касается — наш фронт, наш бэкенд (API), наши контракты, плюс внешние API и внешние контракты. Линии — это действия с конкретными командами на бэкенд или контракт.</p>
+    <p class="hint">▸ Кликни на любую ноду — раскроется описание простыми словами и список её действий. Наведи — подсветятся её линии с командами.</p>
+
+    <div class="legend">
+      <div class="grp">
+        <div class="i"><span class="sw fe"></span> Фронт (наш)</div>
+        <div class="i"><span class="sw api"></span> API (наш)</div>
+        <div class="i"><span class="sw ct"></span> Контракты (наши)</div>
+        <div class="i"><span class="sw ex"></span> Внешнее</div>
+      </div>
+      <div class="grp">
+        <div class="i"><span class="ln read"></span> read</div>
+        <div class="i"><span class="ln write"></span> write / tx</div>
+        <div class="i"><span class="ln att"></span> аттестация</div>
+        <div class="i"><span class="ln ext"></span> внешние данные</div>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <div class="canvas" id="canvas">
+        <svg class="edges" id="edges" viewBox="0 0 1320 880"></svg>
+        <div class="pop" id="pop"></div>
+      </div>
+    </div>
+
+    <footer>
+      <div>MERIDIAN · Fund flow graph · 2026-06-05</div>
+      <div class="rl">никогда не custody · никогда не settle по оценке · никогда take-rate с объёма</div>
+    </footer>
+  </div>
+
+<script>
+const NODES = [
+  {id:'fund', g:'actor', x:560, y:18, w:200, title:'Fund', dRu:'издатель · куратор',
+   ru:'Издатель/куратор корзины. Создаёт ETF-корзину из токенизированных акций, задаёт веса и правила, следит за её NAV. Не хранит чужие деньги.'},
+
+  {id:'fe_create', g:'fe', x:40, y:118, w:212, title:'Create basket', v:'v1',
+   ru:'Экран создания корзины: выбираешь акции, их веса, размер юнита (creation-unit) и денежную часть (USDC). Перед деплоем гоняет проверку ликвидности.'},
+  {id:'fe_manage', g:'fe', x:282, y:118, w:212, title:'Manage console', v:'v1',
+   ru:'Панель управления уже созданной корзиной: смена весов (с таймлоком), ребаланс, пауза выпуска новых юнитов, смена governor, закрытие корзины.'},
+  {id:'fe_monitor', g:'fe', x:524, y:118, w:196, title:'Monitor dashboard', v:'v1',
+   ru:'Дашборд наблюдения: NAV с доверительной полосой, статус рынка, proof-of-reserve, лента create/redeem, алерты и график back-test.'},
+
+  {id:'api_gate', g:'api', x:40, y:300, w:212, title:'Listing-gate service', v:'v1',
+   ru:'Сервис проверки: проходит ли актив порог ликвидности на «дне» выходных. Считает глубину и стоимость проскальзывания — пускать ли его в корзину.'},
+  {id:'api_beta', g:'api', x:282, y:300, w:212, title:'Beta-fit job', v:'v1',
+   ru:'Off-chain задача: по истории считает коэффициенты β для модели справедливой цены и пушит их в контракт как подписанную аттестацию (не считаем регрессию on-chain).'},
+  {id:'api_index', g:'api', x:524, y:300, w:196, title:'Indexer + Read API', v:'v1',
+   ru:'Индексатор: слушает события контрактов, агрегирует NAV / proof-of-reserve / алерты и отдаёт их фронту через read-API.'},
+
+  {id:'ct_factory', g:'ct', x:40, y:498, w:212, title:'BasketFactory', v:'v1',
+   ru:'Деплоит новый vault и хранит состав корзины (PCF: акции, веса, юнит, кэш). Адрес vault предсказуем заранее (CREATE2). Владеет жизненным циклом корзины.'},
+  {id:'ct_nav', g:'ct', x:282, y:498, w:212, title:'NAVEngine', v:'v1',
+   ru:'Считает стоимость корзины NAV = Σ доля·цена, отдаёт доверительную полосу (confidence) и статус рынка. На выходных помечает цену как estimated.'},
+  {id:'ct_oracle', g:'ct', x:524, y:498, w:196, title:'OracleRouter', v:'v1',
+   ru:'Нормализует цены из источников, проверяет свежесть (staleness), статус рынка и аптайм секвенсора L2. Решает, можно ли доверять цене.'},
+  {id:'ct_vault', g:'ct', x:40, y:618, w:212, title:'BasketVault', v:'v1', imm:true,
+   ru:'Неизменяемый сейф (immutable): держит сами акции, минтит/жжёт токен корзины 1:1 in-kind, без оракула. Погашение всегда доступно и пропорционально — его нельзя поставить на паузу.'},
+  {id:'ct_rebal', g:'ct', x:282, y:618, w:212, title:'RebalanceEngine', v:'v1',
+   ru:'Меняет веса/состав по правилам куратора с таймлоком. Срабатывает только когда рынок открыт и цена свежая, иначе на паузе.'},
+  {id:'ct_registry', g:'ct', x:524, y:618, w:196, title:'ModuleRegistry', v:'v1',
+   ru:'Реестр ролей: какой адрес отвечает за какой движок. set() с таймлоком, lock() навсегда замораживает слот (дорога к неизменяемости).'},
+  {id:'ct_cr', g:'ct', x:40, y:738, w:212, title:'CreationRedemption', v:'v1',
+   ru:'In-kind выпуск/погашение (без цены) + очередь форвардных кэш-заявок: в закрытый рынок заявка ждёт и считается по цене следующего открытия. Оценка никогда не цена расчёта.'},
+  {id:'ct_por', g:'ct', x:282, y:738, w:212, title:'ProofOfReserve', v:'v1',
+   ru:'Доказательство обеспечения: проверяет, что запас активов в vault ≥ выпущенных токенов корзины.'},
+
+  {id:'ex_poly', g:'exapi', x:800, y:280, w:480, title:'Polygon.io', ext:true,
+   ru:'Внешний API: официальные цены открытия/закрытия рынка — «эталон правды» для back-test и подгонки модели.'},
+  {id:'ex_dex', g:'exapi', x:800, y:360, w:480, title:'DEX / CEX prices', ext:true,
+   ru:'Внешние цены токенизированных акций на DEX (xStocks: Raydium/Orca/Jupiter) и на CEX 24/7 — живой сигнал, когда биржа закрыта.'},
+  {id:'ex_perp', g:'exapi', x:800, y:440, w:480, title:'Hyperliquid perps', ext:true,
+   ru:'Внешний API перпов на акции/индексы (HIP-3) — сигнал направления рынка в закрытые часы.'},
+
+  {id:'ex_cl', g:'exct', x:800, y:560, w:480, title:'Chainlink feeds', ext:true,
+   ru:'On-chain контракт-фид: цена акций (24/5, 8 знаков) + статус рынка + аптайм-фид секвенсора L2. На выходных статус = Closed (намеренно «протухает»).'},
+  {id:'ex_assets', g:'exct', x:800, y:660, w:480, title:'Underlying + USDC', ext:true,
+   ru:'Внешние ERC-20: сами токены акций (xStocks) и USDC. Именно их физически держит наш vault (in-kind) и кэш-компонент.'},
+];
+
+// edges: kind = read|write|att|ext|use ; cmd = команда на линии
+const EDGES = [
+  {f:'fund', t:'fe_create', k:'use', c:'открыть'},
+  {f:'fund', t:'fe_manage', k:'use', c:'открыть'},
+  {f:'fund', t:'fe_monitor', k:'use', c:'открыть'},
+
+  {f:'fe_create', t:'api_gate', k:'read', c:'GET /listing-gate/check'},
+  {f:'fe_create', t:'ct_factory', k:'write', c:'createBasket()'},
+
+  {f:'fe_manage', t:'ct_rebal', k:'write', c:'proposeWeights() · rebalance()'},
+  {f:'fe_manage', t:'ct_vault', k:'write', c:'setCreationPaused()'},
+  {f:'fe_manage', t:'ct_factory', k:'write', c:'shutdown() · setGovernor()'},
+
+  {f:'fe_monitor', t:'api_index', k:'read', c:'GET /nav · /por · /alerts'},
+
+  {f:'api_gate', t:'ex_dex', k:'ext', c:'fetch depth/price'},
+  {f:'api_gate', t:'ex_poly', k:'ext', c:'fetch quote'},
+  {f:'api_beta', t:'ex_poly', k:'ext', c:'fetch EOD truth'},
+  {f:'api_beta', t:'ex_perp', k:'ext', c:'fetch signals'},
+  {f:'api_beta', t:'ct_nav', k:'att', c:'pushBetaAttestation()'},
+  {f:'api_index', t:'ct_nav', k:'read', c:'latestNAV() view'},
+  {f:'api_index', t:'ct_por', k:'read', c:'verify() view'},
+  {f:'api_index', t:'ct_factory', k:'read', c:'read events'},
+
+  {f:'ct_factory', t:'ct_vault', k:'write', c:'deploy CREATE2'},
+  {f:'ct_nav', t:'ct_oracle', k:'read', c:'getReading()'},
+  {f:'ct_oracle', t:'ex_cl', k:'ext', c:'latestRoundData()'},
+  {f:'ct_rebal', t:'ct_vault', k:'write', c:'rebalance()'},
+  {f:'ct_cr', t:'ct_vault', k:'write', c:'mint() · burn()'},
+  {f:'ct_por', t:'ct_vault', k:'read', c:'holdings() view'},
+  {f:'ct_vault', t:'ex_assets', k:'ext', c:'transferFrom() · transfer()'},
+];
+
+const KIND_LABEL = {read:'read', write:'write / tx', att:'аттестация', ext:'внешние данные', use:'использует'};
+const TITLE = {}; NODES.forEach(n=>TITLE[n.id]=n.title);
+
+const canvas = document.getElementById('canvas');
+const svg = document.getElementById('edges');
+const pop = document.getElementById('pop');
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+// regions (computed from member groups)
+const REGIONS = [
+  {g:['fe'], cls:'ours', label:'Наш фронт'},
+  {g:['api'], cls:'ours', label:'Наш бэкенд · API'},
+  {g:['ct'], cls:'ours', label:'Наши контракты'},
+  {g:['exapi'], cls:'ext', label:'Внешние API'},
+  {g:['exct'], cls:'ext', label:'Внешние контракты'},
+];
+
+// --- build nodes ---
+const elMap = {};
+NODES.forEach(n=>{
+  const el = document.createElement('div');
+  if(n.g==='actor'){
+    el.className='actor'; el.style.cssText=`left:${n.x}px;top:${n.y}px;width:${n.w}px;height:50px;`;
+    el.innerHTML=`<div class="g">ƒ</div><div><div class="t">${n.title}</div><div class="d">${n.dRu}</div></div>`;
+  } else {
+    el.className='node '+n.g+(n.imm?' imm':'');
+    el.style.cssText=`left:${n.x}px;top:${n.y}px;width:${n.w}px;`;
+    const vdot = n.v?`<span class="v ${n.v}"></span>`:'';
+    el.innerHTML=`<div class="nm">${vdot}${n.title}</div><div class="ru">${n.ru}</div><div class="more">кликни ▸ описание + действия</div>`;
+  }
+  el.dataset.id=n.id;
+  el.addEventListener('click', (e)=>{ e.stopPropagation(); openPop(n.id); });
+  el.addEventListener('mouseenter', ()=>highlight(n.id));
+  el.addEventListener('mouseleave', ()=>highlight(null));
+  canvas.appendChild(el); elMap[n.id]=el;
+});
+
+// --- regions ---
+function rectOf(id){ const e=elMap[id]; return {x:e.offsetLeft,y:e.offsetTop,w:e.offsetWidth,h:e.offsetHeight,
+  cx:e.offsetLeft+e.offsetWidth/2, cy:e.offsetTop+e.offsetHeight/2}; }
+REGIONS.forEach(r=>{
+  const mem = NODES.filter(n=>r.g.includes(n.g)).map(n=>rectOf(n.id));
+  const pad=18, top=26;
+  const x0=Math.min(...mem.map(m=>m.x))-pad, y0=Math.min(...mem.map(m=>m.y))-top;
+  const x1=Math.max(...mem.map(m=>m.x+m.w))+pad, y1=Math.max(...mem.map(m=>m.y+m.h))+pad;
+  const d=document.createElement('div'); d.className='region '+r.cls;
+  d.style.cssText=`left:${x0}px;top:${y0}px;width:${x1-x0}px;height:${y1-y0}px;`;
+  d.innerHTML=`<span class="rl">${r.label}</span>`;
+  canvas.appendChild(d);
+});
+
+// --- edges ---
+function anchors(a,b){
+  const dx=b.cx-a.cx, dy=b.cy-a.cy; let p1,p2,c1,c2;
+  if(Math.abs(dy)>=Math.abs(dx)){
+    if(dy>0){ p1=[a.cx,a.y+a.h]; p2=[b.cx,b.y]; } else { p1=[a.cx,a.y]; p2=[b.cx,b.y+b.h]; }
+    c1=[p1[0],p1[1]+(p2[1]-p1[1])*0.42]; c2=[p2[0],p2[1]-(p2[1]-p1[1])*0.42];
+  } else {
+    if(dx>0){ p1=[a.x+a.w,a.cy]; p2=[b.x,b.cy]; } else { p1=[a.x,a.cy]; p2=[b.x+b.w,b.cy]; }
+    c1=[p1[0]+(p2[0]-p1[0])*0.42,p1[1]]; c2=[p2[0]-(p2[0]-p1[0])*0.42,p2[1]];
+  }
+  return {d:`M${p1[0]},${p1[1]} C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${p2[0]},${p2[1]}`,
+    mid:[0.125*p1[0]+0.375*c1[0]+0.375*c2[0]+0.125*p2[0], 0.125*p1[1]+0.375*c1[1]+0.375*c2[1]+0.125*p2[1]]};
+}
+const edgeEls=[];
+EDGES.forEach((e,i)=>{
+  const A=rectOf(e.f), B=rectOf(e.t); const an=anchors(A,B);
+  const p=document.createElementNS(SVGNS,'path');
+  p.setAttribute('d',an.d); p.setAttribute('class','edge '+e.k);
+  p.dataset.f=e.f; p.dataset.t=e.t; svg.appendChild(p);
+  const tw=e.c.length*5.0+8;
+  const bg=document.createElementNS(SVGNS,'rect');
+  bg.setAttribute('class','labbg'); bg.setAttribute('x',an.mid[0]-tw/2); bg.setAttribute('y',an.mid[1]-7);
+  bg.setAttribute('width',tw); bg.setAttribute('height',13); bg.setAttribute('rx',2);
+  bg.dataset.f=e.f; bg.dataset.t=e.t; svg.appendChild(bg);
+  const tx=document.createElementNS(SVGNS,'text');
+  tx.setAttribute('class','lab'); tx.setAttribute('x',an.mid[0]); tx.setAttribute('y',an.mid[1]+2.6);
+  tx.setAttribute('text-anchor','middle'); tx.textContent=e.c;
+  tx.dataset.f=e.f; tx.dataset.t=e.t; svg.appendChild(tx);
+  edgeEls.push({p,bg,tx,e});
+});
+
+// --- highlight ---
+function highlight(id){
+  edgeEls.forEach(({p,bg,tx,e})=>{
+    const on = id && (e.f===id||e.t===id);
+    p.classList.toggle('hot',!!on); p.classList.toggle('dim', !!id && !on);
+    bg.classList.toggle('hot',!!on); tx.classList.toggle('hot',!!on);
+  });
+  Object.values(elMap).forEach(el=> el.classList.toggle('dimNode', !!id && el.dataset.id!==id &&
+    !EDGES.some(e=>(e.f===id&&e.t===el.dataset.id)||(e.t===id&&e.f===el.dataset.id))));
+}
+
+// --- popover ---
+function openPop(id){
+  const n=NODES.find(x=>x.id===id);
+  const outs=EDGES.filter(e=>e.f===id);
+  let acts = outs.length ? outs.map(e=>
+     `<div class="act"><span class="ad ${e.k}"></span><span class="at">→ <b>${TITLE[e.t]}</b><br><code>${e.c}</code></span></div>`
+   ).join('') : `<div class="none">нет исходящих действий (конечная нода / источник данных)</div>`;
+  const grpName={fe:'frontend',api:'api',ct:'contract',exapi:'external api',exct:'external contract',actor:'user'}[n.g];
+  pop.innerHTML=`<h3>${n.title}<span class="kind">${grpName}</span></h3>
+    <div class="body">${n.ru}</div>
+    <div class="acts-t">Действия →</div>${acts}`;
+  // position
+  const r=rectOf(id); const cw=1320, pw=300;
+  let px = r.x+r.w+14; if(px+pw>cw) px=r.x-pw-14; if(px<0) px=10;
+  let py=r.y; if(py+260>880) py=Math.max(10,880-270);
+  pop.style.left=px+'px'; pop.style.top=py+'px'; pop.classList.add('show');
+  Object.values(elMap).forEach(el=>el.classList.remove('sel')); elMap[id].classList.add('sel');
+  highlight(id); pop.dataset.pinned=id;
+}
+function closePop(){ pop.classList.remove('show'); pop.dataset.pinned=''; highlight(null);
+  Object.values(elMap).forEach(el=>el.classList.remove('sel')); }
+canvas.addEventListener('click', closePop);
+pop.addEventListener('click', e=>e.stopPropagation());
+</script>
+</body>
+</html>

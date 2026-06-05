@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meridian — Fund User Scheme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:#070b14; --ink-2:#0b1120; --panel:#0e1729; --panel-2:#111d34;
+    --line:#1c2c49; --line-soft:#15233d;
+    --text:#c9d6ec; --text-dim:#6f82a6; --text-faint:#41547a;
+    --gold:#d9a441; --gold-soft:#6b5526;
+    --cyan:#4fd1d9; --cyan-soft:#1f4f55;
+    --green:#5fcf80; --violet:#8c7bd8;
+    --grid:rgba(79,209,217,0.045); --grid-2:rgba(79,209,217,0.09);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--ink); color:var(--text);
+    font-family:'IBM Plex Mono',monospace; min-height:100vh;
+    position:relative; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  }
+  body::before {
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px),
+      linear-gradient(var(--grid-2) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid-2) 1px,transparent 1px);
+    background-size:28px 28px,28px 28px,140px 140px,140px 140px;
+    mask-image:radial-gradient(ellipse 95% 80% at 50% 30%,#000 55%,transparent 100%);
+  }
+  body::after {
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(55% 45% at 12% -5%,rgba(217,164,65,0.12),transparent 60%),
+      radial-gradient(50% 60% at 90% 110%,rgba(79,209,217,0.07),transparent 60%);
+  }
+  .wrap { position:relative; z-index:2; max-width:1400px; margin:0 auto; padding:52px 40px 90px; }
+
+  /* header */
+  .eyebrow {
+    font-size:11px; letter-spacing:.36em; text-transform:uppercase; color:var(--gold);
+    display:flex; align-items:center; gap:12px; margin-bottom:14px;
+    opacity:0; animation:rise .7s .04s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .eyebrow::before { content:""; width:32px; height:1px; background:var(--gold); }
+  h1 {
+    font-family:'Fraunces',serif; font-weight:300; font-size:clamp(34px,5.5vw,62px);
+    line-height:.95; letter-spacing:-.02em; color:#f3f6fc;
+    opacity:0; animation:rise .8s .1s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  h1 em { font-style:italic; color:var(--gold); font-weight:400; }
+  .sub { max-width:560px; font-size:12.5px; line-height:1.7; color:var(--text-dim);
+    margin-top:16px; opacity:0; animation:rise .8s .18s cubic-bezier(.2,.7,.3,1) forwards; }
+
+  /* legend */
+  .legend { display:flex; flex-wrap:wrap; gap:22px; margin:26px 0 40px; font-size:10.5px; color:var(--text-dim);
+    opacity:0; animation:rise .8s .26s cubic-bezier(.2,.7,.3,1) forwards; }
+  .legend .i { display:flex; align-items:center; gap:8px; letter-spacing:.03em; }
+  .pill { font-size:9px; padding:1px 6px; border-radius:2px; border:1px solid currentColor; letter-spacing:.08em; }
+  .pill.w { color:var(--gold); } .pill.r { color:var(--cyan); } .pill.p { color:var(--violet); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .dot.v1 { background:var(--green); } .dot.v2 { background:var(--violet); }
+
+  /* ===== ACTOR ===== */
+  .actor-row { display:flex; align-items:center; gap:0; margin-bottom:8px;
+    opacity:0; animation:rise .7s .32s cubic-bezier(.2,.7,.3,1) forwards; }
+  .actor {
+    display:flex; align-items:center; gap:16px;
+    background:linear-gradient(150deg,#1a2238,#0c1322);
+    border:1px solid var(--gold-soft); border-left:3px solid var(--gold);
+    padding:16px 24px; border-radius:4px; box-shadow:0 0 40px -20px var(--gold);
+  }
+  .actor .glyph {
+    width:42px; height:42px; border:1px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; color:var(--gold);
+    font-family:'Fraunces',serif; font-style:italic; font-size:20px; flex:none;
+  }
+  .actor .who .t { font-family:'Fraunces',serif; font-size:22px; color:#f3f6fc; line-height:1; }
+  .actor .who .d { font-size:10px; color:var(--text-dim); letter-spacing:.16em; text-transform:uppercase; margin-top:5px; }
+  .actor-row .feed { flex:1; height:1px; background:repeating-linear-gradient(90deg,var(--gold-soft) 0 8px,transparent 8px 16px); margin-left:-1px; }
+
+  /* ===== LIFECYCLE RAIL ===== */
+  .rail-label { font-size:10px; letter-spacing:.24em; text-transform:uppercase; color:var(--text-faint);
+    margin:34px 0 14px; display:flex; align-items:center; gap:10px; }
+  .rail-label::after { content:""; flex:1; height:1px; background:var(--line-soft); }
+
+  .rail { display:grid; grid-template-columns:repeat(4,1fr); gap:0; align-items:start; }
+  .stage { position:relative; padding:0 14px; }
+  .stage:first-child { padding-left:0; } .stage:last-child { padding-right:0; }
+  /* arrow between stages */
+  .stage:not(:last-child)::after {
+    content:"→"; position:absolute; top:18px; right:-9px; z-index:3;
+    color:var(--gold); font-size:16px; opacity:.7;
+  }
+  .stage-head {
+    display:flex; align-items:center; gap:10px; padding-bottom:12px; margin-bottom:14px;
+    border-bottom:1px solid var(--line);
+  }
+  .stage-head .n {
+    width:26px; height:26px; flex:none; border-radius:50%;
+    border:1px solid var(--cyan-soft); color:var(--cyan);
+    display:flex; align-items:center; justify-content:center; font-size:11px;
+  }
+  .stage-head .lab { font-size:12px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--text); }
+  .stage-head .lab small { display:block; font-size:9px; color:var(--text-faint); letter-spacing:.1em; margin-top:3px; font-weight:400; }
+
+  /* node */
+  .node {
+    background:linear-gradient(165deg,var(--panel),var(--ink-2));
+    border:1px solid var(--line); border-radius:3px; padding:9px 11px; margin-bottom:8px;
+    position:relative; transition:transform .22s cubic-bezier(.2,.7,.3,1),border-color .22s,box-shadow .22s;
+    opacity:0; transform:translateY(12px); animation:rise .55s var(--d,0s) cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .node::before { content:""; position:absolute; left:0; top:9px; bottom:9px; width:2px; border-radius:2px; background:var(--accent,var(--line)); }
+  .node:hover { transform:translateY(-3px); border-color:var(--accent,var(--cyan-soft));
+    box-shadow:0 12px 30px -16px #000; }
+  .node .top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .node .nm { font-size:11.5px; color:var(--text); letter-spacing:.01em; }
+  .node .meta { display:flex; align-items:center; gap:6px; flex:none; }
+  .node .k { font-size:8px; padding:1px 5px; border-radius:2px; border:1px solid currentColor; letter-spacing:.06em; text-transform:uppercase; }
+  .k.w { color:var(--gold); } .k.r { color:var(--cyan); } .k.p { color:var(--violet); }
+  .ver { width:7px; height:7px; border-radius:50%; }
+  .ver.v1 { background:var(--green); } .ver.v2 { background:var(--violet); }
+  .node.write { --accent:var(--gold); } .node.read { --accent:var(--cyan); } .node.plane { --accent:var(--violet); }
+
+  /* stage deferred for MVP */
+  .stage.skip { opacity:.4; filter:grayscale(.5); }
+  .stage.skip .node { animation:rise .55s var(--d,0s) cubic-bezier(.2,.7,.3,1) forwards; }
+  .stage.skip .stage-head .n { border-color:var(--text-faint); color:var(--text-faint); }
+  .stage.skip .stage-head .lab { color:var(--text-dim); }
+  .skip-badge {
+    display:inline-block; font-size:8px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--text-faint); border:1px dashed var(--text-faint); border-radius:2px;
+    padding:1px 6px; margin-left:8px; vertical-align:middle;
+  }
+  .stage.skip:not(:last-child)::after { color:var(--text-faint); opacity:.4; }
+
+  /* ===== SUPPORTING BRANCHES ===== */
+  .branches { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:14px; }
+  .branch {
+    border:1px solid var(--line-soft); border-radius:4px; padding:16px 16px 10px;
+    background:linear-gradient(180deg,rgba(17,29,52,.4),rgba(11,17,32,.2)); position:relative;
+  }
+  .branch::before {
+    content:""; position:absolute; top:-15px; left:30px; width:1px; height:15px;
+    background:repeating-linear-gradient(180deg,var(--violet) 0 4px,transparent 4px 8px); opacity:.6;
+  }
+  .branch h3 { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--violet);
+    margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .branch h3 .c { font-family:'Fraunces',serif; font-style:italic; font-size:13px; color:var(--text-faint); }
+
+  /* connector caption from branches to rail */
+  .branch-rail-note { font-size:9.5px; color:var(--text-faint); letter-spacing:.04em; text-align:center; margin:6px 0 16px; font-style:italic; }
+
+  footer { margin-top:54px; padding-top:22px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:14px;
+    font-size:10px; color:var(--text-faint); letter-spacing:.04em; }
+  footer .rl { color:var(--gold); }
+
+  @keyframes rise { to { opacity:1; transform:translateY(0); } }
+
+  @media (max-width:1000px){
+    .rail { grid-template-columns:1fr 1fr; gap:18px; }
+    .stage:not(:last-child)::after { display:none; }
+    .branches { grid-template-columns:1fr; }
+  }
+  @media (max-width:600px){ .rail { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="eyebrow">Frontend &nbsp;·&nbsp; User Scheme &nbsp;·&nbsp; Type 01</div>
+    <h1>The <em>Fund</em> user</h1>
+    <p class="sub">
+      Functions the issuer / index-operator (the curator) can call from the frontend.
+      Flow runs left to right through the basket lifecycle; supporting capabilities
+      branch in. End-user (retail) is a separate scheme, deferred.
+    </p>
+
+    <div class="legend">
+      <div class="i"><span class="pill w">write</span> on-chain tx</div>
+      <div class="i"><span class="pill r">read</span> view / query</div>
+      <div class="i"><span class="pill p">plane</span> off-chain control plane</div>
+      <div class="i"><span class="dot v1"></span> v1 — live</div>
+      <div class="i"><span class="dot v2"></span> v2 — planned</div>
+    </div>
+
+    <!-- ACTOR -->
+    <div class="actor-row">
+      <div class="actor">
+        <div class="glyph">ƒ</div>
+        <div class="who">
+          <div class="t">Fund</div>
+          <div class="d">issuer · curator · governor</div>
+        </div>
+      </div>
+      <div class="feed"></div>
+    </div>
+
+    <!-- LIFECYCLE RAIL -->
+    <div class="rail-label">Basket lifecycle</div>
+    <div class="rail">
+
+      <!-- A. ACCOUNT — deferred for MVP -->
+      <div class="stage skip">
+        <div class="stage-head"><span class="n">A</span><span class="lab">Account<small>access &amp; setup</small></span><span class="skip-badge">skip · MVP</span></div>
+        <div class="node plane" style="--d:.40s"><div class="top"><span class="nm">Connect wallet</span><span class="meta"><span class="k p">plane</span><span class="ver v1"></span></span></div></div>
+        <div class="node plane" style="--d:.45s"><div class="top"><span class="nm">Create / manage org</span><span class="meta"><span class="k p">plane</span><span class="ver v1"></span></span></div></div>
+        <div class="node plane" style="--d:.50s"><div class="top"><span class="nm">Manage RBAC roles</span><span class="meta"><span class="k p">plane</span><span class="ver v1"></span></span></div></div>
+        <div class="node plane" style="--d:.55s"><div class="top"><span class="nm">Subscription &amp; billing</span><span class="meta"><span class="k p">plane</span><span class="ver v1"></span></span></div></div>
+      </div>
+
+      <!-- B. CREATE -->
+      <div class="stage">
+        <div class="stage-head"><span class="n">B</span><span class="lab">Create<small>define &amp; deploy</small></span></div>
+        <div class="node write" style="--d:.48s"><div class="top"><span class="nm">Define basket (name/symbol/meta)</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.53s"><div class="top"><span class="nm">Add / remove constituents</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.58s"><div class="top"><span class="nm">Set cash component</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.63s"><div class="top"><span class="nm">Set creation-unit size</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.68s"><div class="top"><span class="nm">Run listing-gate check</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.73s"><div class="top"><span class="nm">Preview vault address</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.78s"><div class="top"><span class="nm">Deploy basket</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+      </div>
+
+      <!-- C. MANAGE -->
+      <div class="stage">
+        <div class="stage-head"><span class="n">C</span><span class="lab">Manage<small>operate &amp; govern</small></span></div>
+        <div class="node read" style="--d:.56s"><div class="top"><span class="nm">View my baskets</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.61s"><div class="top"><span class="nm">Propose weight update (timelock)</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.66s"><div class="top"><span class="nm">Trigger / schedule rebalance</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.71s"><div class="top"><span class="nm">Pause new-unit creation</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.76s"><div class="top"><span class="nm">Rotate governor / curator</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.81s"><div class="top"><span class="nm">Shutdown basket (one-way)</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+      </div>
+
+      <!-- F. MONITOR -->
+      <div class="stage">
+        <div class="stage-head"><span class="n">D</span><span class="lab">Monitor<small>observe</small></span></div>
+        <div class="node read" style="--d:.64s"><div class="top"><span class="nm">NAV + confidence band</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.69s"><div class="top"><span class="nm">Market-status indicator</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.74s"><div class="top"><span class="nm">Proof-of-reserve</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.79s"><div class="top"><span class="nm">Create/redeem activity feed</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.84s"><div class="top"><span class="nm">Back-test / prediction-error chart</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.89s"><div class="top"><span class="nm">Alerts (stale / drift / gate)</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+      </div>
+
+    </div>
+
+    <!-- SUPPORTING BRANCHES -->
+    <div class="rail-label">Supporting capabilities</div>
+    <p class="branch-rail-note">↑ feed into the Manage stage</p>
+    <div class="branches">
+
+      <div class="branch">
+        <h3><span class="c">E</span> Configuration</h3>
+        <div class="node write" style="--d:.84s"><div class="top"><span class="nm">Oracle sources / fusion policy</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.88s"><div class="top"><span class="nm">Confidence-band params</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.92s"><div class="top"><span class="nm">Listing-gate thresholds (L, buffer)</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:.96s"><div class="top"><span class="nm">Forward-queue settle window</span><span class="meta"><span class="k w">write</span><span class="ver v1"></span></span></div></div>
+        <div class="node write" style="--d:1.0s"><div class="top"><span class="nm">Buffered-trigger params (band/TWAP)</span><span class="meta"><span class="k w">write</span><span class="ver v2"></span></span></div></div>
+      </div>
+
+      <div class="branch">
+        <h3><span class="c">F</span> Corporate actions</h3>
+        <div class="node write" style="--d:.88s"><div class="top"><span class="nm">Apply stock split (PCF unit-math)</span><span class="meta"><span class="k w">write</span><span class="ver v2"></span></span></div></div>
+        <div class="node write" style="--d:.93s"><div class="top"><span class="nm">Set dividend policy (reinvest/payout)</span><span class="meta"><span class="k w">write</span><span class="ver v2"></span></span></div></div>
+      </div>
+
+      <div class="branch">
+        <h3><span class="c">G</span> Reporting &amp; compliance</h3>
+        <div class="node read" style="--d:.92s"><div class="top"><span class="nm">Published valuation methodology</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:.96s"><div class="top"><span class="nm">On-chain back-test report</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node read" style="--d:1.0s"><div class="top"><span class="nm">Export NAV history</span><span class="meta"><span class="k r">read</span><span class="ver v1"></span></span></div></div>
+        <div class="node plane" style="--d:1.04s"><div class="top"><span class="nm">Audit log</span><span class="meta"><span class="k p">plane</span><span class="ver v1"></span></span></div></div>
+      </div>
+
+    </div>
+
+    <footer>
+      <div>MERIDIAN · Fund user scheme · frontend type 01 · generated 2026-06-05</div>
+      <div class="rl">never custody · never settle on an estimate · never take-rate on volume</div>
+    </footer>
+
+  </div>
+</body>
+</html>

@@ -320,6 +320,23 @@ describe("ManagedVault — createWithPermit accrues before minting", () => {
   });
 });
 
+describe("ManagedVault — inflation / first-deposit immunity (#20)", () => {
+  it("a tiny first create + direct donation cannot shrink a later creator's shares", async () => {
+    const { vault, vaultAddr, legs, ap, alice, approveFor } = await loadFixture(deployManagedFixture);
+    // first creator mints 1 unit
+    await approveFor(ap, 1n);
+    await (await vault.connect(ap).create(1n)).wait();
+    // attacker donates constituent tokens straight into the vault (would inflate share price in a 4626 ratio vault)
+    await (await legs[0].stock.connect(ap).transfer(vaultAddr, 500n * ONE)).wait();
+
+    // a later creator still gets EXACTLY nUnits*unitSize — mint is fixed arithmetic, not balance-ratio priced
+    for (const l of legs) await (await l.stock.mint(alice.address, 1000n * ONE)).wait();
+    for (const l of legs) await (await l.stock.connect(alice).approve(vaultAddr, l.qty * 3n)).wait();
+    await (await vault.connect(alice).create(3n)).wait();
+    expect(await vault.balanceOf(alice.address)).to.equal(3n * ONE); // not rounded down by the donation
+  });
+});
+
 describe("ManagedVault — roles & treasury", () => {
   it("two-step manager & meridian rotation (#7)", async () => {
     const { vault, manager, meridian, alice } = await loadFixture(deployManagedFixture);

@@ -19,13 +19,13 @@ const ROBINHOOD_TESTNET_RPC = process.env.ROBINHOOD_TESTNET_RPC ?? "";
 const PRIVATE_KEY = process.env.PRIVATE_KEY ?? "";
 
 // Meridian contracts — Hardhat 2.
-// Solidity 0.8.28: compatible with the mocks (pragma ^0.8.20) and OpenZeppelin v5.
+// Solidity 0.8.35: compatible with the mocks (pragma ^0.8.20) and OpenZeppelin v5.
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.35",
     settings: {
       optimizer: { enabled: true, runs: 200 },
-      // OZ v5.1 uses the `mcopy` opcode -> requires the Cancun EVM.
+      // Osaka EVM target (Hardhat default for 0.8.35; supports the mcopy opcode OZ v5 uses).
       evmVersion: "osaka",
     },
   },
@@ -43,7 +43,9 @@ const config: HardhatUserConfig = {
     spacing: 2,
   },
   networks: {
-    hardhat: {},
+    // Raised block + per-tx gas so the N=500 BasketVault deploy (~22M, one SSTORE per constituent)
+    // fits the on-chain NAV gas benchmark (test/L2/gas, behind GAS_BENCH=1).
+    hardhat: { blockGasLimit: 100_000_000 },
     // Robinhood Chain Testnet — see config/testnet.json. Secrets from blockchain/.env.
     robinhoodTestnet: {
       url: ROBINHOOD_TESTNET_RPC,

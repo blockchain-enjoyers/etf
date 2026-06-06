@@ -1,0 +1,13 @@
+{
+  "networkName": "Robinhood Chain Testnet",
+  "chainId": 46630,
+  "deployments": {
+    "BasketFactory": {
+      "address": "0xc802691590d751ACa78729B2dc03b41f2578e557",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x7e166c2ea7584674a28f6abd3c5b8871e526b1d73c5b498eefdc44707ef3e06e",
+      "block": 70388470,
+      "deployedAt": "2026-06-06T16:47:37.583Z"
+    }
+  }
+}

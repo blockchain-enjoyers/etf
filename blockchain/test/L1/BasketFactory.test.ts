@@ -109,3 +109,96 @@ describe("BasketFactory — L1 deploy + registry", () => {
     expect(await vault.unitSize()).to.equal(unitSize);
   });
 });
+
+describe("BasketFactory — managed baskets", () => {
+  it("deploys a ManagedVault at the predicted address with injected meridian/treasury/share", async () => {
+    const [deployer, manager] = await ethers.getSigners();
+    const Factory = await ethers.getContractFactory("BasketFactory");
+    const factory = await Factory.deploy();
+    await factory.waitForDeployment();
+
+    const { deployRegistry, deployStock, sortRecipe, ONE, MINTER_ROLE } = await import("../helpers");
+    const reg = await deployRegistry(deployer.address);
+    await (await reg.grantRole(MINTER_ROLE, deployer.address)).wait();
+    const a = await deployStock(reg, "A", "A");
+    const b = await deployStock(reg, "B", "B");
+    const legs = sortRecipe([
+      { stock: a, addr: await a.getAddress(), qty: 1n * ONE },
+      { stock: b, addr: await b.getAddress(), qty: 2n * ONE },
+    ]);
+    const tokens = legs.map((l) => l.addr);
+    const unitQty = legs.map((l) => l.qty);
+    const salt = ethers.encodeBytes32String("s1");
+
+    const basket = [tokens, unitQty, ONE, "M", "M", manager.address, 100]; // ManagedBasket struct (tuple)
+    const predicted = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
+    await (await factory.createManagedBasket(basket, salt)).wait();
+    const vaultAddr = await factory.allVaults(0);
+    expect(vaultAddr).to.equal(predicted);
+
+    const mv = await ethers.getContractAt("ManagedVault", vaultAddr);
+    expect(await mv.manager()).to.equal(manager.address);
+    expect(await mv.meridian()).to.equal(deployer.address);  // default = factory deployer
+    expect(await mv.treasury()).to.equal(deployer.address);
+    expect(await mv.platformShareBps()).to.equal(1000);      // default 10%
+    expect(await mv.managerFeeBps()).to.equal(100);
+  });
+
+  it("owner can set meridian/treasury/platformShareBps; caps enforced; non-owner blocked", async () => {
+    const [deployer, other] = await ethers.getSigners();
+    const Factory = await ethers.getContractFactory("BasketFactory");
+    const factory = await Factory.deploy();
+    await factory.waitForDeployment();
+    await (await factory.setPlatformShareBps(1500)).wait();
+    expect(await factory.platformShareBps()).to.equal(1500);
+    await expect(factory.setPlatformShareBps(2001)).to.be.revertedWithCustomError(factory, "ShareTooHigh");
+    await expect(factory.setTreasury(ethers.ZeroAddress)).to.be.revertedWithCustomError(factory, "ZeroAddress");
+    await expect(factory.setMeridian(ethers.ZeroAddress)).to.be.revertedWithCustomError(factory, "ZeroAddress");
+    await expect(factory.connect(other).setMeridian(other.address))
+      .to.be.revertedWithCustomError(factory, "OwnableUnauthorizedAccount");
+  });
+
+  it("existing createBasket / predictVaultAddress still work unchanged", async () => {
+    const [deployer] = await ethers.getSigners();
+    const Factory = await ethers.getContractFactory("BasketFactory");
+    const factory = await Factory.deploy();
+    await factory.waitForDeployment();
+    const { deployRegistry, deployStock, sortRecipe, ONE, MINTER_ROLE } = await import("../helpers");
+    const reg = await deployRegistry(deployer.address);
+    await (await reg.grantRole(MINTER_ROLE, deployer.address)).wait();
+    const a = await deployStock(reg, "A", "A");
+    const b = await deployStock(reg, "B", "B");
+    const legs = sortRecipe([
+      { stock: a, addr: await a.getAddress(), qty: 1n * ONE },
+      { stock: b, addr: await b.getAddress(), qty: 2n * ONE },
+    ]);
+    const tokens = legs.map((l) => l.addr);
+    const unitQty = legs.map((l) => l.qty);
+    const salt = ethers.encodeBytes32String("s2");
+    const predicted = await factory.predictVaultAddress(deployer.address, tokens, unitQty, ONE, "S", "S", salt);
+    await (await factory.createBasket(tokens, unitQty, ONE, "S", "S", salt)).wait();
+    expect(await factory.allVaults(0)).to.equal(predicted);
+  });
+
+  it("predicted managed address shifts when a factory global changes (initcode bakes in the globals)", async () => {
+    const [deployer, manager] = await ethers.getSigners();
+    const Factory = await ethers.getContractFactory("BasketFactory");
+    const factory = await Factory.deploy();
+    await factory.waitForDeployment();
+    const { deployRegistry, deployStock, sortRecipe, ONE, MINTER_ROLE } = await import("../helpers");
+    const reg = await deployRegistry(deployer.address);
+    await (await reg.grantRole(MINTER_ROLE, deployer.address)).wait();
+    const a = await deployStock(reg, "A", "A");
+    const b = await deployStock(reg, "B", "B");
+    const legs = sortRecipe([
+      { stock: a, addr: await a.getAddress(), qty: 1n * ONE },
+      { stock: b, addr: await b.getAddress(), qty: 2n * ONE },
+    ]);
+    const basket = [legs.map((l) => l.addr), legs.map((l) => l.qty), ONE, "M", "M", manager.address, 100];
+    const salt = ethers.encodeBytes32String("s3");
+    const before = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
+    await (await factory.setPlatformShareBps(1500)).wait(); // baked into managed initcode
+    const after = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
+    expect(after).to.not.equal(before); // footgun: predict only stable while globals unchanged
+  });
+});

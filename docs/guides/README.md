@@ -16,6 +16,7 @@
 |---|---|---|
 | L1 | [L1-static-in-kind.md](L1-static-in-kind.md) | Статичная in-kind корзина, без оракула (спина) |
 | L1b | [L1b-large-basket.md](L1b-large-basket.md) | Корзина на 50+ ассетов через дерево (идейный) — расширение L1, не новый уровень оси |
+| L1m | [L1m-managed-vault.md](L1m-managed-vault.md) | Managed-флейвор: ManagedVault + management fee (rev-share через дилюцию) — расширение L1 |
 | L2 | [L2-readonly-nav.md](L2-readonly-nav.md) | Read-only NAV в часы рынка (display-оракул) |
 | L3a | [L3a-reconstitution.md](L3a-reconstitution.md) | Смена состава по расписанию (reconstitution) |
 | L3b | [L3b-threshold-reweight.md](L3b-threshold-reweight.md) | Перевес к цели по порогу (equal/fixed-weight) |

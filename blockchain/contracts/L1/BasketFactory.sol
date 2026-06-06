@@ -2,7 +2,9 @@
 pragma solidity 0.8.35;
 
 import {BasketVault} from "./BasketVault.sol";
+import {ManagedVault} from "./ManagedVault.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title BasketFactory — deploys L1 static in-kind baskets (Meridian)
 /// @notice The issuer calls createBasket -> an immutable BasketVault is deployed via CREATE2 with a
@@ -14,11 +16,98 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 ///      duplicate recipes (neutrality: a different userSalt or issuer yields a different vault).
 ///      The recipe args are part of the initcode, so the address is fully determined by
 ///      (issuer, userSalt, recipe); redeploying the same tuple reverts.
-contract BasketFactory {
+contract BasketFactory is Ownable {
     /// @notice Every deployed vault, in deployment order. Auto-getter allVaults(i) is O(1).
     /// @dev Enumerate via vaultCount() + getVaults(start, limit) (bounded window). Never add a
     ///      function that loops over the whole array on-chain — that is the DoS antipattern.
     address[] public allVaults;
+
+    // ======================== MERIDIAN ADMIN GLOBALS =========================
+    /// @notice Meridian platform admin injected into every managed vault this factory deploys.
+    address public meridian;
+    /// @notice Fee recipient (rev-share treasury) injected into every managed vault.
+    address public treasury;
+    /// @notice Platform cut as a share OF the manager fee (bps), injected into managed vaults.
+    uint16 public platformShareBps;
+    /// @notice Cap on platformShareBps (mirrors ManagedVault.PLATFORM_SHARE_MAX = 20%).
+    uint16 public constant PLATFORM_SHARE_MAX = 2000;
+
+    error ZeroAddress();
+    error ShareTooHigh();
+
+    /// @notice Emitted on every managed-vault deploy (the static path emits BasketCreated).
+    event ManagedBasketCreated(
+        address indexed vault,
+        address indexed creator,
+        address indexed manager,
+        uint16 managerFeeBps,
+        bytes32 userSalt
+    );
+
+    /// @dev Owner = deployer; managed-vault globals default to the deployer / 10% share.
+    constructor() Ownable(msg.sender) {
+        meridian = msg.sender;
+        treasury = msg.sender;
+        platformShareBps = 1000; // 10% default (<= PLATFORM_SHARE_MAX)
+    }
+
+    /// @notice Set the Meridian admin injected into FUTURE managed vaults. onlyOwner.
+    function setMeridian(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); meridian = a; }
+    /// @notice Set the rev-share treasury injected into FUTURE managed vaults. onlyOwner.
+    function setTreasury(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); treasury = a; }
+    /// @notice Set the platform share (bps) injected into FUTURE managed vaults, capped. onlyOwner.
+    function setPlatformShareBps(uint16 b) external onlyOwner { if (b > PLATFORM_SHARE_MAX) revert ShareTooHigh(); platformShareBps = b; }
+
+    /// @notice Recipe + manager inputs for a managed basket, grouped into one struct. Passing a single
+    ///         calldata pointer (instead of 7 separate params) keeps createManagedBasket / predict
+    ///         under the non-IR stack limit — no viaIR, no assembly.
+    struct ManagedBasket {
+        address[] tokens;     // constituents, strictly ascending by address
+        uint256[] unitQty;    // recipe per creation-unit
+        uint256 unitSize;     // basket tokens per unit
+        string name;
+        string symbol;
+        address manager;      // the vault's fee-setting manager
+        uint16 managerFeeBps; // initial annual management fee (bps), validated by the vault
+    }
+
+    /// @notice Deploy a managed basket (ManagedVault) at a deterministic, issuer-namespaced CREATE2
+    ///         address. The factory's CURRENT meridian/treasury/platformShareBps are baked in.
+    /// @param b        the basket recipe + manager inputs.
+    /// @param userSalt issuer-chosen salt; final salt = keccak256(msg.sender, userSalt).
+    /// @return vault   the deployed ManagedVault (== predictManagedVaultAddress with same args).
+    function createManagedBasket(ManagedBasket calldata b, bytes32 userSalt) external returns (address vault) {
+        vault = Create2.deploy(0, _salt(msg.sender, userSalt), _managedInitCode(b));
+        allVaults.push(vault);
+        emit ManagedBasketCreated(vault, msg.sender, b.manager, b.managerFeeBps, userSalt);
+    }
+
+    /// @notice Compute the managed-vault address WITHOUT deploying (issuer = the future createManagedBasket
+    ///         caller). Byte-identical initcode to createManagedBasket, so predict == deploy.
+    function predictManagedVaultAddress(address issuer, ManagedBasket calldata b, bytes32 userSalt)
+        external
+        view
+        returns (address)
+    {
+        return Create2.computeAddress(_salt(issuer, userSalt), keccak256(_managedInitCode(b)));
+    }
+
+    /// @dev Managed initcode = ManagedVault creationCode ++ abi.encode(recipe, ManagedParams). The three
+    ///      Meridian fields are read from the factory's CURRENT globals, so a predicted address is only
+    ///      stable while those globals are unchanged.
+    function _managedInitCode(ManagedBasket calldata b) internal view returns (bytes memory) {
+        ManagedVault.ManagedParams memory p = ManagedVault.ManagedParams({
+            manager: b.manager,
+            meridian: meridian,
+            treasury: treasury,
+            managerFeeBps: b.managerFeeBps,
+            platformShareBps: platformShareBps
+        });
+        return abi.encodePacked(
+            type(ManagedVault).creationCode,
+            abi.encode(b.tokens, b.unitQty, b.unitSize, b.name, b.symbol, p)
+        );
+    }
 
     /// @notice Emitted on every deploy with the FULL recipe so an indexer can recompute and verify
     ///         the vault address independently (do not trust the address field on reorg/backfill).

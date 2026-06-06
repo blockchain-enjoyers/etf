@@ -3,6 +3,7 @@ pragma solidity 0.8.35;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -43,6 +44,16 @@ contract BasketVault is ERC20, ReentrancyGuard {
     /// @notice Basket tokens minted per 1 creation-unit.
     uint256 public immutable unitSize;
 
+    /// @notice One EIP-2612 permit signature for a constituent (aligned by index to the recipe).
+    /// @dev deadline == 0 means "skip this leg" (constituent lacks permit, or already approved).
+    struct PermitInput {
+        uint256 value;
+        uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+
     event Created(address indexed creator, uint256 nUnits, uint256 minted);
     event Redeemed(address indexed redeemer, uint256 amount);
 
@@ -54,6 +65,8 @@ contract BasketVault is ERC20, ReentrancyGuard {
     error NoSupply();
     error UnsortedOrDuplicateTokens();
     error ZeroQty();
+    error PermitsLengthMismatch();
+    error PermitFailed(address token);
 
     /// @param tokens    basket constituents, STRICTLY ASCENDING by address (canonical, unique)
     /// @param unitQty   recipe per 1 unit (same length as tokens, each > 0)
@@ -89,9 +102,32 @@ contract BasketVault is ERC20, ReentrancyGuard {
     // ================================ CREATE =================================
 
     /// @notice Deposit `nUnits` creation-units of the recipe -> mint nUnits*unitSize basket tokens.
-    /// @dev transferFrom for each asset; if any leg is short the whole call reverts (bundle
-    ///      completeness, atomic). CEI + nonReentrant. Permissionless.
+    /// @dev Classic path: the caller must have approved each constituent first. transferFrom for
+    ///      each asset; if any leg is short the whole call reverts (bundle completeness, atomic).
+    ///      CEI + nonReentrant. Permissionless.
     function create(uint256 nUnits) external nonReentrant {
+        _pullAndMint(nUnits);
+    }
+
+    /// @notice One-tx create: apply EIP-2612 permits, then pull the recipe and mint.
+    /// @dev `permits` is aligned by index to the constituents (getConstituents order). A leg with
+    ///      deadline == 0 is skipped (constituent lacks permit, or the caller approved it classically);
+    ///      correctness is still enforced by the transferFrom in _pullAndMint. CEI + nonReentrant.
+    /// @param nUnits  creation-units to mint
+    /// @param permits per-constituent permit signatures (same length as the recipe)
+    function createWithPermit(uint256 nUnits, PermitInput[] calldata permits) external nonReentrant {
+        uint256 len = _tokens.length;
+        if (permits.length != len) revert PermitsLengthMismatch();
+        for (uint256 i = 0; i < len; ++i) {
+            if (permits[i].deadline != 0) {
+                _tryPermit(_tokens[i], permits[i], _unitQty[i] * nUnits);
+            }
+        }
+        _pullAndMint(nUnits);
+    }
+
+    /// @dev Shared body for create / createWithPermit: pull the exact recipe and mint shares.
+    function _pullAndMint(uint256 nUnits) private {
         if (nUnits == 0) revert ZeroUnits();
         uint256 len = _tokens.length;
         for (uint256 i = 0; i < len; ++i) {
@@ -102,6 +138,17 @@ contract BasketVault is ERC20, ReentrancyGuard {
         uint256 minted = nUnits * unitSize;
         _mint(msg.sender, minted);
         emit Created(msg.sender, nUnits, minted);
+    }
+
+    /// @dev Apply one permit, then require the resulting allowance to cover what this leg will pull.
+    ///      The attempt's revert is swallowed (front-run: nonce already consumed; or a non-permit /
+    ///      no-op token), but the allowance check runs on BOTH branches, so a failed, under-valued,
+    ///      or no-op permit fails fast and uniformly with PermitFailed instead of an opaque,
+    ///      token-specific allowance error downstream.
+    function _tryPermit(address token, PermitInput calldata p, uint256 need) private {
+        try IERC20Permit(token).permit(msg.sender, address(this), p.value, p.deadline, p.v, p.r, p.s) {}
+        catch {}
+        if (IERC20(token).allowance(msg.sender, address(this)) < need) revert PermitFailed(token);
     }
 
     // ================================ REDEEM =================================

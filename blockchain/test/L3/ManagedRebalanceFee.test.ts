@@ -40,7 +40,7 @@ async function deploy(keeperBps: number) {
 
   await a.mint(deployer.address, ONE); await b.mint(deployer.address, ONE);
   await a.approve(cloneAddr, ONE); await b.approve(cloneAddr, ONE);
-  await vault.create(1);
+  await vault.create(ONE); // nShares (holdings-based override): 1e18 shares = 1 unitSize
 
   return { vault, km, tokens, manager, meridian, treasury, share: cloneAddr };
 }

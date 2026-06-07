@@ -3,6 +3,8 @@ pragma solidity 0.8.35;
 
 import {ManagedVault} from "../L1/ManagedVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title ManagedRebalanceVault — managed vault whose fee funds a keeper escrow (Part 1)
 /// @notice is ManagedVault, so all audited in-kind create/redeem + fee timelock paths are reused. The
@@ -15,6 +17,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 ///         `initialize` overload) so the bare `initialize` is never ambiguous on the subclass ABI. The
 ///         Part-3 rebalance factory creates the clone and calls `initializeRebalance` atomically.
 contract ManagedRebalanceVault is ManagedVault {
+    using SafeERC20 for IERC20;
+
     uint16 public constant KEEPER_MAX = 2000; // 20% of the fee; PLATFORM_SHARE_MAX + KEEPER_MAX < BPS
 
     /// @notice Keeper cut as a share OF the manager fee (bps). 0 disables the keeper leg.
@@ -39,6 +43,8 @@ contract ManagedRebalanceVault is ManagedVault {
 
     error KeeperShareTooHigh();
     error ZeroEscrow();
+    error UseCreate();
+    error NonMultipleOfUnitSize();
 
     event KeeperFeeAccrued(uint256 keeperShares);
     event KeeperBpsScheduled(uint16 bps, uint64 effectiveAt);
@@ -138,5 +144,88 @@ contract ManagedRebalanceVault is ManagedVault {
         pendingKeeperBps = 0;
         keeperBpsEffectiveAt = 0;
         emit KeeperBpsActivated(keeperBps);
+    }
+
+    // ---- custody set: tokens actually held (what create/redeem iterate) ----
+    address[] internal _held;
+    mapping(address => bool) internal _isHeld;
+
+    /// @notice The custody set (tokens the vault actually holds). Distinct from the target recipe.
+    function heldTokens() external view returns (address[] memory) { return _held; }
+
+    function _addHeld(address t) internal {
+        if (!_isHeld[t]) { _isHeld[t] = true; _held.push(t); }
+    }
+
+    /// @dev Remove `t` from the custody set if its balance is now 0 (swap-out). O(n) swap-pop.
+    function _pruneIfEmpty(address t) internal {
+        if (IERC20(t).balanceOf(address(this)) != 0) return;
+        if (!_isHeld[t]) return;
+        _isHeld[t] = false;
+        uint256 n = _held.length;
+        for (uint256 i = 0; i < n; ++i) {
+            if (_held[i] == t) { _held[i] = _held[n - 1]; _held.pop(); break; }
+        }
+    }
+
+    /// @notice Mint `nShares` basket tokens. Bootstrap (supply==0) pulls the TARGET recipe; afterwards
+    ///         pulls pro-rata over CURRENT holdings (rounding UP, favors the vault). Oracle-free.
+    function create(uint256 nShares) external override nonReentrant {
+        _accrue();
+        if (nShares == 0) revert ZeroUnits();
+        uint256 supply = totalSupply();
+        if (supply == 0) {
+            _bootstrap(nShares);
+        } else {
+            uint256 n = _held.length;
+            for (uint256 i = 0; i < n; ++i) {
+                address t = _held[i];
+                uint256 need = Math.mulDiv(IERC20(t).balanceOf(address(this)), nShares, supply, Math.Rounding.Ceil);
+                if (need > 0) IERC20(t).safeTransferFrom(msg.sender, address(this), need);
+            }
+            _mint(msg.sender, nShares);
+        }
+        emit Created(msg.sender, nShares, nShares);
+    }
+
+    /// @dev First mint: deposit the target recipe scaled to nShares/unitSize, seed the custody set.
+    ///      Requires nShares to be a whole multiple of unitSize (bootstrap granularity). Does NOT read
+    ///      balanceOf -> no first-depositor inflation.
+    function _bootstrap(uint256 nShares) private {
+        uint256 us = unitSize();
+        if (nShares % us != 0) revert NonMultipleOfUnitSize();
+        uint256 units = nShares / us;
+        uint256 n = _tokens.length;
+        for (uint256 i = 0; i < n; ++i) {
+            address t = _tokens[i];
+            IERC20(t).safeTransferFrom(msg.sender, address(this), _unitQty[i] * units);
+            _addHeld(t);
+        }
+        _mint(msg.sender, nShares);
+    }
+
+    /// @notice Burn `amount` -> pay pro-rata over CURRENT holdings (rounding DOWN, favors remaining
+    ///         holders). Never paused by this core; settles nothing on a price. Denominator = supply
+    ///         BEFORE burn (after _accrue, so fee dilution counts).
+    function redeem(uint256 amount) external override nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        _accrue();
+        uint256 supply = totalSupply();
+        if (supply == 0) revert NoSupply();
+        uint256 n = _held.length;
+        uint256[] memory outs = new uint256[](n);
+        for (uint256 i = 0; i < n; ++i) {
+            outs[i] = Math.mulDiv(IERC20(_held[i]).balanceOf(address(this)), amount, supply);
+        }
+        _burn(msg.sender, amount);
+        for (uint256 i = 0; i < n; ++i) {
+            if (outs[i] > 0) IERC20(_held[i]).safeTransfer(msg.sender, outs[i]);
+        }
+        emit Redeemed(msg.sender, amount);
+    }
+
+    /// @notice createWithPermit (inherited, recipe-based) is NOT valid for this holdings-based flavor.
+    function createWithPermit(uint256, PermitInput[] calldata) external override nonReentrant {
+        revert UseCreate();
     }
 }

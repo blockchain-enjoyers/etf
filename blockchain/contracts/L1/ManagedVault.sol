@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.35;
 
-import {BasketVaultBase} from "./BasketVaultBase.sol";
+import {StorageVaultBase} from "./recipe/StorageVaultBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title ManagedVault — L1 managed in-kind basket with a rev-share management fee (Meridian)
@@ -10,7 +10,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 ///         investor pays only the manager fee; Meridian's cut comes out of it. See the L1-managed
 ///         design spec. Fee accrues into high-precision owed-accumulators; only whole shares are
 ///         minted and the fractional remainder is carried (no dust loss, platform cannot be starved).
-contract ManagedVault is BasketVaultBase {
+contract ManagedVault is StorageVaultBase {
     uint16 public constant MANAGER_MAX = 200;          // 2%/yr
     uint16 public constant PLATFORM_SHARE_MAX = 2000;  // 20% of the manager fee
     uint256 internal constant BPS = 10_000;
@@ -84,14 +84,16 @@ contract ManagedVault is BasketVaultBase {
     modifier onlyManager() { if (msg.sender != manager) revert NotManager(); _; }
     modifier onlyMeridian() { if (msg.sender != meridian) revert NotMeridian(); _; }
 
-    constructor(
+    function initialize(
         address[] memory tokens,
         uint256[] memory unitQty,
-        uint256 unitSize_,
         string memory name_,
         string memory symbol_,
         ManagedParams memory p
-    ) BasketVaultBase(tokens, unitQty, unitSize_, name_, symbol_) {
+    ) external initializer {
+        __VaultCore_init(name_, symbol_);
+        __StorageVault_init(tokens, unitQty);
+        // ---- verbatim constructor body ----
         if (p.manager == address(0) || p.meridian == address(0) || p.treasury == address(0)) revert ZeroAddress();
         if (p.managerFeeBps > MANAGER_MAX) revert FeeTooHigh();
         if (p.platformShareBps > PLATFORM_SHARE_MAX) revert ShareTooHigh();
@@ -102,6 +104,7 @@ contract ManagedVault is BasketVaultBase {
         platformShareBps = p.platformShareBps;
         lastAccrued = block.timestamp;
     }
+
     // ================================ ACCRUAL ================================
 
     /// @notice Permissionless poke to settle accrued fees.

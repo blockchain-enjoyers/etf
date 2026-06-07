@@ -25,6 +25,11 @@ const config: HardhatUserConfig = {
     version: "0.8.35",
     settings: {
       optimizer: { enabled: true, runs: 200 },
+      // viaIR MUST stay false — never enable it. It swaps the codegen pipeline for EVERY contract
+      // (changes gas + the audited bytecode surface). If a function hits the legacy stack-slot limit,
+      // refactor THAT function (group params into a calldata struct, extract a helper) — do not flip
+      // this flag.
+      viaIR: false,
       // Osaka EVM target (Hardhat default for 0.8.35; supports the mcopy opcode OZ v5 uses).
       evmVersion: "osaka",
     },

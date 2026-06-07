@@ -12,6 +12,7 @@ import {
   SKIP_PERMIT,
   Leg,
 } from "../helpers";
+import { deployBasketVault } from "./helpers";
 
 const DEADLINE = 10_000_000_000n; // far future
 
@@ -32,8 +33,8 @@ async function fix() {
   const tokens = legs.map((l) => l.addr);
   const unitQty = legs.map((l) => l.qty);
 
-  const Vault = await ethers.getContractFactory("BasketVault");
-  const vault = await Vault.deploy(tokens, unitQty, ONE, "Basket", "BSK");
+  // Deploy via CloneFactory.
+  const vault = await deployBasketVault(tokens, unitQty, ONE, "Basket", "BSK");
   await vault.waitForDeployment();
   const vaultAddr = await vault.getAddress();
 
@@ -166,9 +167,8 @@ describe("BasketVault.createWithPermit — adversarial / edge cases", () => {
 
   it("permit path end-state is identical to classic approve + create (equivalence)", async () => {
     const { ap, legs, tokens, unitQty, vault, vaultAddr, permitsFor } = await loadFixture(fix);
-    // vault2: same recipe, entered classically
-    const Vault = await ethers.getContractFactory("BasketVault");
-    const vault2 = await Vault.deploy(tokens, unitQty, ONE, "Basket2", "BSK2");
+    // vault2: same recipe, entered classically (also via CloneFactory)
+    const vault2 = await deployBasketVault(tokens, unitQty, ONE, "Basket2", "BSK2");
     await vault2.waitForDeployment();
     const vault2Addr = await vault2.getAddress();
 

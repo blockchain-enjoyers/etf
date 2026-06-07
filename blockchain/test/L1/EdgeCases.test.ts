@@ -11,6 +11,7 @@ import {
   sortRecipe,
   Leg,
 } from "../helpers";
+import { deployBasketVault, deployCloneFactory } from "./helpers";
 
 // Base fixture: registry + 3 sorted stocks + a vault (qty 2/3/5, unitSize 1e18), AP funded.
 async function fix() {
@@ -30,8 +31,8 @@ async function fix() {
   const tokens = legs.map((l) => l.addr);
   const unitQty = legs.map((l) => l.qty);
 
-  const Vault = await ethers.getContractFactory("BasketVault");
-  const vault = await Vault.deploy(tokens, unitQty, ONE, "Basket", "BSK");
+  // Deploy via CloneFactory.
+  const vault = await deployBasketVault(tokens, unitQty, ONE, "Basket", "BSK");
   await vault.waitForDeployment();
   const vaultAddr = await vault.getAddress();
 
@@ -43,7 +44,7 @@ async function fix() {
     }
   }
 
-  return { deployer, ap, alice, registry, legs, tokens, unitQty, vault, vaultAddr, Vault, approveTo };
+  return { deployer, ap, alice, registry, legs, tokens, unitQty, vault, vaultAddr, approveTo };
 }
 
 describe("BasketVault — edge cases (token interaction, dust, nesting)", () => {
@@ -89,41 +90,43 @@ describe("BasketVault — edge cases (token interaction, dust, nesting)", () => 
 
   describe("dust / round-to-zero on a tiny-qty leg", () => {
     it("a sub-unit redeem pays 0 of the dust leg (skipped, no revert); full drain sweeps it", async () => {
-      const { ap, tokens, legs, Vault, vaultAddr } = await loadFixture(fix);
+      const { ap, tokens, legs } = await loadFixture(fix);
       // dust basket: leg 0 has qty = 1 wei against unitSize 1e18
       const dustQty = [1n, 3n * ONE, 5n * ONE];
-      const dust = await Vault.deploy(tokens, dustQty, ONE, "Dust", "DST");
-      await dust.waitForDeployment();
-      const dustAddr = await dust.getAddress();
+      // Deploy a separate dust vault via factory.
+      const dustVault = await deployBasketVault(tokens, dustQty, ONE, "Dust", "DST");
+      await dustVault.waitForDeployment();
+      const dustAddr = await dustVault.getAddress();
       for (let i = 0; i < legs.length; i++) {
         await (await legs[i].stock.connect(ap).approve(dustAddr, dustQty[i])).wait();
       }
-      await dust.connect(ap).create(1n); // supply = 1e18; vault holds 1 wei of leg 0
+      await dustVault.connect(ap).create(1n); // supply = 1e18; vault holds 1 wei of leg 0
 
       // redeem half a unit: leg0 out = 1*5e17/1e18 = 0 -> skipped, no revert
       const stock0 = legs[0].stock;
       const before0 = await stock0.balanceOf(ap.address);
-      await dust.connect(ap).redeem(ONE / 2n);
+      await dustVault.connect(ap).redeem(ONE / 2n);
       expect((await stock0.balanceOf(ap.address)) - before0).to.equal(0n);
       expect(await stock0.balanceOf(dustAddr)).to.equal(1n); // dust still in vault
 
       // full drain of remaining supply sweeps the dust wei and zeroes supply
-      const remaining = await dust.balanceOf(ap.address);
-      await dust.connect(ap).redeem(remaining);
-      expect(await dust.totalSupply()).to.equal(0n);
+      const remaining = await dustVault.balanceOf(ap.address);
+      await dustVault.connect(ap).redeem(remaining);
+      expect(await dustVault.totalSupply()).to.equal(0n);
       expect(await stock0.balanceOf(dustAddr)).to.equal(0n);
     });
   });
 
   describe("nested basket (a vault share token as a constituent)", () => {
     it("create/redeem round-trips through both levels pro-rata", async () => {
-      const { ap, legs, vault, vaultAddr, unitQty, Vault, approveTo } = await loadFixture(fix);
+      const { ap, legs, vault, vaultAddr, unitQty, approveTo } = await loadFixture(fix);
       // AP creates 2 sub-basket units
       await approveTo(vaultAddr, ap, unitQty, 2n);
       await vault.connect(ap).create(2n); // ap holds 2e18 sub-shares
 
-      // Top basket holds the sub-basket token, 1 sub-share per unit
-      const top = await Vault.deploy([vaultAddr], [ONE], ONE, "Top", "TOP");
+      // Top basket holds the sub-basket token, 1 sub-share per unit.
+      // Deploy top-level basket with sub-vault address as sole constituent.
+      const top = await deployBasketVault([vaultAddr], [ONE], ONE, "Top", "TOP");
       await top.waitForDeployment();
       const topAddr = await top.getAddress();
 

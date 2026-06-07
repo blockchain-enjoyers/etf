@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ONE, E6, HOUR, Status, V11, payloadFor, ns } from "./helpers";
+import { deployCloneFactory } from "../L1/helpers";
 
 // NAVEngine: read-only basket NAV over the vault's actual holdings, with a confidence band, a worst-of
 // market status, and the `estimated` flag. Full stack (adapter -> router -> engine) + a real
@@ -40,9 +41,15 @@ async function deployFixture() {
     { addr: await cash.getAddress(), tok: cash, qty: E6 },
   ].sort((a, b) => (BigInt(a.addr) < BigInt(b.addr) ? -1 : 1));
 
-  const BV = await ethers.getContractFactory("BasketVault");
-  const vault = await BV.deploy(legs.map((l) => l.addr), legs.map((l) => l.qty), ONE, "Basket", "BSK");
-  const vaultAddr = await vault.getAddress();
+  // Deploy via CloneFactory (clone model — no direct constructor deploy).
+  const cloneFactory = await deployCloneFactory();
+  const vaultSalt = ethers.id("nav-engine-test");
+  const vaultAddrPredicted = await cloneFactory.predictBasketAddress(
+    deployer.address, legs.map((l) => l.addr), legs.map((l) => l.qty), ONE, "Basket", "BSK", vaultSalt
+  );
+  await (await cloneFactory.createBasket(legs.map((l) => l.addr), legs.map((l) => l.qty), ONE, "Basket", "BSK", vaultSalt)).wait();
+  const vault = await ethers.getContractAt("BasketVault", vaultAddrPredicted);
+  const vaultAddr = vaultAddrPredicted;
 
   const tslaAddr = await tsla.getAddress();
   const cashAddr = await cash.getAddress();

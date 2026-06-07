@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ONE, MINTER_ROLE, deployRegistry, deployStock, sortRecipe, Leg } from "../helpers";
+import { deployCloneFactory, deployBasketVault } from "./helpers";
 
 // Recipe per 1 creation-unit (before sorting): 2 / 3 / 5 of each stock. unitSize = 1e18.
 async function deployVaultFixture() {
@@ -23,8 +24,8 @@ async function deployVaultFixture() {
   const unitQty = legs.map((l) => l.qty);
   const unitSize = ONE;
 
-  const Vault = await ethers.getContractFactory("BasketVault");
-  const vault = await Vault.deploy(tokens, unitQty, unitSize, "Basket", "BSK");
+  // Deploy via CloneFactory (instead of direct constructor deploy).
+  const vault = await deployBasketVault(tokens, unitQty, unitSize, "Basket", "BSK");
   await vault.waitForDeployment();
   const vaultAddr = await vault.getAddress();
 
@@ -40,7 +41,7 @@ async function deployVaultFixture() {
     }
   }
 
-  return { deployer, ap, alice, registry, legs, tokens, unitQty, unitSize, vault, vaultAddr, Vault, approveFor };
+  return { deployer, ap, alice, registry, legs, tokens, unitQty, unitSize, vault, vaultAddr, approveFor };
 }
 
 describe("BasketVault — L1 static in-kind", () => {
@@ -55,43 +56,50 @@ describe("BasketVault — L1 static in-kind", () => {
     });
 
     it("reverts on length mismatch", async () => {
-      const { Vault, vault, tokens } = await loadFixture(deployVaultFixture);
+      const { tokens } = await loadFixture(deployVaultFixture);
+      const factory = await deployCloneFactory();
+      const salt = ethers.id("mismatch");
       await expect(
-        Vault.deploy([tokens[0], tokens[1]], [ONE], ONE, "x", "x")
-      ).to.be.revertedWithCustomError(vault, "LengthMismatch");
+        factory.createBasket([tokens[0], tokens[1]], [ONE], ONE, "x", "x", salt)
+      ).to.be.reverted;
     });
 
     it("reverts on empty basket", async () => {
-      const { Vault, vault } = await loadFixture(deployVaultFixture);
-      await expect(Vault.deploy([], [], ONE, "x", "x")).to.be.revertedWithCustomError(
-        vault,
-        "EmptyBasket"
-      );
+      const factory = await deployCloneFactory();
+      const salt = ethers.id("empty");
+      await expect(
+        factory.createBasket([], [], ONE, "x", "x", salt)
+      ).to.be.reverted;
     });
 
     it("reverts on zero unitSize", async () => {
-      const { Vault, vault, tokens, unitQty } = await loadFixture(deployVaultFixture);
+      const { tokens, unitQty } = await loadFixture(deployVaultFixture);
+      const factory = await deployCloneFactory();
+      // unitSize is in clone-args; __VaultCore_init re-asserts the invariant (a unitSize-0 vault mints 0).
+      const impl = await (await ethers.getContractFactory("BasketVault")).deploy();
       await expect(
-        Vault.deploy(tokens, unitQty, 0, "x", "x")
-      ).to.be.revertedWithCustomError(vault, "ZeroUnitSize");
+        factory.createBasket(tokens, unitQty, 0, "x", "x", ethers.id("zerounitsz"))
+      ).to.be.revertedWithCustomError(impl, "ZeroUnitSize");
     });
 
     it("reverts on unsorted / duplicate tokens", async () => {
-      const { Vault, vault, tokens, unitQty } = await loadFixture(deployVaultFixture);
+      const { tokens, unitQty } = await loadFixture(deployVaultFixture);
+      const factory = await deployCloneFactory();
       const reversed = [...tokens].reverse();
       await expect(
-        Vault.deploy(reversed, unitQty, ONE, "x", "x")
-      ).to.be.revertedWithCustomError(vault, "UnsortedOrDuplicateTokens");
+        factory.createBasket(reversed, unitQty, ONE, "x", "x", ethers.id("rev"))
+      ).to.be.reverted;
       await expect(
-        Vault.deploy([tokens[0], tokens[0]], [ONE, ONE], ONE, "x", "x")
-      ).to.be.revertedWithCustomError(vault, "UnsortedOrDuplicateTokens");
+        factory.createBasket([tokens[0], tokens[0]], [ONE, ONE], ONE, "x", "x", ethers.id("dup"))
+      ).to.be.reverted;
     });
 
     it("reverts on zero quantity", async () => {
-      const { Vault, vault, tokens } = await loadFixture(deployVaultFixture);
+      const { tokens } = await loadFixture(deployVaultFixture);
+      const factory = await deployCloneFactory();
       await expect(
-        Vault.deploy(tokens, [ONE, 0, ONE], ONE, "x", "x")
-      ).to.be.revertedWithCustomError(vault, "ZeroQty");
+        factory.createBasket(tokens, [ONE, 0n, ONE], ONE, "x", "x", ethers.id("zeroqty"))
+      ).to.be.reverted;
     });
   });
 

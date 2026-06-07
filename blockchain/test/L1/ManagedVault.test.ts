@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ONE, MINTER_ROLE, deployRegistry, deployStock, sortRecipe, signPermit, Leg } from "../helpers";
+import { deployCloneFactory } from "./helpers";
 
 const BPS = 10_000n;
 const YEAR = 365n * 24n * 60n * 60n;
@@ -25,19 +26,49 @@ async function deployManagedFixture() {
   const unitQty = legs.map((l) => l.qty);
   const unitSize = ONE;
 
-  const MV = await ethers.getContractFactory("ManagedVault");
-  // ManagedParams = [manager, meridian, treasury, managerFeeBps=100 (1%), platformShareBps=1000 (10%)]
-  const params = [manager.address, meridian.address, treasury.address, 100, 1000];
-  const vault = await MV.deploy(tokens, unitQty, unitSize, "Managed", "MGD", params);
-  await vault.waitForDeployment();
-  const vaultAddr = await vault.getAddress();
+  // Deploy via CloneFactory. We need custom meridian/treasury/platformShareBps, so:
+  // 1. Deploy factory.
+  // 2. Set factory globals (meridian, treasury, platformShareBps) to match the desired managed params.
+  // 3. Deploy the managed vault.
+  const factory = await deployCloneFactory();
+  // Set factory globals to match what the old constructor tests expect.
+  await (await factory.setMeridian(meridian.address)).wait();
+  await (await factory.setTreasury(treasury.address)).wait();
+  await (await factory.setPlatformShareBps(1000)).wait(); // 10%, the test default
+
+  const basket = {
+    tokens,
+    unitQty,
+    unitSize,
+    name: "Managed",
+    symbol: "MGD",
+    manager: manager.address,
+    managerFeeBps: 100,
+  };
+  const salt = ethers.id("managed-fixture-v1");
+  const vaultAddr = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
+  await (await factory.createManagedBasket(basket, salt)).wait();
+  const vault = await ethers.getContractAt("ManagedVault", vaultAddr);
 
   for (const l of legs) await (await l.stock.mint(ap.address, 1_000_000n * ONE)).wait();
   async function approveFor(signer: any, nUnits: bigint) {
     for (const l of legs) await (await l.stock.connect(signer).approve(vaultAddr, l.qty * nUnits)).wait();
   }
 
-  return { deployer, manager, meridian, treasury, ap, alice, registry, legs, tokens, unitQty, unitSize, vault, vaultAddr, MV, params, approveFor };
+  return { deployer, manager, meridian, treasury, ap, alice, registry, legs, tokens, unitQty, unitSize, vault, vaultAddr, factory, approveFor };
+}
+
+// Helper to deploy a managed vault with custom fee params via a new factory.
+async function deployManagedWith(tokens: string[], unitQty: bigint[], params: { manager: string; meridian: string; treasury: string; managerFeeBps: number; platformShareBps: number }, saltStr: string) {
+  const [deployer] = await ethers.getSigners();
+  const factory = await deployCloneFactory();
+  await (await factory.setMeridian(params.meridian)).wait();
+  await (await factory.setTreasury(params.treasury)).wait();
+  await (await factory.setPlatformShareBps(params.platformShareBps)).wait();
+  const basket = { tokens, unitQty, unitSize: ONE, name: "x", symbol: "x", manager: params.manager, managerFeeBps: params.managerFeeBps };
+  const salt = ethers.id(saltStr);
+  await (await factory.createManagedBasket(basket, salt)).wait();
+  return ethers.getContractAt("ManagedVault", await factory.allVaults(0));
 }
 
 describe("ManagedVault — construction & roles", () => {
@@ -51,25 +82,27 @@ describe("ManagedVault — construction & roles", () => {
     expect(await vault.lastAccrued()).to.be.gt(0);
   });
 
-  it("reverts on zero manager/meridian/treasury", async () => {
-    const { MV, tokens, unitQty, unitSize, meridian, treasury, vault } = await loadFixture(deployManagedFixture);
-    const Z = ethers.ZeroAddress;
-    await expect(MV.deploy(tokens, unitQty, unitSize, "x", "x", [Z, meridian.address, treasury.address, 100, 1000]))
-      .to.be.revertedWithCustomError(vault, "ZeroAddress");
+  it("reverts on zero manager — factory propagates the ZeroAddress error from initialize", async () => {
+    const { tokens, unitQty, meridian, treasury } = await loadFixture(deployManagedFixture);
+    const factory = await deployCloneFactory();
+    await (await factory.setMeridian(meridian.address)).wait();
+    await (await factory.setTreasury(treasury.address)).wait();
+    const basket = { tokens, unitQty, unitSize: ONE, name: "x", symbol: "x", manager: ethers.ZeroAddress, managerFeeBps: 100 };
+    await expect(factory.createManagedBasket(basket, ethers.id("zeroaddr")))
+      .to.be.reverted;
   });
 
   it("reverts when managerFeeBps > MANAGER_MAX (200) or platformShareBps > PLATFORM_SHARE_MAX (2000)", async () => {
-    const { MV, tokens, unitQty, unitSize, manager, meridian, treasury, vault } = await loadFixture(deployManagedFixture);
-    await expect(MV.deploy(tokens, unitQty, unitSize, "x", "x", [manager.address, meridian.address, treasury.address, 201, 1000]))
-      .to.be.revertedWithCustomError(vault, "FeeTooHigh");
-    await expect(MV.deploy(tokens, unitQty, unitSize, "x", "x", [manager.address, meridian.address, treasury.address, 100, 2001]))
-      .to.be.revertedWithCustomError(vault, "ShareTooHigh");
+    const { tokens, unitQty, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
+    await expect(deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 201, platformShareBps: 1000 }, "feehigh"))
+      .to.be.reverted;
+    await expect(deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 100, platformShareBps: 2001 }, "sharehigh"))
+      .to.be.reverted;
   });
 
   it("accepts fees exactly at the caps (MANAGER_MAX=200, PLATFORM_SHARE_MAX=2000)", async () => {
-    const { MV, tokens, unitQty, unitSize, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
-    const v = await MV.deploy(tokens, unitQty, unitSize, "Cap", "CAP", [manager.address, meridian.address, treasury.address, 200, 2000]);
-    await v.waitForDeployment();
+    const { tokens, unitQty, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
+    const v = await deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 200, platformShareBps: 2000 }, "atcap");
     expect(await v.managerFeeBps()).to.equal(200);
     expect(await v.platformShareBps()).to.equal(2000);
   });
@@ -108,9 +141,8 @@ describe("ManagedVault — fee accrual", () => {
   });
 
   it("managerFeeBps == 0 mints nothing (#2)", async () => {
-    const { MV, tokens, unitQty, unitSize, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
-    const v = await MV.deploy(tokens, unitQty, unitSize, "Z", "Z", [manager.address, meridian.address, treasury.address, 0, 1000]);
-    await v.waitForDeployment();
+    const { tokens, unitQty, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
+    const v = await deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 0, platformShareBps: 1000 }, "zerofee");
     const a = (await ethers.getSigners())[4]; // ap
     for (const t of tokens) {
       const erc = await ethers.getContractAt("IERC20", t);

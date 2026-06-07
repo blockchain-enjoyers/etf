@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { ONE, V11, payloadFor, ns } from "../helpers";
+import { deployCloneFactory } from "../../L1/helpers";
 
 // Phase 1 gas baseline: how much does the CURRENT Solidity NAVEngine.navOf cost on-chain as N grows?
 // Measured by estimateGas on the original contract (no probe/wrapper). Gated behind GAS_BENCH=1:
@@ -33,11 +34,17 @@ async function buildBasket(N: number) {
   tokens.sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
 
   const unitQty = tokens.map(() => ONE);
-  const vault = await (await ethers.getContractFactory("BasketVault")).deploy(
-    tokens, unitQty, ONE, `BSK${N}`, `B${N}`
+  // Deploy via CloneFactory (clone model — the deploy cost is now per-clone, much cheaper).
+  const cloneFactory = await deployCloneFactory();
+  const salt = ethers.id(`bsk-${N}`);
+  const vaultAddrPredicted = await cloneFactory.predictBasketAddress(
+    deployer.address, tokens, unitQty, ONE, `BSK${N}`, `B${N}`, salt
   );
-  const vaultAddr = await vault.getAddress();
-  const deployGas = (await vault.deploymentTransaction()!.wait())!.gasUsed;
+  const deployTx = await cloneFactory.createBasket(tokens, unitQty, ONE, `BSK${N}`, `B${N}`, salt);
+  const deployReceipt = await deployTx.wait();
+  const vault = await ethers.getContractAt("BasketVault", vaultAddrPredicted);
+  const vaultAddr = vaultAddrPredicted;
+  const deployGas = deployReceipt!.gasUsed;
 
   const now = await time.latest();
   for (let i = 0; i < N; i++) {

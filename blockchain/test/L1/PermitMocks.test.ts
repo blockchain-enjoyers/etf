@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ONE } from "../helpers";
+import { deployCloneFactory } from "./helpers";
 
 const QTY = 2n * ONE;
 const DEADLINE = 10_000_000_000n;
@@ -9,10 +10,13 @@ const DEADLINE = 10_000_000_000n;
 const dummyPermit = (value: bigint) => ({ value, deadline: DEADLINE, v: 27, r: ethers.ZeroHash, s: ethers.ZeroHash });
 
 async function deploySingleVault(tokenAddr: string) {
-  const Vault = await ethers.getContractFactory("BasketVault");
-  const vault = await Vault.deploy([tokenAddr], [QTY], ONE, "Mock", "MCK");
-  await vault.waitForDeployment();
-  return { vault, vaultAddr: await vault.getAddress() };
+  const [issuer] = await ethers.getSigners();
+  const factory = await deployCloneFactory();
+  const salt = ethers.id("permit-mock-" + tokenAddr);
+  const addr = await factory.predictBasketAddress(issuer.address, [tokenAddr], [QTY], ONE, "Mock", "MCK", salt);
+  await (await factory.createBasket([tokenAddr], [QTY], ONE, "Mock", "MCK", salt)).wait();
+  const vault = await ethers.getContractAt("BasketVault", addr);
+  return { vault, vaultAddr: addr };
 }
 
 describe("createWithPermit — non-standard / adversarial constituents", () => {

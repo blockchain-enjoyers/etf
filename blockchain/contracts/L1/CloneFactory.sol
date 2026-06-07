@@ -7,6 +7,7 @@ import {RecipeLib} from "./core/RecipeLib.sol";
 import {BasketVault} from "./BasketVault.sol";
 import {ManagedVault} from "./ManagedVault.sol";
 import {CommittedVault} from "./CommittedVault.sol";
+import {ManagedRebalanceVault} from "../L3/ManagedRebalanceVault.sol";
 
 /// @title CloneFactory — deploys every Meridian vault type as an EIP-1167 clone of a fixed implementation
 /// @notice Holds one immutable implementation per type; each vault is a clone-with-immutable-args
@@ -26,12 +27,18 @@ contract CloneFactory is Ownable {
     uint16 public platformShareBps;
     uint16 public constant PLATFORM_SHARE_MAX = 2000;
 
+    address public rebalanceImpl;
+    mapping(address => bool) public constituentAllowed;
+
     error ZeroAddress();
     error ShareTooHigh();
+    error NotWhitelisted();
 
     event BasketCreated(address indexed vault, address indexed creator, bytes32 userSalt, address[] tokens, uint256[] unitQty, uint256 unitSize, string name, string symbol);
     event ManagedBasketCreated(address indexed vault, address indexed creator, address indexed manager, uint16 managerFeeBps, bytes32 userSalt);
     event CommittedBasketCreated(address indexed vault, address indexed creator, bytes32 userSalt, address[] tokens, uint256[] unitQty, uint256 unitSize, string name, string symbol);
+    event RebalanceBasketCreated(address indexed vault, address indexed creator, address indexed manager, bytes32 userSalt);
+    event ConstituentAllowed(address indexed token, bool allowed);
 
     constructor(address basketImpl_, address managedImpl_, address committedImpl_) Ownable(msg.sender) {
         if (basketImpl_ == address(0) || managedImpl_ == address(0) || committedImpl_ == address(0)) revert ZeroAddress();
@@ -46,6 +53,8 @@ contract CloneFactory is Ownable {
     function setMeridian(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); meridian = a; }
     function setTreasury(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); treasury = a; }
     function setPlatformShareBps(uint16 b) external onlyOwner { if (b > PLATFORM_SHARE_MAX) revert ShareTooHigh(); platformShareBps = b; }
+    function setRebalanceImpl(address impl) external onlyOwner { if (impl == address(0)) revert ZeroAddress(); rebalanceImpl = impl; }
+    function setConstituentAllowed(address token, bool ok) external onlyOwner { constituentAllowed[token] = ok; emit ConstituentAllowed(token, ok); }
 
     // -------- static (storage) --------
     function createBasket(
@@ -101,6 +110,29 @@ contract CloneFactory is Ownable {
 
     function predictManagedVaultAddress(address issuer, ManagedBasket calldata b, bytes32 userSalt) external view returns (address) {
         return Clones.predictDeterministicAddressWithImmutableArgs(managedImpl, _args(b.tokens, b.unitQty, b.unitSize), _salt(issuer, userSalt), address(this));
+    }
+
+    // -------- rebalanceable --------
+    struct RebalanceBasket {
+        address[] tokens; uint256[] unitQty; uint256 unitSize; string name; string symbol;
+        address manager; uint16 managerFeeBps; uint16 keeperBps; address keeperEscrow;
+    }
+
+    function createRebalanceBasket(RebalanceBasket calldata b, bytes32 userSalt) external returns (address vault) {
+        if (rebalanceImpl == address(0)) revert ZeroAddress();
+        for (uint256 i = 0; i < b.tokens.length; ++i) if (!constituentAllowed[b.tokens[i]]) revert NotWhitelisted();
+        bytes memory args = _args(b.tokens, b.unitQty, b.unitSize);
+        vault = Clones.cloneDeterministicWithImmutableArgs(rebalanceImpl, args, _salt(msg.sender, userSalt));
+        ManagedRebalanceVault(vault).initializeRebalance(
+            _mem(b.tokens), _mem2(b.unitQty), b.name, b.symbol,
+            ManagedRebalanceVault.RebalanceParams({
+                manager: b.manager, meridian: meridian, treasury: treasury,
+                managerFeeBps: b.managerFeeBps, platformShareBps: platformShareBps,
+                keeperBps: b.keeperBps, keeperEscrow: b.keeperEscrow
+            })
+        );
+        allVaults.push(vault);
+        emit RebalanceBasketCreated(vault, msg.sender, b.manager, userSalt);
     }
 
     // -------- registry / internal --------

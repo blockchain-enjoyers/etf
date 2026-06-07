@@ -4,6 +4,7 @@ pragma solidity 0.8.35;
 import {PriceAggregator} from "./PriceAggregator.sol";
 import {IRecipeVault} from "./interfaces/IRecipeVault.sol";
 import {MarketStatus, MarketStatusLib} from "../L2/OracleTypes.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title FairValueNAV — read-only basket NAV over the L4 aggregator
 /// @notice Validates the calldata recipe against vault.recipeCommitment() (the only L1<->L4 seam, same
@@ -85,5 +86,29 @@ contract FairValueNAV {
         if (diff * 10000 > aggregator.divergenceBps() * sop) {
             res.safe = false;
         }
+    }
+
+    /// @notice Holdings-based NAV: value the vault's ACTUAL balances over the supplied token set (the
+    ///         vault's heldTokens()), aggregating each price. For rebalanceable vaults whose holdings
+    ///         differ from any committed recipe mid-rebalance. Estimate only (iron rule).
+    function navOfHoldings(address vault, address[] calldata tokens, bytes[][] calldata payloads)
+        external view returns (NavResult memory res)
+    {
+        uint256 n = tokens.length;
+        if (payloads.length != n) revert LengthMismatch();
+        res.marketStatus = MarketStatus.Open;
+        res.timestamp = type(uint256).max;
+        res.safe = true;
+        for (uint256 i = 0; i < n; ++i) {
+            PriceAggregator.AggregateResult memory a = aggregator.priceOf(tokens[i], payloads[i]);
+            uint256 bal = IERC20(tokens[i]).balanceOf(vault);
+            res.nav += (bal * a.price) / 1e18;
+            res.confLower += (bal * a.confLower) / 1e18;
+            res.confUpper += (bal * a.confUpper) / 1e18;
+            res.marketStatus = res.marketStatus.worse(a.marketStatus);
+            if (!a.safe) res.safe = false;
+            if (a.timestamp < res.timestamp) res.timestamp = a.timestamp;
+        }
+        if (n == 0) res.timestamp = 0;
     }
 }

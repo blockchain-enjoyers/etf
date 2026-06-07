@@ -84,6 +84,20 @@ contract PriceAggregator is Ownable {
         return _sources[asset].length;
     }
 
+    /// @notice Sum of accepted-depth (healthy + fresh) sources for `asset`. The listing gate consumes
+    ///         this; feed it a CONSERVATIVE (weekend-trough) value via a min-depth tracker upstream.
+    function acceptedDepthOf(address asset, bytes[] calldata payloads) external view returns (uint256 depth) {
+        IPriceSource[] storage srcs = _sources[asset];
+        uint256 n = srcs.length;
+        if (payloads.length != n) revert PayloadLengthMismatch();
+        for (uint256 i = 0; i < n; ++i) {
+            SourceReading memory r = srcs[i].readSource(payloads[i]);
+            if (!r.healthy || r.price == 0) continue;
+            if (block.timestamp - r.lastUpdate > staleHorizon) continue;
+            depth += r.depth;
+        }
+    }
+
     // ============================== READ ==============================
 
     /// @notice Aggregate all registered sources for `asset`. `payloads[i]` is forwarded to source i

@@ -154,7 +154,7 @@ contract ManagedVault is StorageVaultBase {
         managerAdd = addScaled - platformAdd;
     }
 
-    function _accrue() internal override {
+    function _accrue() internal override virtual {
         uint256 supply = totalSupply();
         uint256 ts = block.timestamp;
         if (supply == 0 || ts == lastAccrued) { lastAccrued = ts; return; }

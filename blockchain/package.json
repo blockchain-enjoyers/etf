@@ -9,7 +9,12 @@
     "test": "hardhat test",
     "clean": "hardhat clean",
     "export-abi": "hardhat export-abi",
-    "node": "hardhat node"
+    "node": "hardhat node",
+    "deploy:l1": "hardhat run scripts/deploy/deploy-l1.ts --network robinhoodTestnet",
+    "deploy:l2": "hardhat run scripts/deploy/deploy-l2.ts --network robinhoodTestnet",
+    "deploy:l3": "hardhat run scripts/deploy/deploy-l3.ts --network robinhoodTestnet",
+    "deploy:l4": "hardhat run scripts/deploy/deploy-l4.ts --network robinhoodTestnet",
+    "deploy:all": "hardhat run scripts/deploy/deploy-all.ts --network robinhoodTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

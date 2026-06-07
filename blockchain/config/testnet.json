@@ -8,6 +8,183 @@
       "txHash": "0x7e166c2ea7584674a28f6abd3c5b8871e526b1d73c5b498eefdc44707ef3e06e",
       "block": 70388470,
       "deployedAt": "2026-06-06T16:47:37.583Z"
+    },
+    "BasketVault": {
+      "address": "0x6E2e82baafAf08AC4f2fBc0f7fbb7af596c0539C",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x951a321a7131f9b87eaf9350853b1e9a2b4c2bb7977e2bac7ef86ccff76bae17",
+      "block": 71144904,
+      "deployedAt": "2026-06-07T19:05:40.283Z",
+      "args": []
+    },
+    "ManagedVault": {
+      "address": "0x557b6E25be3F810Ab5ccc922d54E332a02BA13c2",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x51126f5ec8ca1ac2a20386c33ba9a2f2b4bef8c6d2253b4434ecd60002543544",
+      "block": 71144911,
+      "deployedAt": "2026-06-07T19:05:41.852Z",
+      "args": []
+    },
+    "CommittedVault": {
+      "address": "0x1F0b54fd73771D5DDd985D57799d6A0eF3b1A7F6",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0xbe79733098b88f9c583fc8ed7e9f3576047893e4868e5ee2751980dc4caca4dc",
+      "block": 71144924,
+      "deployedAt": "2026-06-07T19:05:42.975Z",
+      "args": []
+    },
+    "CloneFactory": {
+      "address": "0x88d606a5fbcC8AE26676eD34568770049C1991B9",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x2df4cf1432d80b057e25107b7f595c4d2f184bd289dbc564474d224ba6fb6598",
+      "block": 71144933,
+      "deployedAt": "2026-06-07T19:05:44.276Z",
+      "args": [
+        "0x6E2e82baafAf08AC4f2fBc0f7fbb7af596c0539C",
+        "0x557b6E25be3F810Ab5ccc922d54E332a02BA13c2",
+        "0x1F0b54fd73771D5DDd985D57799d6A0eF3b1A7F6"
+      ]
+    },
+    "MockVerifierProxy": {
+      "address": "0xa1215a89d83ECaA69aF7af0af79fF19075f19a4e",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x26cbae7f49724c2b2866bde554d76cc592bea7a49d3883fec99425c32ce1baf6",
+      "block": 71049808,
+      "deployedAt": "2026-06-07T16:10:00.080Z",
+      "args": []
+    },
+    "MockSequencerUptimeFeed": {
+      "address": "0x9be20a27023AA3Af6123995e1691fF149673c5a0",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x1af07e5594a5f0fec2fb83120adfa85be35d2f971c42da1eebecf8413b18be41",
+      "block": 71049818,
+      "deployedAt": "2026-06-07T16:10:01.154Z",
+      "args": []
+    },
+    "ChainlinkAdapter": {
+      "address": "0x4e75C556511d862b5f2Fd0621469f3CE498F6180",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x77e04c2d7260418ff797e3526228170c9f978a4d16e94cb6877affbcdbd0b593",
+      "block": 71049827,
+      "deployedAt": "2026-06-07T16:10:02.106Z",
+      "args": [
+        "0xa1215a89d83ECaA69aF7af0af79fF19075f19a4e",
+        11
+      ]
+    },
+    "OracleRouter": {
+      "address": "0x1D95e21bf0C9afC8EE5633EeC95bf08d4D965D6D",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x06eeee44d4d2ddd7cea211d4f055002f98e6bd04a77ad6137a290542e411906b",
+      "block": 71049837,
+      "deployedAt": "2026-06-07T16:10:03.087Z",
+      "args": [
+        "0x4e75C556511d862b5f2Fd0621469f3CE498F6180",
+        "0x9be20a27023AA3Af6123995e1691fF149673c5a0",
+        3600,
+        3600,
+        "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD"
+      ]
+    },
+    "NAVEngine": {
+      "address": "0x3B34b1B552b56F367B2F76Ca52927CD134d0718F",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0xae94f96b7238b1fe5a8c08ff59c4e2d462dbed993024067bd18947ed425f4abc",
+      "block": 71049847,
+      "deployedAt": "2026-06-07T16:10:04.431Z",
+      "args": [
+        "0x1D95e21bf0C9afC8EE5633EeC95bf08d4D965D6D"
+      ]
+    },
+    "PriceAggregator": {
+      "address": "0x286d30c70B21ee7F283Fa1581Fb96b18082c9000",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0xe2d248e601ef9691a3f281ceed25dc46283e897e95412e5eafd433ed00e1f46c",
+      "block": 71049863,
+      "deployedAt": "2026-06-07T16:10:05.950Z",
+      "args": [
+        "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD"
+      ]
+    },
+    "L2RouterSource": {
+      "address": "0x7Ddb951dE4139e315a881eF7cB94abE1720d7775",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x696430eb8e9afce7e07035c77ac3e7bd2905ac03f2119561fd7dca00f7fff20c",
+      "block": 71049871,
+      "deployedAt": "2026-06-07T16:10:06.949Z",
+      "args": [
+        "0x1D95e21bf0C9afC8EE5633EeC95bf08d4D965D6D",
+        "5000000000000000000000000"
+      ]
+    },
+    "FairValueNAV": {
+      "address": "0x093Ce1F3135EAcAF4F398D787bD1D231181168d6",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0xe766aad5282c41f0f9a0c26381c71681ca9dcae9f66db4efbd6d2a87c3f4f144",
+      "block": 71049881,
+      "deployedAt": "2026-06-07T16:10:07.983Z",
+      "args": [
+        "0x286d30c70B21ee7F283Fa1581Fb96b18082c9000"
+      ]
+    },
+    "KeeperModule": {
+      "address": "0x9845E5EbEE7BfF6cBa532dB692c8CA4435A559a8",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x6064440a48a673f85fcdf0182991ee2acef3aad8be29f018229831564b16931c",
+      "block": 71145022,
+      "deployedAt": "2026-06-07T19:05:55.370Z",
+      "args": [
+        "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD"
+      ]
+    },
+    "ManagedRebalanceVault": {
+      "address": "0x0b03b53c9bA95b2c4514EFAE56D48B1a1057890a",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0xb0359430328f1e183785b19f4a574c7286cc29322c1415ddd65799f509afbdd4",
+      "block": 71145033,
+      "deployedAt": "2026-06-07T19:05:57.433Z",
+      "args": []
+    },
+    "RebalanceObserver": {
+      "address": "0x05fAd9cA23f2eDFcbF24B353175E25D84c5eB3a5",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x04def9f183f14190e25dd17bbb08dde87214dfbbde27221922be44a0a2d3e480",
+      "block": 71145045,
+      "deployedAt": "2026-06-07T19:05:58.388Z",
+      "args": [
+        "0x286d30c70B21ee7F283Fa1581Fb96b18082c9000"
+      ]
+    },
+    "RebalanceModule": {
+      "address": "0x9515441105694d270a5097625980F29d908EA9a6",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x93ac381aff0cc0f42892c356e0e4b87b0232d62a5dead573eee70a157960206a",
+      "block": 71145051,
+      "deployedAt": "2026-06-07T19:05:59.320Z",
+      "args": [
+        "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+        500,
+        200,
+        86400,
+        2
+      ]
+    },
+    "RebalanceAuction": {
+      "address": "0x9601a1c96fF2Da6860ab85eEC943a1Cb911a1502",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0xbd220a6d2e99371120333b83d12853b5e7bd3b9b7f4518dbfbc3e38ee86cf0e0",
+      "block": 71145058,
+      "deployedAt": "2026-06-07T19:06:00.281Z",
+      "args": [
+        "0x9845E5EbEE7BfF6cBa532dB692c8CA4435A559a8",
+        "5000000000000000"
+      ]
     }
+  },
+  "params": {
+    "schemaVersion": 11,
+    "sequencerGracePeriod": 3600,
+    "stalenessThreshold": 3600,
+    "depthTier": "5000000000000000000000000"
   }
 }

@@ -93,7 +93,12 @@ contract ManagedVault is StorageVaultBase {
     ) external initializer {
         __VaultCore_init(name_, symbol_);
         __StorageVault_init(tokens, unitQty);
-        // ---- verbatim constructor body ----
+        __Managed_init(p);
+    }
+
+    /// @dev Managed-state init, extracted so ManagedRebalanceVault can reuse it then add keeper state.
+    /// @param p Managed initialisation params; see {ManagedParams}.
+    function __Managed_init(ManagedParams memory p) internal onlyInitializing {
         if (p.manager == address(0) || p.meridian == address(0) || p.treasury == address(0)) revert ZeroAddress();
         if (p.managerFeeBps > MANAGER_MAX) revert FeeTooHigh();
         if (p.platformShareBps > PLATFORM_SHARE_MAX) revert ShareTooHigh();
@@ -113,13 +118,22 @@ contract ManagedVault is StorageVaultBase {
     }
 
     /// @dev Whole shares that _accrue would mint right now (for previewRedeem / UX). Mirrors _accrue.
-    function pendingMintShares() public view returns (uint256) {
+    function pendingMintShares() public view virtual returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0 || block.timestamp == lastAccrued) return 0;
         (uint256 platformAdd, uint256 managerAdd) = _owedAdds(supply, block.timestamp - lastAccrued);
         uint256 mintP = (accPlatformOwed + platformAdd) / SCALE;
         uint256 mintM = (accManagerOwed + managerAdd) / SCALE;
         return mintP + mintM;
+    }
+
+    /// @dev Pre-split scaled (×SCALE) fee for `elapsed` seconds on `supply`. Virtual so a
+    ///      subclass can override for a different split (e.g. a 3-way keeper split). When not
+    ///      overridden, _owedAdds below produces the standard 2-way platform/manager result.
+    function _feeAddScaled(uint256 supply, uint256 elapsed) internal view virtual returns (uint256 addScaled) {
+        uint256 num = uint256(managerFeeBps) * elapsed; // BPS·seconds
+        uint256 den = BPS * YEAR;
+        addScaled = num >= den ? supply * SCALE : Math.mulDiv(supply, num * SCALE, den - num);
     }
 
     /// @dev Scaled (×SCALE) fee additions for `elapsed` seconds on `supply`, split into platform/manager.
@@ -135,9 +149,7 @@ contract ManagedVault is StorageVaultBase {
         view
         returns (uint256 platformAdd, uint256 managerAdd)
     {
-        uint256 num = uint256(managerFeeBps) * elapsed; // BPS·seconds
-        uint256 den = BPS * YEAR;
-        uint256 addScaled = num >= den ? supply * SCALE : Math.mulDiv(supply, num * SCALE, den - num);
+        uint256 addScaled = _feeAddScaled(supply, elapsed);
         platformAdd = Math.ceilDiv(addScaled * platformShareBps, BPS); // round platform UP (dust -> platform), R11/Reserve
         managerAdd = addScaled - platformAdd;
     }

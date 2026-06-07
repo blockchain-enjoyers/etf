@@ -146,6 +146,54 @@ contract ManagedRebalanceVault is ManagedVault {
         emit KeeperBpsActivated(keeperBps);
     }
 
+    // ---- registered executors (the Part-3 auction). meridian (platform) governs the set. ----
+    mapping(address => bool) public isExecutor;
+    event ExecutorSet(address indexed executor, bool allowed);
+    event Rebalanced(address indexed executor, address indexed recipient, address[] acquire, uint256[] acquireIn, address[] release, uint256[] releaseOut);
+    error NotExecutor();
+    error MinOutNotMet(address token);
+    error RebalanceLengthMismatch();
+
+    function setExecutor(address e, bool allowed) external onlyMeridian {
+        isExecutor[e] = allowed;
+        emit ExecutorSet(e, allowed);
+    }
+
+    /// @notice Atomic value-conserving swap-against-vault. The executor has already approved `acquireIn`
+    ///         of each acquire token to this vault. In ONE call: pull all acquire legs IN, send all
+    ///         release legs OUT, enforce each remaining release-leg balance >= minOut (value-conservation
+    ///         floor), update the custody set. All-or-nothing; no price read (settlement = delivered
+    ///         ratio); no escrow. Only a registered executor.
+    /// @dev    TRUST BOUNDARY: per-leg `minOut` and `releaseOut` are ASSERTED BY THE REGISTERED EXECUTOR
+    ///         (the Part-3 auction), not independently verified here. This core enforces only atomicity +
+    ///         the per-leg floor + executor-gating + custody-set update, and is oracle-free by design (the
+    ///         iron rule: an estimate must never gate a value-moving settlement). The value-conservation
+    ///         trust root is therefore (a) `setExecutor` being meridian-gated — treat it as a high-privilege
+    ///         op (multisig/timelock on meridian) — and (b) the auction deriving `minOut` from the vault's
+    ///         pre-swap holdings and the winning bid, never echoing a caller-supplied value.
+    function executeRebalance(
+        address[] calldata acquire, uint256[] calldata acquireIn,
+        address[] calldata release, uint256[] calldata releaseOut,
+        uint256[] calldata minOut, address recipient
+    ) external nonReentrant {
+        if (!isExecutor[msg.sender]) revert NotExecutor();
+        if (acquire.length != acquireIn.length) revert RebalanceLengthMismatch();
+        if (release.length != releaseOut.length || release.length != minOut.length) revert RebalanceLengthMismatch();
+
+        // pull acquire legs IN (from the executor, which holds the bidder's tokens)
+        for (uint256 i = 0; i < acquire.length; ++i) {
+            IERC20(acquire[i]).safeTransferFrom(msg.sender, address(this), acquireIn[i]);
+            _addHeld(acquire[i]);
+        }
+        // send release legs OUT, enforce per-leg backing floor
+        for (uint256 i = 0; i < release.length; ++i) {
+            IERC20(release[i]).safeTransfer(recipient, releaseOut[i]);
+            if (IERC20(release[i]).balanceOf(address(this)) < minOut[i]) revert MinOutNotMet(release[i]);
+            _pruneIfEmpty(release[i]);
+        }
+        emit Rebalanced(msg.sender, recipient, acquire, acquireIn, release, releaseOut);
+    }
+
     // ---- custody set: tokens actually held (what create/redeem iterate) ----
     address[] internal _held;
     mapping(address => bool) internal _isHeld;

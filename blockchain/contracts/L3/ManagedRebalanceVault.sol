@@ -228,4 +228,37 @@ contract ManagedRebalanceVault is ManagedVault {
     function createWithPermit(uint256, PermitInput[] calldata) external override nonReentrant {
         revert UseCreate();
     }
+
+    // ---- governed target change (reconstitution or reweight), curator-timelocked ----
+    address[] private _pendingTokens;
+    uint256[] private _pendingUnitQty;
+    uint64 public targetEffectiveAt;
+
+    event TargetScheduled(address[] tokens, uint256[] unitQty, uint64 effectiveAt);
+    event TargetActivated(address[] tokens, uint256[] unitQty);
+
+    /// @notice Schedule a new TARGET (add/remove constituents = reconstitution, or change unitQty =
+    ///         reweight). Curator (manager) only; activates after TIMELOCK via activateTarget. Holders
+    ///         see it and may exit (redeem never pauses) before it applies.
+    function scheduleTarget(address[] calldata tokens, uint256[] calldata unitQty) external onlyManager {
+        _assertValidRecipe(tokens, unitQty);
+        _pendingTokens = tokens;
+        _pendingUnitQty = unitQty;
+        targetEffectiveAt = uint64(block.timestamp + TIMELOCK);
+        emit TargetScheduled(tokens, unitQty, targetEffectiveAt);
+    }
+
+    /// @notice Apply the scheduled target after its timelock. Curator only.
+    function activateTarget() external onlyManager {
+        uint64 eff = targetEffectiveAt;
+        if (eff == 0) revert NothingPending();
+        if (block.timestamp < eff) revert TimelockNotElapsed();
+        address[] memory tk = _pendingTokens;
+        uint256[] memory q = _pendingUnitQty;
+        _setTarget(tk, q);
+        delete _pendingTokens;
+        delete _pendingUnitQty;
+        targetEffectiveAt = 0;
+        emit TargetActivated(tk, q);
+    }
 }

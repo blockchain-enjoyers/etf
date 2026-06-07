@@ -151,7 +151,11 @@ source() → uint8
 
 ## 9. L4-шов и чего ещё нет
 
-**L4 (выходной fair-value) НЕ плодит второй движок.** Closed-market fair-value входит **ниже** NAVEngine как второй `IOracleAdapter` за тем же интерфейсом: возвращает fair-value `OracleReading` (полоса шире, `source = FAIR_VALUE_L4`, `marketStatus` всё ещё Closed → `estimated` остаётся true, по нему ничего не сеттлится). NAVEngine не меняется — продолжает суммировать то, что отдаёт роутер. Один движок, две ветки. (`OracleTypes.Source.FAIR_VALUE_L4` зарезервирован.)
+**L4 (выходной fair-value) — это отдельный агрегирующий слой ПОВЕРХ L2, а не второй адаптер в этом движке.** (Раннее предположение «L4 = второй `IOracleAdapter` за тем же NAVEngine» отменено: один Chainlink-адаптер с кэшем — это по определению **single-source**, а наш wedge — это **multi-source рефери** с depth-weighted median и устойчивостью к манипуляции, чего этот движок не умеет.) Решение (утв. дизайн `docs/superpowers/specs/2026-06-07-l4-price-validation-engine-design.md`):
+- **L2 остаётся как есть** — это **один источник** (реальный Chainlink-стрим, cache+gate, view).
+- **L4** = новые контракты `PriceAggregator` + `FairValueNAV` + `IPriceSource`, которые берут **L2 `getPrice` как один из источников** (через тонкий адаптер `L2RouterSource`) и добавляют другие (DEX/перп/β — пока моки), сводя их depth-weighted median'ом в цену + полосу + флаг `safe`.
+- Стык L1↔L4 — тот же `recipeCommitment` (как у `CommitmentNAV`), никаких новых швов.
+Подробно — [L4](L4-weekend-fair-value-nav.md). (`OracleTypes.Source.FAIR_VALUE_L4` остаётся зарезервирован для провенанса fair-value-чтения.)
 
 **Чего на L2 ещё нет:** 24/7-цены (выходные ломают NAV → L4), ребаланса (→ L3), расчёта по цене (→ L5).
 

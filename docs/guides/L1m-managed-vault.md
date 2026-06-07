@@ -6,9 +6,10 @@
 
 «Управляемый» флейвор корзины: тот же **фиксированный состав** (ребаланса нет, как на L1) + **комиссия за управление**. Менеджер ставит свою комиссию (≤2%/год), а Meridian берёт **долю от этой комиссии** (≤20%) — **rev-share**. Инвестор платит только комиссию менеджера; наша доля выходит из кармана менеджера, для инвестора мы невидимы. Комиссия берётся **дилюцией** (со временем минтятся новые токены корзины) → **оракул не нужен**. Это первый платный путь (state.md §8, decision A).
 
-Два флейвора живут рядом:
-- `BasketVault` (static) — без менеджера, без комиссии, заморожен (бесплатная «спина»).
-- `ManagedVault` — то же ядро + роли + комиссия.
+Флейворы живут рядом, все — **EIP-1167 клоны** общего ядра `VaultCore` (immutable-args: `unitSize`, `recipeCommitment`; инициализация через `initialize`, см. [L1](L1-static-in-kind.md) §4.1):
+- `BasketVault` (static, `is StorageVaultBase`) — без менеджера, без комиссии (бесплатная «спина»).
+- `CommittedVault` (static, рецепт off-chain) — то же, но рецепт в calldata.
+- `ManagedVault` (`is StorageVaultBase`) — то же ядро + роли + комиссия.
 
 ## 2. Новые термины
 
@@ -34,7 +35,7 @@
 
 ## 4. Новый модуль и функции
 
-**ManagedVault (is BasketVaultBase):**
+**ManagedVault (is StorageVaultBase is VaultCore):**
 ```
 // комиссия
 accrueFee()                       // permissionless: начислить накопленное
@@ -54,7 +55,7 @@ setTreasury(address)              // onlyMeridian, non-zero
 setPendingManager/acceptManager ; setPendingMeridian/acceptMeridian
 ```
 
-**BasketFactory (стал Ownable):**
+**CloneFactory (Ownable; та же фабрика, что деплоит static/committed клоны):**
 ```
 // рецепт+менеджер передаются ОДНОЙ СТРУКТУРОЙ (не позиционными аргументами —
 // это требование, чтобы компилировать без viaIR, см. spec):
@@ -75,8 +76,8 @@ setMeridian/setTreasury/setPlatformShareBps(...)   // onlyOwner: правят г
 ## 5. Реализация по слоям
 
 ### Контракты
-- `ManagedVault` (ядро `BasketVaultBase` + комиссия/роли). `_accrue()` переопределён, остальное in-kind как у static.
-- `BasketFactory.createManagedBasket` + `Ownable`-админка (`setMeridian/setTreasury/setPlatformShareBps`).
+- `ManagedVault` (ядро `VaultCore` через `StorageVaultBase` + комиссия/роли). `_accrue()` переопределён (seam в `VaultCore`), остальное in-kind как у static.
+- `CloneFactory.createManagedBasket` + `Ownable`-админка (`setMeridian/setTreasury/setPlatformShareBps`).
 - Инварианты: caps (immutable), timelock на повышение (не ретроактивно), `treasury != 0` (иначе `_mint` бы забрикал redeem), redeem безусловный.
 
 ### Бекенд
@@ -120,3 +121,5 @@ setMeridian/setTreasury/setPlatformShareBps(...)   // onlyOwner: правят г
 ## 8. Чего здесь НЕТ
 
 Ребаланса (L3), NAV/оракула (L2/L4), creation-fee (отдельная factory-спека, default off), forward-queue (L5). Состав **immutable** — managed-passive, не активный фонд.
+
+> **Forward-шов к L3 (R14).** Когда добавим ребаланс (L3), исполнение делают permissionless-киперы за награду, и эта награда финансируется **из той же management-комиссии** — третьим срезом дилюции (`keeperShares` рядом с `managerShares`/`platformShares`), порядок «keeper off the top → platform rev-share → manager net». Self-funding с деплоя, red line #3 цела (фонд платит киперу, не Meridian). Детали — `research/results/R14.md` и будущая спека L3.

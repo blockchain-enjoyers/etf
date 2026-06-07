@@ -1,80 +1,120 @@
 # L4 — 24/7 read-only fair-value NAV (выходные) ★ wedge
 
 > Накопительно (по сложности): концептуально опирается на L1–L2 (read NAV) + closed-market оценка; **L3 для L4 не требуется** (по build-order L4 строится раньше L3). Термины — [README.md](README.md). **Это наш ключевой дифференциатор.**
+> Дизайн (утверждён): `docs/superpowers/specs/2026-06-07-l4-price-validation-engine-design.md`. Исследование: `research/briefs/R13.md`. Статус: дизайн готов, код — Stage 0 на моках (см. план `docs/superpowers/plans/2026-06-07-l4-price-validation-engine.md`).
 
 ## 1. Что нового
 
-NAV начинает работать **24/7, включая закрытый рынок** (выходные, ночь). Когда биржа закрыта и Chainlink «протух», мы считаем **fair value** по живым сигналам и публикуем **доверительную полосу**. Всё ещё **read-only** (информационно). Фиат-аналог — fair-value pricing межд. фондов / ICE FVIS (так оценивают закрытые рынки для NAV mutual funds). On-chain прецедент закрытого рынка — Solana xStocks.
+NAV начинает работать **24/7, включая закрытый рынок** (выходные, ночь). Но мы не «считаем число» и не строим свой фид — мы строим **нейтрального on-chain рефери цены**: берём много независимых источников, сводим их **устойчивым к манипуляции способом** в одну честную цену, и **честно помечаем, когда цене нельзя доверять** (особенно выходной гэп). Всё ещё **read-only** (информационно). Фиат-аналог — fair-value pricing межд. фондов / ICE FVIS. On-chain прецедент закрытого рынка — Solana xStocks.
 
-> **Вход/выход (`create`/`redeem`) по-прежнему in-kind и oracle-free — не меняются.** Апгрейдится только **чтение NAV**: теперь оно честно работает на выходных.
+> **Вход/выход (`create`/`redeem`) по-прежнему in-kind и oracle-free — не меняются.** Апгрейдится только **чтение NAV**: теперь оно честно работает на выходных и устойчиво к манипуляции.
+
+**L4 — это слой ПОВЕРХ L2, а не его замена.** Существующий L2 (`OracleRouter.getPrice` — один Chainlink-стрим, уже cache+gate, уже view) становится **одним из источников** L4 через тонкий адаптер. Других источников (DEX, перпы, β) пока нет на RHC → строим движок + **моки**, реальные адаптеры встают drop-in заменой позже.
 
 ## 2. Новые термины
 
 | Термин | Простыми словами |
 |---|---|
-| **fair value** | Оценка «какой была бы цена, если бы рынок был открыт». |
-| **signal fusion** | Слияние живых сигналов: DEX-цены токен-акций, перпы, фьючерсы, FX, ADR. |
-| **confidence band** | Полоса неопределённости вокруг оценки. Чем дольше рынок закрыт — тем шире. |
-| **beta (β)** | Коэффициент чувствительности актива к сигналу. |
-| **attestation (аттестация)** | Подписанные off-chain коэффициенты β, запушенные on-chain (регрессию on-chain не считаем). |
-| **market-status machine** | Конечный автомат: open / closed / halt / degraded. |
+| **источник (source) / адаптер** | Один источник цены (DEX-пул, перп, оракул) за единым интерфейсом `IPriceSource`. |
+| **depth (глубина) / cost-to-move** | Сколько $ нужно, чтобы сдвинуть цену источника на δ (НЕ TVL). Чем глубже — тем больше вес. |
+| **depth-weighted median** | Цена = медиана, взвешенная по глубине. Устойчива: один манипулированный/тонкий источник не сдвинет результат. |
+| **confidence band (полоса)** | «Плюс-минус» вокруг цены. Узкая, если источники согласны/глубоки/свежи; широкая — если спорят/тонкие/устарели. |
+| **safe (флаг)** | «Доверять / не доверять» цене. В read-only L4 ничего не блокирует — честно предупреждает; будущие binding-потребители (L3/L5-7) откажутся действовать при `safe=false`. |
+| **weekendAware** | Источник реально живёт при закрытом рынке США (DEX токен-акций, перп, weekend-фид). В выходные оставляем только такие. |
+| **divergence band (β-полоса)** | Источник, отклонившийся от предв. медианы больше порога, выкидываем до подсчёта (анти-выброс). |
+| **beta (β)** | Коэффициент «во сколько раз акция резче рынка». **Считает фонд off-chain и подаёт подписанным; мы β НИКОГДА не считаем** (нейтральность). Сейчас — мок-адаптер. |
+| **signed-report адаптер** | Источник off-chain, но подписан провайдером (Chainlink DON и т.п.); подпись проверяется on-chain. Наш бекенд цену не порождает. |
 
 ## 3. Что меняется во входе/выходе
 
-- **`create`/`redeem`:** не меняются (in-kind).
-- **Чтение NAV:** теперь `latestNAV` отдаёт на выходных `estimated=true`, `nav=fairValue`, широкую `confidence band`, `marketStatus=Closed`.
-- **Новый «вход данных» (бекенд→контракт):** `pushBetaAttestation(asset, beta[], validUntil, signature)` — загрузка свежих β с датой годности `validUntil`.
+- **`create`/`redeem`:** не меняются (in-kind, oracle-free).
+- **Чтение NAV:** теперь устойчивое 24/7. В выходные `marketStatus=Closed`, протухшие equity-фиды выкинуты, цена считается по weekend-источникам, полоса шире, может быть `safe=false`.
+- **Новых пользовательских операций нет.** Появляются keeper/data-операции (см. §5 BE): доставка свежих подписанных отчётов и регистрация источников.
 
-## 4. Новый модуль и функции
+## 4. Архитектура — движок-рефери (утверждённый дизайн)
 
-**NAVEngine (closed-market path):**
+Три новых контракта L4 **поверх** L1/L2, всё **read-only view**:
+
 ```
-latestNAV(vault) → (nav, confLower, confUpper, marketStatus, estimated, timestamp)
-  // market-hours: Σ qty·price (как L2)
-  // closed:       fairValue = lastClose·(1 + Σ β·signalReturn), band расширена
+contracts/L4/
+  IPriceSource.sol            readSource(bytes payload) → SourceReading  (единый для всех источников)
+  PriceAggregator.sol         per-«вещь» (акция ИЛИ корзина): зовёт источники, агрегирует → (price, band, safe)
+  FairValueNAV.sol            корзина: рецепт ↔ vault.recipeCommitment(), sum-of-parts + прямой basket-источник
+  adapters/L2RouterSource.sol оборачивает L2 OracleRouter.getPrice → SourceReading
+  mocks/MockSource.sol        настраиваемый источник + тогглы поломок (для тестов/демо)
 ```
-**Attestation verifier:**
+
+**Тип данных (источник отдаёт одинаково):**
 ```
-pushBetaAttestation(asset, beta[], validUntil, signature)  // проверяет подпись off-chain источника и срок годности validUntil
+SourceReading { price (1e18), depth (1e18, cost-to-move), lastUpdate, kind,
+                confidence (1e18 полуполоса), weekendAware (bool), healthy (bool) }
 ```
-**OracleRouter (multi-source):** fallback Chainlink→Pyth→RedStone→DEX-TWAP→perp→lastClose; divergence-проверка, расширение confidence при разбросе.
 
-## 5. Реализация по слоям
+**Две разновидности адаптера за единым `readSource`:**
+- **read-адаптер** — читает цену, которая уже on-chain (DEX, кэш L2). `payload` игнорирует.
+- **signed-report адаптер** — `payload` распаковывает и **проверяет подпись провайдера** (chainlink/pyth/комитет). Транспорт (чей угодно бекенд) — тупой релей, доверия не даёт.
 
-### Контракты
-- `NAVEngine` fair-value path + confidence band (расширяется sub-линейно по времени-с-закрытия, French-Roll).
-- `attestation verifier` (проверка подписи β).
-- `market-status machine`, multi-source `OracleRouter`.
+**Принцип (как у волт-модулей):** адаптер **считает** (compute-only), движок **принуждает инварианты** (кэп веса 40%, divergence-полоса, дропы, гейт). «Конфиг открыт — пол безопасности принудителен».
 
-### Бекенд (тут основная работа)
-- **Signal ingestion:** DEX (xStocks), перпы (Hyperliquid), EOD-истина (Polygon).
-- **Beta-fit job:** off-chain регрессия `fairValue = lastClose·(1+Σβ·signal)`, rolling-window.
-- **Attestation pusher:** подписывает β и пушит on-chain.
-- **Confidence-калькулятор.**
+**Агрегация (per «вещь»):** нормализуем глубину → дропаем `!healthy`/устаревшие/(в выходные) не-`weekendAware` → отсекаем выбросы по β → вес `depth^γ` (γ=1, кэп 40%) → **depth-weighted median** → полоса (dispersion + depth-penalty + stale-penalty) → `safe`/`marketStatus` по лестнице деградации (N≥3 / 2 / 1 / 0). Все пороги — governance-параметры с дефолтами R13.
 
-### Фронтенд
-- Weekend NAV + **расширяющаяся доверительная полоса**.
-- Market-status индикатор, backtest/error-чарт (модель vs наивный Friday-close).
+**Корзина (`FairValueNAV`):** рецепт в calldata, `keccak256(abi.encode(tokens,unitQty,unitSize)) == vault.recipeCommitment()` (единственный шов L1↔L4, работает и для storage-, и для committed-волтов) → `nav = Σ unitQty·price` (sum-of-parts) → плюс **прямой источник цены всей корзины** (если basket-токен торгуется на DEX) → их **расхождение** разносит полосу / роняет `safe` (ETF premium/discount как сигнал манипуляции). Флаг корзины = «И» по ногам (одна плохая акция → вся корзина `safe=false`).
+
+**Выход движка:**
+```
+FairValueNAV.navOf(vault, tokens, unitQty, unitSize, payloads)
+  → (nav, confLower, confUpper, marketStatus, safe, timestamp)
+```
+
+## 5. Реализация по слоям — ЧТО ИМЕННО НУЖНО СДЕЛАТЬ
+
+### 5.1 Контракты (L4, всё read-only)
+- `IPriceSource` + `SourceReading` + `SourceKind` — единый интерфейс.
+- `PriceAggregator` — регистрация источников per-asset (`addSource`), агрегация `priceOf(asset, payloads[])`, governance-параметры (`setParams`).
+- `FairValueNAV` — `navOf(...)` (recipeCommitment + sum-of-parts), `navWithBasketCheck(...)` (+ кросс-чек с прямой ценой корзины).
+- `L2RouterSource` — маппит L2 `OracleReading → SourceReading` (синтетическая depth-тир, `weekendAware=false`; на закрытом/несвежем L2 → `healthy=false` → дропается).
+- `MockSource` — заглушки для остальных источников (DEX/перп/β) на Stage 0; реальные адаптеры — отдельные спеки.
+
+### 5.2 Бекенд — ТУТ ОСНОВНАЯ РАБОТА, чтобы L4 «заработал»
+Бекенд **не источник цены**. Его задачи:
+1. **Data-relay (доставка подписанных отчётов):** для signed-report источников (Chainlink weekend `tokenizedPrice`, Pyth pull) — тянуть подписанный отчёт off-chain и (а) либо `ingest`-ить в L2-кэш (как на L2), либо (б) прокидывать как `payload` в вызов `navOf`. Подпись проверяется on-chain; релей доверия не добавляет.
+2. **Чтение/сборка `payloads`:** для каждого вызова `navOf` собрать массив `payloads[constituent][source]` (для on-chain read-источников — пусто; для signed — подписанный отчёт).
+3. **NAV read-API с кэшем:** `GET /nav/:vault` → `eth_call` `FairValueNAV.navOf` → отдать фронту `(nav, band, marketStatus, safe, ts)`. Чистый показ NAV считается off-chain этим же вызовом (хелпер), отдельную on-chain-инфру «для показа» не строим.
+4. **Источник β (граница off-chain):** β считает/подаёт **фонд** (не мы). На Stage 0 — мок. Реальный β-путь (подпись + on-chain verify) — позже.
+5. **Индексатор источников/полосы/safe** — для графиков и алертов «цена ненадёжна».
+6. **Backtest/charts (демо):** error-чарт «наша оценка vs наивный Friday-close» (V0-ноутбук) — это headline-артефакт Buildathon, считается off-chain.
+
+> Демо-костыль допустим: «цена с бекенда» = это просто ещё один mock-источник, **с явной пометкой** «в проде — нейтральная on-chain валидация».
+
+### 5.3 Фронтенд — ЧТО ПОКАЗАТЬ
+- **Weekend NAV + расширяющаяся доверительная полоса** (confLower/confUpper).
+- **Market-status индикатор** (Open / Closed / Degraded) + флаг **`safe`/`unsafe`** («цене сейчас доверять нельзя»).
+- **Лестница источников:** сколько живых источников сейчас (N≥3 узко / 1 широко / 0 — нет цены).
+- **Backtest/error-чарт** (модель vs наивный Friday-close), якорь — кризис-выходные 10-13 окт 2025.
+- Honesty-first: на выходных при тонких источниках честно показываем широкую полосу и `unsafe`, не притворяемся точностью.
 
 ## 6. Сквозной step-by-step — weekend NAV
 
 | # | Слой | Действие |
 |---|---|---|
-| 1 | BE | Beta-fit job: посчитал β по истории |
-| 2 | BE→CT | `pushBetaAttestation(asset, β, validUntil, sig)` |
-| 3 | FE→BE | Суббота 2:00, `GET /nav` |
-| 4 | BE→CT | `NAVEngine.latestNAV` → closed-path: `fairValue` + широкая band |
-| 5 | FE | Показывает оценку + полосу + «рынок закрыт» |
+| 0 | BE→CT | (фоном) тянет подписанные weekend-отчёты → `ingest` в L2-кэш / готовит `payloads` |
+| 1 | FE→BE | Суббота 2:00, `GET /nav/:vault` |
+| 2 | BE→CT | `FairValueNAV.navOf(vault, recipe, payloads)` (view) |
+| 3 | CT | per-acca: `PriceAggregator.priceOf` — дроп протухших equity-фидов, depth-weighted median по weekend-источникам, полоса, safe |
+| 4 | CT | sum-of-parts + кросс-чек с прямой ценой корзины → `(nav, band, marketStatus=Closed, safe, ts)` |
+| 5 | FE | Показывает оценку + широкую полосу + «рынок закрыт» + флаг safe |
 
 ## 7. Безопасность / инварианты
 
-- **Iron rule:** fair-value `estimated=true` **никогда** не идёт в settlement (mint/redeem всё ещё in-kind).
-- **Confidence расширяется** с временем-с-закрытия и при разбросе источников.
-- **Never single-source** (fusion + divergence).
+- **Iron rule:** fair-value `estimated` (полоса/`safe`) — только информация/риск, **никогда** не цена расчёта; mint/redeem всё ещё in-kind.
+- **Бекенд не источник цены:** либо чужой on-chain, либо чужой **подписанный** off-chain (verify on-chain). Off-chain порождаем **только β**, и β даёт фонд, не мы.
+- **Never single-source:** depth-weighted median + divergence-полоса + кэп веса 40% → один источник не доминирует и не двигает цену.
+- **Confidence расширяется** с числом/глубиной/свежестью источников; `safe=false`, когда источников мало/спорят.
+- **recipeCommitment** не даёт подсунуть чужой рецепт (хэш не сойдётся).
 - **Риск:** weekend liquidity/gap, устаревание β, соблазн сигналить fair-value как binding (запрещено).
 
 ## 8. Чего ещё нет
 
-Расчёта по цене (forward) — это L5. 24/7 binding-действий (forced redeem/ребаланс) — это L6. Здесь оценка только информационная.
+Расчёта по цене (forward) — это L5. 24/7 binding-действий (forced redeem / weekend-ребаланс через буфер) — это L6. Живых адаптеров (Chainlink weekend / Pyth / CCIP-мост к Solana DEX) и реального β-пути — отдельные спеки (Stage 1-3 из R13). Здесь оценка только информационная, на моках.
 
 > Почему L4 строим раньше L3 (build-order): read-only → ошибка модели «стыдно, но никого не ликвидирует». Это безопасный способ выкатить наш wedge.

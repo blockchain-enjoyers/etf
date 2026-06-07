@@ -20,10 +20,11 @@
 | L2 | [L2-readonly-nav.md](L2-readonly-nav.md) | Read-only NAV в часы рынка (display-оракул) |
 | L3a | [L3a-reconstitution.md](L3a-reconstitution.md) | Смена состава по расписанию (reconstitution) |
 | L3b | [L3b-threshold-reweight.md](L3b-threshold-reweight.md) | Перевес к цели по порогу (equal/fixed-weight) |
-| L4 | [L4-weekend-fair-value-nav.md](L4-weekend-fair-value-nav.md) | 24/7 fair-value NAV (выходные) ★ wedge |
+| L4 | [L4-weekend-fair-value-nav.md](L4-weekend-fair-value-nav.md) | 24/7 fair-value NAV (выходные): нейтральный multi-source рефери цены ★ wedge |
 | L5 | [L5-forward-priced.md](L5-forward-priced.md) | Forward-priced cash вход/выход (первый settlement) |
 | L6 | [L6-24-7-binding.md](L6-24-7-binding.md) | 24/7 binding ребаланс / forced-redeem ★ wedge |
 | L7 | [L7-leverage-derivatives.md](L7-leverage-derivatives.md) | Плечо / деривативы / structured |
+| Demo | [demo.md](demo.md) | ТЗ на интерактивное демо Buildathon (для BE+FE): сцена + панель управления рынком |
 
 ## Master-словарь (базовые термины)
 

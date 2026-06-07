@@ -153,6 +153,8 @@ contract ManagedRebalanceVault is ManagedVault {
     error NotExecutor();
     error MinOutNotMet(address token);
     error RebalanceLengthMismatch();
+    error OverlappingLeg(address token);
+    error InvalidRecipient();
 
     function setExecutor(address e, bool allowed) external onlyMeridian {
         isExecutor[e] = allowed;
@@ -171,14 +173,23 @@ contract ManagedRebalanceVault is ManagedVault {
     ///         trust root is therefore (a) `setExecutor` being meridian-gated — treat it as a high-privilege
     ///         op (multisig/timelock on meridian) — and (b) the auction deriving `minOut` from the vault's
     ///         pre-swap holdings and the winning bid, never echoing a caller-supplied value.
+    /// @dev    DEFENSE-IN-DEPTH (core hardening): the disjoint-leg guard (`_assertDisjoint`) and the
+    ///         recipient!=self guard are belt-and-suspenders so a future (L5/L6) executor cannot bypass
+    ///         the per-leg `minOut` floor by listing the SAME token on both sides — an overlap leg would
+    ///         otherwise let `releaseOut > acquireIn` net-drain a token while `post + minOut` still reads
+    ///         as satisfied. These guards do NOT close the cross-leg value floor (a swap that under-pays
+    ///         across DIFFERENT tokens); that remains the deferred L4 navOfHoldings check. The per-leg
+    ///         `minOut` check + `_pruneIfEmpty` below are KEPT intact and made un-maskable by disjointness.
     function executeRebalance(
         address[] calldata acquire, uint256[] calldata acquireIn,
         address[] calldata release, uint256[] calldata releaseOut,
         uint256[] calldata minOut, address recipient
     ) external nonReentrant {
         if (!isExecutor[msg.sender]) revert NotExecutor();
+        if (recipient == address(this)) revert InvalidRecipient();
         if (acquire.length != acquireIn.length) revert RebalanceLengthMismatch();
         if (release.length != releaseOut.length || release.length != minOut.length) revert RebalanceLengthMismatch();
+        _assertDisjoint(acquire, release);
 
         // pull acquire legs IN (from the executor, which holds the bidder's tokens)
         for (uint256 i = 0; i < acquire.length; ++i) {
@@ -192,6 +203,17 @@ contract ManagedRebalanceVault is ManagedVault {
             _pruneIfEmpty(release[i]);
         }
         emit Rebalanced(msg.sender, recipient, acquire, acquireIn, release, releaseOut);
+    }
+
+    /// @dev Reject any token that appears on BOTH the acquire and release legs. Reverts BEFORE any
+    ///      transfer, so an overlap can never net-drain a token past its per-leg `minOut` floor. Pure;
+    ///      extracted (not inlined) to keep `executeRebalance` off the viaIR=false stack cliff.
+    function _assertDisjoint(address[] calldata acquire, address[] calldata release) private pure {
+        for (uint256 i = 0; i < acquire.length; ++i) {
+            for (uint256 j = 0; j < release.length; ++j) {
+                if (acquire[i] == release[j]) revert OverlappingLeg(acquire[i]);
+            }
+        }
     }
 
     // ---- custody set: tokens actually held (what create/redeem iterate) ----

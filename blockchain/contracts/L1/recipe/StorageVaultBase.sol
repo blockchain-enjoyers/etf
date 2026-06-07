@@ -14,9 +14,9 @@ abstract contract StorageVaultBase is VaultCore {
     using SafeERC20 for IERC20;
 
     /// @notice Basket constituents: stock-token addresses (cash, if any, is just another token).
-    address[] private _tokens;
+    address[] internal _tokens;
     /// @notice Recipe per creation-unit: how much of each token must be deposited.
-    uint256[] private _unitQty;
+    uint256[] internal _unitQty;
 
     /// @notice One EIP-2612 permit signature for a constituent (aligned by index to the recipe).
     /// @dev deadline == 0 means "skip this leg" (constituent lacks permit, or already approved).
@@ -39,13 +39,23 @@ abstract contract StorageVaultBase is VaultCore {
         _unitQty = unitQty;
     }
 
+    /// @dev Replace the stored target recipe in place. Validates the recipe invariant. Used ONLY by the
+    ///      rebalanceable subclass under its timelock+role gate; static leaves never call it. Does NOT
+    ///      touch the immutable clone-arg recipeCommitment (which is genesis-only for the rebalanceable
+    ///      flavor — valuation is holdings-based; see the L3 spec).
+    function _setTarget(address[] memory tokens, uint256[] memory unitQty) internal {
+        _assertValidRecipe(tokens, unitQty);
+        _tokens = tokens;
+        _unitQty = unitQty;
+    }
+
     // ================================ CREATE =================================
 
     /// @notice Deposit `nUnits` creation-units of the recipe -> mint nUnits*unitSize basket tokens.
     /// @dev Classic path: the caller must have approved each constituent first. transferFrom for
     ///      each asset; if any leg is short the whole call reverts (bundle completeness, atomic).
     ///      CEI + nonReentrant. Permissionless.
-    function create(uint256 nUnits) external nonReentrant {
+    function create(uint256 nUnits) external virtual nonReentrant {
         _accrue();
         _pullAndMint(nUnits);
     }
@@ -56,7 +66,7 @@ abstract contract StorageVaultBase is VaultCore {
     ///      correctness is still enforced by the transferFrom in _pullAndMint. CEI + nonReentrant.
     /// @param nUnits  creation-units to mint
     /// @param permits per-constituent permit signatures (same length as the recipe)
-    function createWithPermit(uint256 nUnits, PermitInput[] calldata permits) external nonReentrant {
+    function createWithPermit(uint256 nUnits, PermitInput[] calldata permits) external virtual nonReentrant {
         _accrue();
         uint256 len = _tokens.length;
         if (permits.length != len) revert PermitsLengthMismatch();
@@ -103,8 +113,9 @@ abstract contract StorageVaultBase is VaultCore {
     ///      each constituent's transfer rules (a paused/blocklisting constituent reverts its leg and,
     ///      since this is one atomic loop, the whole redeem — see the TRUST BOUNDARY note above).
     ///      Managed flavors express fees by MINTING shares in `_accrue` (which moves totalSupply),
-    ///      not by overriding this denominator; `redeem` is intentionally non-virtual.
-    function redeem(uint256 amount) external nonReentrant {
+    ///      not by overriding this denominator. The static flavors do not override `redeem`; the
+    ///      rebalanceable flavor (ManagedRebalanceVault) overrides it for holdings-based pro-rata payout.
+    function redeem(uint256 amount) external virtual nonReentrant {
         if (amount == 0) revert ZeroAmount();
         _accrue();
         uint256 supplyBefore = totalSupply();
@@ -125,7 +136,7 @@ abstract contract StorageVaultBase is VaultCore {
     /// @dev Pro-rata payout loop parameterized by an explicit denominator (supply snapshot). Used by
     ///      redeem (denominator = supply before burn) and previewRedeem (denominator = totalSupply,
     ///      or an effective post-accrual supply in a managed override). NOTE: the returned `tokens`
-    ///      aliases the private `_tokens` storage array — treat it as read-only.
+    ///      aliases the internal `_tokens` storage array — treat it as read-only.
     function _quoteRedeem(uint256 amount, uint256 supplyDenominator)
         internal
         view

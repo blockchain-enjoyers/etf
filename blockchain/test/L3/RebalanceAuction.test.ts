@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 const ONE = 10n ** 18n;
-const EXEC = { PERMISSIONLESS: 0, MANAGER_ONLY: 1, ALLOWLIST: 2 };
+const EXEC = { MANAGER_ONLY: 0, ALLOWLIST: 1, PERMISSIONLESS: 2 };
 
 async function deploy() {
   const [deployer, manager, meridian, treasury, keeper, bidder] = await ethers.getSigners();

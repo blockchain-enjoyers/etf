@@ -35,7 +35,10 @@ interface IRebVault {
 /// @dev    WARNINGS (operational, security review M2/I1 follow-ups):
 ///         - PERMISSIONLESS mode with a funded keeper escrow is UNSAFE until the post-swap L4
 ///           navOfHoldings value-floor check lands: a keeper can self-open+self-bid to extract the bounded
-///           keeper-escrow (never principal). Ship MANAGER_ONLY / ALLOWLIST for now.
+///           keeper-escrow (never principal). Ship MANAGER_ONLY / ALLOWLIST for now. ExecMode defaults to
+///           MANAGER_ONLY (the zero value) so an un-configured vault is closed by default; PERMISSIONLESS
+///           must be explicitly enabled and remains unsafe with a funded escrow until the L4 navOfHoldings
+///           value-floor lands.
 ///         - The rebalance auction is the ONE curator action with NO timelock (unlike scheduleTarget); a
 ///           compromised manager can set endIn low and self-bid in MANAGER_ONLY. manager==curator is the
 ///           trust root.
@@ -47,7 +50,7 @@ interface IRebVault {
 contract RebalanceAuction is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
-    enum ExecMode { PERMISSIONLESS, MANAGER_ONLY, ALLOWLIST }
+    enum ExecMode { MANAGER_ONLY, ALLOWLIST, PERMISSIONLESS }
 
     IKeeperPay public immutable keeperModule;
     uint256 public immutable maxTip; // hard tip ceiling (vault shares); KeeperModule clamps further

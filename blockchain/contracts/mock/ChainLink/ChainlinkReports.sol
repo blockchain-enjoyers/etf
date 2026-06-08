@@ -1,17 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.35;
 
-/// @title ChainlinkReports — Chainlink Data Streams wire formats (vendor wire struct)
-/// @notice The on-the-wire RWA report layout. Vendor-specific, so it lives under mock/ChainLink and is
-///         shared only by ChainlinkAdapter (decode) and the mock verifier (encode). The neutral L2
-///         stack never sees it — it speaks only OracleReading.
+/// @title ChainlinkReports — Chainlink Data Streams wire formats (vendor wire structs)
+/// @notice The on-the-wire RWA report layouts. Vendor-specific, so they live under mock/ChainLink and
+///         are shared only by ChainlinkStreamsSource (decode) and the mock verifier (encode). The
+///         neutral product code never sees them — it speaks only SourceReading.
 
-/// @notice RWA "Advanced" (v11) Data Streams report — the 24/5 US Equities schema.
-/// @dev MODELED from the Chainlink v11 field table (docs/data-streams report-schema-v11). The docs
-///      publish a field table, not a canonical Solidity struct, so the exact FIELD ORDER here is
-///      UNCONFIRMED and MUST be reconciled against the canonical reference struct before mainnet —
-///      abi.decode is position-sensitive. This is deliberately the ONLY place that knows the layout.
-///      marketStatus (v11): 0 Unknown, 1 Pre-market, 2 Regular, 3 Post-market, 4 Overnight, 5 Closed.
+/// @notice RWA "Standard" v8 — status {0 Unknown, 1 Closed, 2 Open}.
+struct ReportV8 {
+    bytes32 feedId;
+    uint32 validFromTimestamp;
+    uint32 observationsTimestamp;
+    uint192 nativeFee;
+    uint192 linkFee;
+    uint32 expiresAt;
+    uint64 lastUpdateTimestamp; // nanoseconds
+    int192 midPrice;
+    uint32 marketStatus;
+}
+
+/// @notice RWA "Advanced" v11 (24/5 US Equities) — status {0 Unknown,1 Pre,2 Regular,3 Post,4 Overnight,5 Closed}.
+/// @dev Field order per docs/data-streams report-schema-v11. RECONCILE against the canonical reference
+///      struct before mainnet — abi.decode is position-sensitive.
 struct ReportV11 {
     bytes32 feedId;
     uint32 validFromTimestamp;
@@ -20,11 +30,11 @@ struct ReportV11 {
     uint192 linkFee;
     uint32 expiresAt;
     int192 mid;
-    uint64 lastSeenTimestampNs;
     int192 bid;
     int192 bidVolume;
     int192 ask;
     int192 askVolume;
     int192 lastTradedPrice;
     uint32 marketStatus;
+    uint64 lastSeenTimestampNs;
 }

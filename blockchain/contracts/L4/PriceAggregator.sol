@@ -179,7 +179,7 @@ contract PriceAggregator is Ownable {
         }
 
         uint256 med = _weightedMedian(prices, depths, k);
-        uint256 band = _band(prices, depths, k, med);
+        uint256 band = _band(prices, depths, k, med, oldest);
 
         res.price = med;
         res.confLower = med > band ? med - band : 0;
@@ -244,7 +244,7 @@ contract PriceAggregator is Ownable {
     /// @dev band = med * (wDisp*dispRelBps + wDepth*depthPenaltyBps + wStale*stalePenaltyBps) / 1e8.
     ///      dispRelBps = depth-weighted MAD / med (relative dispersion). depthPenalty rises as total
     ///      depth falls below dMin. stalePenalty rises with age toward staleHorizon.
-    function _band(uint256[] memory prices, uint256[] memory depths, uint256 k, uint256 med)
+    function _band(uint256[] memory prices, uint256[] memory depths, uint256 k, uint256 med, uint256 oldest)
         internal
         view
         returns (uint256)
@@ -259,10 +259,14 @@ contract PriceAggregator is Ownable {
         uint256 dispRelBps = totalDepth == 0 ? 0 : (wad * 10000) / (totalDepth * med);
         uint256 depthPenaltyBps = totalDepth >= dMin ? 0 : ((dMin - totalDepth) * 10000) / dMin;
 
-        // staleness penalty from the oldest survivor age is folded in at priceOf level via timestamp;
-        // here we approximate with 0 (per-source staleness already dropped > horizon). Kept for the
-        // weight wiring; a future task can pass age in.
+        // staleness penalty: rises linearly with the oldest survivor's age toward staleHorizon, capped at
+        // 100% (10000 bps). Survivors older than the horizon are already dropped upstream, so in practice
+        // age < staleHorizon here; the cap is a safety floor.
         uint256 stalePenaltyBps = 0;
+        if (oldest != type(uint256).max && staleHorizon > 0 && block.timestamp > oldest) {
+            uint256 age = block.timestamp - oldest;
+            stalePenaltyBps = age >= staleHorizon ? 10000 : (age * 10000) / staleHorizon;
+        }
 
         uint256 combinedBps =
             (wDisp * dispRelBps + wDepth * depthPenaltyBps + wStale * stalePenaltyBps) / 10000;

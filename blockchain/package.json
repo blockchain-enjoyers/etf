@@ -11,14 +11,15 @@
     "export-abi": "hardhat export-abi",
     "node": "hardhat node",
     "deploy:l1": "hardhat run scripts/deploy/deploy-l1.ts --network robinhoodTestnet",
-    "deploy:l2": "hardhat run scripts/deploy/deploy-l2.ts --network robinhoodTestnet",
     "deploy:l3": "hardhat run scripts/deploy/deploy-l3.ts --network robinhoodTestnet",
     "deploy:l4": "hardhat run scripts/deploy/deploy-l4.ts --network robinhoodTestnet",
     "deploy:all": "hardhat run scripts/deploy/deploy-all.ts --network robinhoodTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@pythnetwork/pyth-sdk-solidity": "^4.3.1",
     "@types/node": "^22.9.0",
+    "@uniswap/v3-core": "^1.0.1",
     "hardhat": "^2.22.17",
     "hardhat-abi-exporter": "^2.10.1",
     "ts-node": "^10.9.2",

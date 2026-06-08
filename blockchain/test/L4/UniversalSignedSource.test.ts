@@ -20,7 +20,10 @@ async function deploy() {
 // build the digest the adapter signs over and a sorted-by-recovered-address signature set
 async function signReading(wallets: any[], feedId: string, price: bigint, depth: bigint, ts: number) {
   const digest = ethers.keccak256(
-    ethers.AbiCoder.defaultAbiCoder().encode(["bytes32", "uint256", "uint256", "uint64"], [feedId, price, depth, ts])
+    ethers.AbiCoder.defaultAbiCoder().encode(
+      ["string", "bytes32", "uint256", "uint256", "uint64"],
+      ["universal", feedId, price, depth, ts]
+    )
   );
   const sigs = await Promise.all(wallets.map(async (w) => {
     const sig = ethers.Signature.from(await w.signingKey.sign(digest));

@@ -3,6 +3,7 @@ pragma solidity 0.8.35;
 
 import {PriceAggregator} from "./PriceAggregator.sol";
 import {IRecipeVault} from "./interfaces/IRecipeVault.sol";
+import {IPriceSource, SourceReading} from "./IPriceSource.sol";
 import {MarketStatus, MarketStatusLib} from "./OracleTypes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -110,5 +111,42 @@ contract FairValueNAV {
             if (a.timestamp < res.timestamp) res.timestamp = a.timestamp;
         }
         if (n == 0) res.timestamp = 0;
+    }
+
+    /// @notice Holdings NAV plus a beta-projection cross-check (the EP-3 veto). Computes the on-chain
+    ///         holdings aggregate AND a fund-attested beta-projection NAV (Σ balance_i · P̂_i from
+    ///         `betaSource`); if they diverge by more than `betaDivergenceBps`, flips `safe=false`. The beta
+    ///         source is consumed HERE as a veto, never registered in the aggregator's depth-weighted median
+    ///         (a low-depth source would just be ignored). Estimate only (iron rule): settles nothing.
+    /// @param betaSource     a BetaProjectionSource (IPriceSource); read per-constituent.
+    /// @param betaPayloads   per-constituent signed beta payloads, aligned to `tokens`.
+    /// @param betaDivergenceBps allowed |holdings − projection| / holdings before the basket is flagged.
+    function navWithBetaCheck(
+        address vault,
+        address[] calldata tokens,
+        bytes[][] calldata payloads,
+        address betaSource,
+        bytes[] calldata betaPayloads,
+        uint256 betaDivergenceBps
+    ) external returns (NavResult memory res) {
+        res = this.navOfHoldings(vault, tokens, payloads);
+        if (betaPayloads.length != tokens.length) revert LengthMismatch();
+        if (res.nav == 0) return res;
+
+        uint256 betaNav = _betaNav(vault, tokens, betaSource, betaPayloads);
+        uint256 diff = res.nav > betaNav ? res.nav - betaNav : betaNav - res.nav;
+        if (diff * 10000 > betaDivergenceBps * res.nav) res.safe = false;
+    }
+
+    /// @dev Σ balance_i · P̂_i over the beta source (split out to keep navWithBetaCheck within the legacy
+    ///      codegen stack-slot limit — viaIR stays false).
+    function _betaNav(address vault, address[] calldata tokens, address betaSource, bytes[] calldata betaPayloads)
+        internal
+        returns (uint256 betaNav)
+    {
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            SourceReading memory b = IPriceSource(betaSource).read(betaPayloads[i]);
+            betaNav += (IERC20(tokens[i]).balanceOf(vault) * b.price) / 1e18;
+        }
     }
 }

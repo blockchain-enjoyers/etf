@@ -3,12 +3,10 @@ pragma solidity 0.8.35;
 
 import {IVerifierProxy} from "./IVerifierProxy.sol";
 import {ReportV11} from "./ChainlinkReports.sol";
-import {ISequencerUptimeFeed} from "../../L2/interfaces/ISequencerUptimeFeed.sol";
 
-// Test-only mocks reproducing the RWA Data Streams pull/verify interface + the L2 Sequencer Uptime
-// Feed, so the L2 read-price stack can be exercised in Hardhat WITHOUT a network. Everything is
-// SETTABLE (price/bid/ask/marketStatus/timestamp/feedId, sequencer up/down/grace) to drive scenarios:
-// market open / closed / halt / stale / sequencer down + grace.
+// Test-only mock reproducing the RWA Data Streams pull/verify interface, so the Streams adapter can be
+// exercised in Hardhat WITHOUT a network. Everything is SETTABLE to drive scenarios (market
+// open / closed / halt / stale). (The L2 Sequencer Uptime Feed mock was removed with the L2 cache stack.)
 
 /// @title MockVerifierProxy — settable stand-in for Chainlink VerifierProxy (Data Streams pull model)
 /// @notice Stores a v11 report per feedId and returns it from verify(). TEST SIMPLIFICATION: the real
@@ -64,35 +62,5 @@ contract MockVerifierProxy is IVerifierProxy {
         bytes32 feedId = abi.decode(payload, (bytes32));
         if (!_exists[feedId]) revert NoReport(feedId);
         return abi.encode(_reports[feedId]);
-    }
-}
-
-/// @title MockSequencerUptimeFeed — settable L2 Sequencer Uptime Feed
-/// @notice answer: 0 = sequencer up, 1 = sequencer down. startedAt: when the current status began
-///         (used for the restart grace window). Defaults to up since genesis (startedAt = 1).
-///         Implements the neutral L2 ISequencerUptimeFeed (the real on-chain feed is Chainlink's, but
-///         L2 depends only on the neutral interface).
-contract MockSequencerUptimeFeed is ISequencerUptimeFeed {
-    int256 private _answer; // 0 up, 1 down
-    uint256 private _startedAt;
-
-    constructor() {
-        _answer = 0;
-        _startedAt = 1;
-    }
-
-    /// @notice Set the sequencer status and the timestamp it started.
-    function setStatus(int256 answer, uint256 startedAt) external {
-        _answer = answer;
-        _startedAt = startedAt;
-    }
-
-    /// @inheritdoc ISequencerUptimeFeed
-    function latestRoundData()
-        external
-        view
-        returns (uint80, int256, uint256, uint256, uint80)
-    {
-        return (1, _answer, _startedAt, _startedAt, 1);
     }
 }

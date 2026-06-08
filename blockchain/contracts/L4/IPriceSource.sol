@@ -27,6 +27,8 @@ struct SourceReading {
 /// @notice One adapter per source. on-chain read-adapters ignore `payload`; signed-report adapters
 ///         decode `payload` and verify the provider's signature before returning the reading.
 interface IPriceSource {
-    function readSource(bytes calldata payload) external view returns (SourceReading memory);
+    /// @notice Non-view: signed-report adapters verify inline (state-changing verify); read-adapters read
+    ///         state. Semantically a read; purity is not required. A view implementation legally overrides.
+    function read(bytes calldata payload) external returns (SourceReading memory);
     function describe() external view returns (string memory venue, address target);
 }

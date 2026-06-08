@@ -53,7 +53,7 @@ async function deploy() {
 describe("FairValueNAV — sum-of-parts", () => {
   it("computes nav = sum(unitQty_i * price_i)", async () => {
     const { nav, vault, tokens, unitQty, unitSize, payloads } = await loadFixture(deploy);
-    const r = await nav.navOf(await vault.getAddress(), tokens, unitQty, unitSize, payloads);
+    const r = await nav.navOf.staticCall(await vault.getAddress(), tokens, unitQty, unitSize, payloads);
     // 2*100 + 3*200 = 800
     expect(r.nav).to.equal(800n * ONE);
     expect(r.safe).to.equal(true);
@@ -87,7 +87,7 @@ describe("FairValueNAV — whole-basket cross-check", () => {
 
   it("safe when sum-of-parts agrees with the direct basket price (800)", async () => {
     const f = await deployWithBasket(800n * ONE);
-    const r = await f.nav.navWithBasketCheck(
+    const r = await f.nav.navWithBasketCheck.staticCall(
       await f.vault.getAddress(), f.tokens, f.unitQty, f.unitSize, f.payloads, ["0x", "0x"]
     );
     expect(r.safe).to.equal(true);
@@ -95,7 +95,7 @@ describe("FairValueNAV — whole-basket cross-check", () => {
 
   it("unsafe when the direct basket price diverges (900 vs 800)", async () => {
     const f = await deployWithBasket(900n * ONE);
-    const r = await f.nav.navWithBasketCheck(
+    const r = await f.nav.navWithBasketCheck.staticCall(
       await f.vault.getAddress(), f.tokens, f.unitQty, f.unitSize, f.payloads, ["0x", "0x"]
     );
     expect(r.safe).to.equal(false);

@@ -36,7 +36,7 @@ describe("FairValueNAV — navOfHoldings", () => {
     const { nav, a, b, vault } = await loadFixture(deploy);
     const tokens = [await a.getAddress(), await b.getAddress()];
     const payloads = [[EMPTY, EMPTY], [EMPTY, EMPTY]];
-    const res = await nav.navOfHoldings(vault.address, tokens, payloads);
+    const res = await nav.navOfHoldings.staticCall(vault.address, tokens, payloads);
     // 3*100 + 4*50 = 500 (1e18 scaled)
     expect(res.nav).to.equal(500n * ONE);
     expect(res.safe).to.equal(true);

@@ -26,7 +26,7 @@ describe("PriceAggregator — single source", () => {
     const { agg, newSource } = await loadFixture(deploy);
     const s = await newSource(300n * ONE, 1_000_000n * ONE);
     await agg.addSource(ASSET, await s.getAddress());
-    const r = await agg.priceOf(ASSET, [EMPTY]);
+    const r = await agg.priceOf.staticCall(ASSET, [EMPTY]);
     expect(r.price).to.equal(300n * ONE);
     expect(r.marketStatus).to.equal(Status.Open);
   });
@@ -35,7 +35,7 @@ describe("PriceAggregator — single source", () => {
     const { agg, newSource } = await loadFixture(deploy);
     const s = await newSource(300n * ONE, 1_000_000n * ONE, false, false);
     await agg.addSource(ASSET, await s.getAddress());
-    const r = await agg.priceOf(ASSET, [EMPTY]);
+    const r = await agg.priceOf.staticCall(ASSET, [EMPTY]);
     expect(r.marketStatus).to.equal(Status.Unknown);
     expect(r.safe).to.equal(false);
   });
@@ -44,7 +44,7 @@ describe("PriceAggregator — single source", () => {
     const { agg, newSource } = await loadFixture(deploy);
     const s = await newSource(300n * ONE, 1_000_000n * ONE, false, true, HOUR + 10);
     await agg.addSource(ASSET, await s.getAddress());
-    const r = await agg.priceOf(ASSET, [EMPTY]);
+    const r = await agg.priceOf.staticCall(ASSET, [EMPTY]);
     expect(r.marketStatus).to.equal(Status.Unknown);
   });
 
@@ -77,7 +77,7 @@ describe("PriceAggregator — depth-weighted median + cap", () => {
       [250n * ONE, 100n * ONE],
       [350n * ONE, 100n * ONE],
     ]);
-    const r = await agg.priceOf(ASSET, payloads);
+    const r = await agg.priceOf.staticCall(ASSET, payloads);
     expect(r.price).to.equal(300n * ONE);
   });
 
@@ -89,7 +89,7 @@ describe("PriceAggregator — depth-weighted median + cap", () => {
       [300n * ONE, 10_000_000n * ONE],
       [301n * ONE, 10_000_000n * ONE],
     ]);
-    const r = await agg.priceOf(ASSET, payloads);
+    const r = await agg.priceOf.staticCall(ASSET, payloads);
     expect(r.price).to.be.lessThan(400n * ONE); // not dragged to 1000
   });
 });
@@ -113,7 +113,7 @@ describe("PriceAggregator — divergence, band, ladder", () => {
       [301n * ONE, 10_000_000n * ONE],
       [500n * ONE, 10_000_000n * ONE],
     ]);
-    const r = await agg.priceOf(ASSET, payloads);
+    const r = await agg.priceOf.staticCall(ASSET, payloads);
     expect(r.price).to.be.lessThan(310n * ONE); // outlier excluded
     expect(r.safe).to.equal(true); // 2 honest survivors, tight band
   });
@@ -124,14 +124,14 @@ describe("PriceAggregator — divergence, band, ladder", () => {
       [300n * ONE, 10_000_000n * ONE],
       [300n * ONE, 10_000_000n * ONE],
     ]);
-    const r = await agg.priceOf(ASSET, payloads);
+    const r = await agg.priceOf.staticCall(ASSET, payloads);
     expect(r.safe).to.equal(true);
     expect(r.confUpper - r.confLower).to.be.lessThan(30n * ONE); // < 5% of 300
   });
 
   it("single thin survivor -> band blows out, safe=false", async () => {
     const { agg, payloads } = await withSources([[300n * ONE, 1n * ONE]]);
-    const r = await agg.priceOf(ASSET, payloads);
+    const r = await agg.priceOf.staticCall(ASSET, payloads);
     expect(r.safe).to.equal(false); // below minSafeSources AND thin depth penalty
     expect(r.confUpper).to.be.greaterThan(r.price); // non-zero band
   });

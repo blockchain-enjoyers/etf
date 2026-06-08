@@ -34,6 +34,6 @@ contract MockSource is IPriceSource {
     function setWeekendAware(bool v) external { _r.weekendAware = v; }
     function setHealthy(bool v) external { _r.healthy = v; }
 
-    function readSource(bytes calldata) external view returns (SourceReading memory) { return _r; }
+    function read(bytes calldata) external view returns (SourceReading memory) { return _r; }
     function describe() external view returns (string memory, address) { return ("mock", address(this)); }
 }

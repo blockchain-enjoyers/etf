@@ -7,8 +7,9 @@ import {MarketStatus} from "./OracleTypes.sol";
 
 /// @title PriceAggregator — neutral multi-source referee for one "thing" (a stock OR a basket token)
 /// @notice Reads every registered source, drops the unhealthy/stale/closed, rejects outliers, and
-///         returns a depth-weighted-median price with a confidence band and a `safe` verdict. Pure
-///         view: no settlement, no state mutation outside owner config. The whole moat is here — a fat
+///         returns a depth-weighted-median price with a confidence band and a `safe` verdict. Non-view
+///         (a source may verify a signed report in-tx); still settles nothing and mutates no aggregator
+///         state — for a gas-free off-chain read, eth_call-simulate it. The whole moat is here — a fat
 ///         or manipulated source cannot move the median (weight cap < 50%) and cannot survive the
 ///         divergence band. "Config open, safety floor enforced."
 contract PriceAggregator is Ownable {
@@ -96,12 +97,12 @@ contract PriceAggregator is Ownable {
 
     /// @notice Sum of accepted-depth (healthy + fresh) sources for `asset`. The listing gate consumes
     ///         this; feed it a CONSERVATIVE (weekend-trough) value via a min-depth tracker upstream.
-    function acceptedDepthOf(address asset, bytes[] calldata payloads) external view returns (uint256 depth) {
+    function acceptedDepthOf(address asset, bytes[] calldata payloads) external returns (uint256 depth) {
         IPriceSource[] storage srcs = _sources[asset];
         uint256 n = srcs.length;
         if (payloads.length != n) revert PayloadLengthMismatch();
         for (uint256 i = 0; i < n; ++i) {
-            SourceReading memory r = srcs[i].readSource(payloads[i]);
+            SourceReading memory r = srcs[i].read(payloads[i]);
             if (!r.healthy || r.price == 0) continue;
             if (block.timestamp - r.lastUpdate > staleHorizon) continue;
             depth += r.depth;
@@ -114,7 +115,6 @@ contract PriceAggregator is Ownable {
     ///         (ignored by read-adapters, used by signed-report adapters).
     function priceOf(address asset, bytes[] calldata payloads)
         external
-        view
         returns (AggregateResult memory)
     {
         IPriceSource[] storage srcs = _sources[asset];
@@ -130,7 +130,7 @@ contract PriceAggregator is Ownable {
         bool anyWeekday; // a non-weekendAware source survived => market Open
 
         for (uint256 i = 0; i < n; ++i) {
-            SourceReading memory r = srcs[i].readSource(payloads[i]);
+            SourceReading memory r = srcs[i].read(payloads[i]);
             if (!r.healthy || r.price == 0) continue;
             if (block.timestamp - r.lastUpdate > staleHorizon) continue;
             prices[m] = r.price;

@@ -6,7 +6,7 @@ describe("MockSource", () => {
   it("returns the reading set via set()", async () => {
     const m = await loadFixture(deployMock);
     await m.set(300n * ONE, 1_000_000n * ONE, 1700000000n, Kind.AMM_TWAP, ONE, false, true);
-    const r = await m.readSource(EMPTY);
+    const r = await m.read(EMPTY);
     expect(r.price).to.equal(300n * ONE);
     expect(r.depth).to.equal(1_000_000n * ONE);
     expect(r.healthy).to.equal(true);
@@ -17,7 +17,7 @@ describe("MockSource", () => {
     const m = await loadFixture(deployMock);
     await m.setPrice(123n * ONE);
     await m.setHealthy(false);
-    const r = await m.readSource(EMPTY);
+    const r = await m.read(EMPTY);
     expect(r.price).to.equal(123n * ONE);
     expect(r.healthy).to.equal(false);
   });

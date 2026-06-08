@@ -39,7 +39,7 @@ contract FairValueNAV {
         uint256[] calldata unitQty,
         uint256 unitSize,
         bytes[][] calldata payloads
-    ) external view returns (NavResult memory res) {
+    ) external returns (NavResult memory res) {
         if (keccak256(abi.encode(tokens, unitQty, unitSize)) != IRecipeVault(vault).recipeCommitment()) {
             revert RecipeMismatch();
         }
@@ -73,7 +73,7 @@ contract FairValueNAV {
         uint256 unitSize,
         bytes[][] calldata payloads,
         bytes[] calldata basketPayloads
-    ) external view returns (NavResult memory res) {
+    ) external returns (NavResult memory res) {
         res = this.navOf(vault, tokens, unitQty, unitSize, payloads);
 
         if (aggregator.sourceCount(vault) == 0) return res; // no direct source: sum-of-parts only
@@ -92,7 +92,7 @@ contract FairValueNAV {
     ///         vault's heldTokens()), aggregating each price. For rebalanceable vaults whose holdings
     ///         differ from any committed recipe mid-rebalance. Estimate only (iron rule).
     function navOfHoldings(address vault, address[] calldata tokens, bytes[][] calldata payloads)
-        external view returns (NavResult memory res)
+        external returns (NavResult memory res)
     {
         uint256 n = tokens.length;
         if (payloads.length != n) revert LengthMismatch();

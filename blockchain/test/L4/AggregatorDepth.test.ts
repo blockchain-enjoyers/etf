@@ -24,7 +24,7 @@ describe("PriceAggregator — acceptedDepthOf", () => {
     await add(300n * ONE, 4_000_000n * ONE);
     await add(300n * ONE, 6_000_000n * ONE);
     await add(300n * ONE, 1n * ONE, false); // unhealthy -> dropped, depth not counted
-    expect(await agg.acceptedDepthOf(ASSET, [EMPTY, EMPTY, EMPTY])).to.equal(10_000_000n * ONE);
+    expect(await agg.acceptedDepthOf.staticCall(ASSET, [EMPTY, EMPTY, EMPTY])).to.equal(10_000_000n * ONE);
   });
 
   it("drops a stale (healthy but old) source", async () => {
@@ -35,6 +35,6 @@ describe("PriceAggregator — acceptedDepthOf", () => {
     const m = await Mock.deploy();
     await m.set(300n * ONE, 9_000_000n * ONE, BigInt((await time.latest()) - 3601), Kind.AMM_TWAP, 0n, true, true);
     await agg.addSource(ASSET, await m.getAddress());
-    expect(await agg.acceptedDepthOf(ASSET, [EMPTY, EMPTY])).to.equal(5_000_000n * ONE);
+    expect(await agg.acceptedDepthOf.staticCall(ASSET, [EMPTY, EMPTY])).to.equal(5_000_000n * ONE);
   });
 });

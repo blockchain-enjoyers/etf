@@ -3,7 +3,7 @@ pragma solidity 0.8.35;
 
 import {PriceAggregator} from "./PriceAggregator.sol";
 import {IRecipeVault} from "./interfaces/IRecipeVault.sol";
-import {MarketStatus, MarketStatusLib} from "../L2/OracleTypes.sol";
+import {MarketStatus, MarketStatusLib} from "./OracleTypes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title FairValueNAV — read-only basket NAV over the L4 aggregator

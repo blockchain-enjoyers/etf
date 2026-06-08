@@ -3,7 +3,7 @@ pragma solidity 0.8.35;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IPriceSource, SourceReading} from "./IPriceSource.sol";
-import {MarketStatus} from "../L2/OracleTypes.sol";
+import {MarketStatus} from "./OracleTypes.sol";
 
 /// @title PriceAggregator — neutral multi-source referee for one "thing" (a stock OR a basket token)
 /// @notice Reads every registered source, drops the unhealthy/stale/closed, rejects outliers, and

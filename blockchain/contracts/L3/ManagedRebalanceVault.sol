@@ -299,6 +299,75 @@ contract ManagedRebalanceVault is ManagedVault {
         revert UseCreate();
     }
 
+    // ---- holdings-based previews (IMP-8: mirror create/redeem exactly for wei-exactness) ----
+
+    /// @notice Quote how much of each token `create(nShares)` will pull.
+    ///         Bootstrap (supply==0): returns the target-recipe quantities scaled to nShares/unitSize —
+    ///         exact mirror of `_bootstrap`. Post-bootstrap: pro-rata over current holdings, rounded UP
+    ///         (Math.mulDiv Ceil) — exact mirror of the post-bootstrap `create` path.
+    /// @dev    Uses `_held` (not `_tokens`) post-bootstrap so the returned token set matches what
+    ///         `create` actually iterates. At supply==0 uses `_tokens`/`_unitQty` (the target recipe)
+    ///         because `_held` is empty before the first deposit.
+    /// @dev    WEI-EXACTNESS: `create` calls `_accrue()` FIRST (which mints fee shares and raises
+    ///         totalSupply) and only THEN divides by the post-accrue supply. This view cannot mutate
+    ///         state, so it quotes against the EFFECTIVE post-accrue supply `totalSupply() +
+    ///         pendingMintShares()`. The 3-way `pendingMintShares()` override returns EXACTLY the share
+    ///         count `_accrue` mints in the same block (per-leg ceilDiv + floor mints, summed identically),
+    ///         so the denominator here is wei-identical to the one `create` uses. The supply==0 branch
+    ///         is keyed on the cached pre-accrue supply: at true supply 0, `_accrue` early-returns and
+    ///         pendingMintShares()==0, so bootstrap is unaffected.
+    function previewCreate(uint256 nShares)
+        external
+        view
+        override
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
+        uint256 supply = totalSupply();
+        if (supply == 0) {
+            uint256 us = unitSize();
+            if (nShares % us != 0) revert NonMultipleOfUnitSize();
+            uint256 units = nShares / us;
+            uint256 n = _tokens.length;
+            tokens = _tokens;
+            amounts = new uint256[](n);
+            for (uint256 i = 0; i < n; ++i) amounts[i] = _unitQty[i] * units;
+            return (tokens, amounts);
+        }
+        uint256 effSupply = supply + pendingMintShares();
+        uint256 m = _held.length;
+        tokens = _held;
+        amounts = new uint256[](m);
+        for (uint256 i = 0; i < m; ++i) {
+            amounts[i] = Math.mulDiv(IERC20(_held[i]).balanceOf(address(this)), nShares, effSupply, Math.Rounding.Ceil);
+        }
+    }
+
+    /// @notice Quote how much of each token `redeem(nShares)` will pay out.
+    ///         Reverts NoSupply at supply==0 (nothing to redeem). Pro-rata over current holdings,
+    ///         rounded DOWN (Math.mulDiv default) — exact mirror of `redeem`.
+    /// @dev    WEI-EXACTNESS: `redeem` calls `_accrue()` FIRST, then snapshots the POST-accrue supply
+    ///         as its denominator. So this view MUST add `pendingMintShares()` to match — quoting
+    ///         against the stale pre-accrue totalSupply() would over-quote the payout whenever a fee is
+    ///         pending. The 3-way `pendingMintShares()` override is wei-identical to what `_accrue`
+    ///         mints in the same block, so `totalSupply() + pendingMintShares()` == the exact supply
+    ///         `redeem` divides by. (Mirrors the base ManagedVault.previewRedeem, which adds the same.)
+    function previewRedeem(uint256 nShares)
+        public
+        view
+        override
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
+        uint256 supply = totalSupply();
+        if (supply == 0) revert NoSupply();
+        uint256 effSupply = supply + pendingMintShares();
+        uint256 m = _held.length;
+        tokens = _held;
+        amounts = new uint256[](m);
+        for (uint256 i = 0; i < m; ++i) {
+            amounts[i] = Math.mulDiv(IERC20(_held[i]).balanceOf(address(this)), nShares, effSupply);
+        }
+    }
+
     // ---- governed target change (reconstitution or reweight), curator-timelocked ----
     address[] private _pendingTokens;
     uint256[] private _pendingUnitQty;

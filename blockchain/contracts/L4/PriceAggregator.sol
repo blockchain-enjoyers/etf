@@ -84,6 +84,16 @@ contract PriceAggregator is Ownable {
         return _sources[asset].length;
     }
 
+    /// @notice True if `src` is a registered price source for `asset`. Used by the L5 settle gate (g1) to
+    ///         assert the L2 router stream actually backs every held token (so the sequencer/halt gate is total).
+    function isSource(address asset, address src) external view returns (bool) {
+        IPriceSource[] storage srcs = _sources[asset];
+        for (uint256 i = 0; i < srcs.length; ++i) {
+            if (address(srcs[i]) == src) return true;
+        }
+        return false;
+    }
+
     /// @notice Sum of accepted-depth (healthy + fresh) sources for `asset`. The listing gate consumes
     ///         this; feed it a CONSERVATIVE (weekend-trough) value via a min-depth tracker upstream.
     function acceptedDepthOf(address asset, bytes[] calldata payloads) external view returns (uint256 depth) {

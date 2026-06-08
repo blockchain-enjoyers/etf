@@ -288,6 +288,7 @@ contract ManagedVault is StorageVaultBase {
     function previewRedeem(uint256 amount)
         public
         view
+        virtual
         override
         returns (address[] memory tokens, uint256[] memory amounts)
     {

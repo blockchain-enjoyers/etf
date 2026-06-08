@@ -157,6 +157,7 @@ abstract contract StorageVaultBase is VaultCore {
     function previewCreate(uint256 nUnits)
         external
         view
+        virtual
         returns (address[] memory tokens, uint256[] memory amounts)
     {
         uint256 len = _tokens.length;

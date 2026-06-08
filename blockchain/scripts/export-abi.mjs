@@ -14,12 +14,11 @@ const EXPOSE = [
   { name: "BasketVault", sol: "contracts/L1/BasketVault.sol" },
   { name: "ManagedVault", sol: "contracts/L1/ManagedVault.sol" },
   { name: "CommittedVault", sol: "contracts/L1/CommittedVault.sol" },
-  // L2 — read-price stack
-  { name: "OracleRouter", sol: "contracts/L2/OracleRouter.sol" },
-  { name: "NAVEngine", sol: "contracts/L2/NAVEngine.sol" },
-  // L4 — fair-value layer
+  // L4 — price layer (oracle is L4-only; the L2 cache stack was removed)
   { name: "PriceAggregator", sol: "contracts/L4/PriceAggregator.sol" },
   { name: "FairValueNAV", sol: "contracts/L4/FairValueNAV.sol" },
+  { name: "ChainlinkStreamsSource", sol: "contracts/L4/adapters/ChainlinkStreamsSource.sol" },
+  { name: "UniversalSignedSource", sol: "contracts/L4/adapters/UniversalSignedSource.sol" },
   // L3 — rebalance + keeper-incentive
   { name: "ManagedRebalanceVault", sol: "contracts/L3/ManagedRebalanceVault.sol" },
   { name: "KeeperModule", sol: "contracts/L3/KeeperModule.sol" },

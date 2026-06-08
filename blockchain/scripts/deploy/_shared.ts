@@ -22,19 +22,18 @@ export const EXPLORER = "https://explorer.testnet.chain.robinhood.com/address/";
 
 // Tunables (uint256/uint8 constructor params). Override per-deploy via config.params.
 export const DEFAULTS = {
-  schemaVersion: 11, // Chainlink Data Streams report schema (v11 equity).
-  sequencerGracePeriod: 3600, // sec of "Degraded" after an L2 sequencer restart.
-  stalenessThreshold: 3600, // max reading age before Open -> Halted (weekday heartbeat + buffer).
-  depthTier: (5_000_000n * 10n ** 18n).toString(), // synthetic depth for the oracle-only L2 source (1e18).
+  schemaVersion: 11, // Chainlink Data Streams report schema (v8 or v11; 11 = equity).
+  depthTier: (5_000_000n * 10n ** 18n).toString(), // governance synthetic depth for oracle sources (1e18).
+  // RHC Data Streams VerifierProxy — recorded for a future swap (testnet uses MockVerifierProxy; real
+  // Streams verify needs an off-chain DON report we have no API key for). Not consumed at deploy time.
+  realVerifierProxy: "0x72790f9eB82db492a7DDb6d2af22A270Dcc3Db64",
 };
 
+// A deployment record is intentionally minimal: contract name -> address. For a proxied contract,
+// `address` is the proxy and `implementation` is the logic contract behind it.
 export type Deployment = {
   address: string;
-  deployer?: string;
-  txHash?: string | null;
-  block?: number | null;
-  deployedAt?: string;
-  args?: unknown[];
+  implementation?: string;
 };
 export type Config = {
   networkName?: string;
@@ -92,14 +91,7 @@ export async function ensure(
   console.log(`  ${key.padEnd(20)} ${address}  (block ${receipt?.blockNumber ?? "?"})`);
 
   config.deployments ??= {};
-  config.deployments[key] = {
-    address,
-    deployer: deployerAddr,
-    txHash: tx?.hash ?? null,
-    block: receipt?.blockNumber ?? null,
-    deployedAt: new Date().toISOString(),
-    args: args.map((a) => (typeof a === "bigint" ? a.toString() : a)),
-  };
+  config.deployments[key] = { address }; // record only what consumers need: name -> address
   saveConfig(config); // flush incrementally so a partial run is resumable
   return address;
 }

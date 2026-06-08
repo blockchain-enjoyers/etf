@@ -1,39 +1,51 @@
-// L4 — the fair-value layer: PriceAggregator -> L2RouterSource -> FairValueNAV.
-//
+// L4 — the price layer (prod oracle is L4-only; the L2 cache stack was removed).
 //   npx hardhat run scripts/deploy/deploy-l4.ts --network robinhoodTestnet
 //
-// Requires L2 (OracleRouter) to be deployed first — L2RouterSource reads prices from it. Run
-// deploy-l2.ts (or deploy-all.ts) before this. PriceAggregator is the owned hub: register per-asset
-// sources with addSource(asset, source) and tune bands/weights with setParams() post-deploy.
+// PriceAggregator is the owned non-view multi-source hub; FairValueNAV reads it. Two reference price
+// sources are deployed: ChainlinkStreamsSource (Data Streams verify-in-tx, v8/v11) and
+// UniversalSignedSource (ecrecover committee).
 //
-// L2RouterSource bridges the L2 oracle router into the aggregator as one IPriceSource; its depthTier
-// is a governance-set synthetic depth (oracles have no pool), defaulting to 5,000,000 * 1e18.
-// FairValueNAV is the read entrypoint (navOf / navWithBasketCheck) over the aggregator.
-import { ensure, getDeployer, loadConfig, requireAddress, DEFAULTS, EXPLORER } from "./_shared";
+// Testnet note: real Streams verify needs an off-chain DON report (a Streams API key we don't have),
+// so the source points at MockVerifierProxy (setVerifyResult(bytes) -> verify) for an end-to-end NAV.
+// The real RHC VerifierProxy is recorded in params.realVerifierProxy for a later swap. Per-constituent
+// aggregator.addSource(asset, source) and UniversalSignedSource.setCommittee(...) are asset/governance
+// steps, NOT infra — done separately per fund/demo.
+import { ensure, getDeployer, loadConfig, saveConfig, DEFAULTS, EXPLORER } from "./_shared";
 
 export async function deployL4() {
-  console.log("== L4: PriceAggregator + L2RouterSource + FairValueNAV ==");
+  console.log("== L4: PriceAggregator + FairValueNAV + signed-price sources ==");
   const { address: deployer } = await getDeployer();
   const config = loadConfig();
 
-  const router = requireAddress(config, "OracleRouter", "deploy-l2.ts");
-  const depthTier = BigInt((config.params?.depthTier as string) ?? DEFAULTS.depthTier);
+  // Persist the params actually used (transparency + the real-verifier swap target).
+  const p = { ...DEFAULTS, ...(config.params ?? {}) };
+  config.params = p;
+  saveConfig(config);
 
-  // Owned aggregation hub (deployer is initial owner / governance).
+  // 1-2. Owned aggregation hub + NAV reader.
   const aggregator = await ensure(config, "PriceAggregator", [deployer], deployer);
-
-  // Oracle-backed price source, wired to the L2 router.
-  const l2Source = await ensure(config, "L2RouterSource", [router, depthTier], deployer);
-
-  // Fair-value NAV read entrypoint over the aggregator.
   const fairValueNav = await ensure(config, "FairValueNAV", [aggregator], deployer);
 
-  console.log(`\n✅ L4 ready. Aggregator: ${EXPLORER}${aggregator}`);
-  console.log(
-    "   Next: aggregator.addSource(asset, l2Source) per constituent; optionally addSource() more " +
-      "sources, then aggregator.setParams(...) to tune bands/weights.\n",
+  // 3-4. Testnet Streams stand-in (raw-bytes mock verifier) + the Data Streams source over it.
+  const mockVerifier = await ensure(config, "MockVerifierProxy", [], deployer);
+  const streamsSource = await ensure(
+    config,
+    "ChainlinkStreamsSource",
+    [mockVerifier, p.schemaVersion, p.depthTier],
+    deployer,
   );
-  return { aggregator, l2Source, fairValueNav };
+
+  // 5. Universal ecrecover-committee source (committee set later via governance, not here).
+  const signedSource = await ensure(config, "UniversalSignedSource", [deployer], deployer);
+
+  console.log(`\n✅ L4 ready. Aggregator: ${EXPLORER}${aggregator}`);
+  console.log(`   StreamsSource -> MockVerifierProxy ${mockVerifier}  (real: ${p.realVerifierProxy})`);
+  console.log(
+    "   Next: aggregator.addSource(asset, source) per constituent; " +
+      "UniversalSignedSource.setCommittee(members, threshold) for the signed path; " +
+      "optionally aggregator.setParams(...).",
+  );
+  return { aggregator, fairValueNav, mockVerifier, streamsSource, signedSource };
 }
 
 if (require.main === module) {

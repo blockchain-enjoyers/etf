@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ONE, MINTER_ROLE, deployRegistry, deployStock, sortRecipe, signPermit, Leg } from "../helpers";
+import { ONE, MINTER_ROLE, deployRegistry, deployStock, sortRecipe, signPermit, Leg, expectedFeeShares } from "../helpers";
 import { deployCloneFactory } from "./helpers";
 
 const BPS = 10_000n;
@@ -26,15 +26,15 @@ async function deployManagedFixture() {
   const unitQty = legs.map((l) => l.qty);
   const unitSize = ONE;
 
-  // Deploy via CloneFactory. We need custom meridian/treasury/platformShareBps, so:
+  // Deploy via CloneFactory. We need custom meridian/treasury/platformFeeBps, so:
   // 1. Deploy factory.
-  // 2. Set factory globals (meridian, treasury, platformShareBps) to match the desired managed params.
+  // 2. Set factory globals (meridian, treasury, platformFeeBps) to match the desired managed params.
   // 3. Deploy the managed vault.
   const factory = await deployCloneFactory();
-  // Set factory globals to match what the old constructor tests expect.
+  // Set factory globals to match what the constructor tests expect.
   await (await factory.setMeridian(meridian.address)).wait();
   await (await factory.setTreasury(treasury.address)).wait();
-  await (await factory.setPlatformShareBps(1000)).wait(); // 10%, the test default
+  await (await factory.setPlatformFeeBps(15)).wait(); // 0.15%/yr own line, the test default
 
   const basket = {
     tokens,
@@ -59,12 +59,12 @@ async function deployManagedFixture() {
 }
 
 // Helper to deploy a managed vault with custom fee params via a new factory.
-async function deployManagedWith(tokens: string[], unitQty: bigint[], params: { manager: string; meridian: string; treasury: string; managerFeeBps: number; platformShareBps: number }, saltStr: string) {
+async function deployManagedWith(tokens: string[], unitQty: bigint[], params: { manager: string; meridian: string; treasury: string; managerFeeBps: number; platformFeeBps: number }, saltStr: string) {
   const [deployer] = await ethers.getSigners();
   const factory = await deployCloneFactory();
   await (await factory.setMeridian(params.meridian)).wait();
   await (await factory.setTreasury(params.treasury)).wait();
-  await (await factory.setPlatformShareBps(params.platformShareBps)).wait();
+  await (await factory.setPlatformFeeBps(params.platformFeeBps)).wait();
   const basket = { tokens, unitQty, unitSize: ONE, name: "x", symbol: "x", manager: params.manager, managerFeeBps: params.managerFeeBps };
   const salt = ethers.id(saltStr);
   await (await factory.createManagedBasket(basket, salt)).wait();
@@ -78,7 +78,7 @@ describe("ManagedVault — construction & roles", () => {
     expect(await vault.meridian()).to.equal(meridian.address);
     expect(await vault.treasury()).to.equal(treasury.address);
     expect(await vault.managerFeeBps()).to.equal(100);
-    expect(await vault.platformShareBps()).to.equal(1000);
+    expect(await vault.platformFeeBps()).to.equal(15);
     expect(await vault.lastAccrued()).to.be.gt(0);
   });
 
@@ -92,19 +92,20 @@ describe("ManagedVault — construction & roles", () => {
       .to.be.reverted;
   });
 
-  it("reverts when managerFeeBps > MANAGER_MAX (200) or platformShareBps > PLATFORM_SHARE_MAX (2000)", async () => {
+  it("reverts when managerFeeBps > MANAGER_MAX (200) or platformFeeBps > PLATFORM_FEE_MAX (50)", async () => {
     const { tokens, unitQty, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
-    await expect(deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 201, platformShareBps: 1000 }, "feehigh"))
+    await expect(deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 201, platformFeeBps: 15 }, "feehigh"))
       .to.be.reverted;
-    await expect(deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 100, platformShareBps: 2001 }, "sharehigh"))
+    // platformFeeBps > PLATFORM_FEE_MAX is rejected at the factory setter (own-line cap is 50)
+    await expect(deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 100, platformFeeBps: 51 }, "sharehigh"))
       .to.be.reverted;
   });
 
-  it("accepts fees exactly at the caps (MANAGER_MAX=200, PLATFORM_SHARE_MAX=2000)", async () => {
+  it("accepts fees exactly at the caps (MANAGER_MAX=200, PLATFORM_FEE_MAX=50)", async () => {
     const { tokens, unitQty, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
-    const v = await deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 200, platformShareBps: 2000 }, "atcap");
+    const v = await deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 200, platformFeeBps: 50 }, "atcap");
     expect(await v.managerFeeBps()).to.equal(200);
-    expect(await v.platformShareBps()).to.equal(2000);
+    expect(await v.platformFeeBps()).to.equal(50);
   });
 
   it("inherits in-kind create/redeem from the base", async () => {
@@ -113,17 +114,18 @@ describe("ManagedVault — construction & roles", () => {
     await (await vault.connect(ap).create(1n)).wait();
     expect(await vault.balanceOf(ap.address)).to.equal(ONE); // unitSize
   });
+
+  it("encodes red line #3: FLOW_FEE_BPS is 0 and has no setter", async () => {
+    const { vault } = await loadFixture(deployManagedFixture);
+    expect(await vault.FLOW_FEE_BPS()).to.equal(0n);
+    // there is no setter — assert the ABI exposes none
+    const fns = vault.interface.fragments.filter((f: any) => f.type === "function").map((f: any) => f.name);
+    expect(fns.some((n: string) => /flow.*fee/i.test(n) && /set/i.test(n))).to.equal(false);
+  });
 });
 
 describe("ManagedVault — fee accrual", () => {
-  // feeShares = S * x/(1-x), x = feeBps*elapsed/(BPS*YEAR), whole shares (floor).
-  function expectedFeeShares(S: bigint, feeBps: bigint, elapsed: bigint): bigint {
-    const num = feeBps * elapsed;
-    const den = BPS * YEAR;
-    return (S * num) / (den - num);
-  }
-
-  it("accrues over time and splits manager/treasury by platformShareBps (#1)", async () => {
+  it("accrues manager + platform as TWO independent legs (wei-exact, platform is its own line) (#1)", async () => {
     const { vault, manager, treasury, ap, approveFor } = await loadFixture(deployManagedFixture);
     await approveFor(ap, 100n);
     await (await vault.connect(ap).create(100n)).wait();
@@ -133,16 +135,43 @@ describe("ManagedVault — fee accrual", () => {
     const rc = await (await vault.accrueFee()).wait();
     const blk = await ethers.provider.getBlock(rc!.blockNumber);
     const elapsed = BigInt(blk!.timestamp) - lastAccrued; // true on-chain window (>= YEAR by block drift)
-    const fee = expectedFeeShares(supply, 100n, elapsed);
     const toTreasury = await vault.balanceOf(treasury.address);
     const toManager = await vault.balanceOf(manager.address);
-    expect(toTreasury + toManager).to.be.closeTo(fee, 2n);
-    expect(toTreasury).to.be.closeTo((fee * 1000n) / BPS, 2n); // 10% platform share
+    // Manager leg @100bps and platform leg @15bps are computed independently — exact mirror of _accrue.
+    expect(toManager).to.equal(expectedFeeShares(supply, 100n, elapsed));
+    expect(toTreasury).to.equal(expectedFeeShares(supply, 15n, elapsed));
+    // Platform is NOT a slice of the manager fee: the old model would give tre ≈ mgr/9.
+    expect(toTreasury).to.be.greaterThan(toManager / 8n);
   });
 
-  it("managerFeeBps == 0 mints nothing (#2)", async () => {
+  it("accrues platform as its OWN line (not a share of the manager fee)", async () => {
+    const { vault, manager, treasury, ap, approveFor } = await loadFixture(deployManagedFixture);
+    // managerFeeBps = 100 (1%/yr). Set platformFeeBps = 15 (0.15%/yr) as Meridian's own line.
+    const [, , meridian] = await ethers.getSigners();
+    await (await vault.connect(meridian).setPlatformFeeBps(15)).wait();
+
+    await approveFor(ap, 100n);
+    await (await vault.connect(ap).create(100n)).wait();      // supply = 100 * unitSize = 100e18
+    const supply0 = await vault.totalSupply();
+
+    await time.increase(Number(YEAR));                         // ~1 year
+    await (await vault.accrueFee()).wait();
+
+    const mgr = await vault.balanceOf(manager.address);
+    const tre = await vault.balanceOf(treasury.address);
+
+    // Manager leg ≈ 1% of supply by dilution; platform leg ≈ 0.15% — INDEPENDENT, additive.
+    expect(mgr).to.be.greaterThan((supply0 * 95n) / 10_000n);   // > 0.95%
+    expect(mgr).to.be.lessThan((supply0 * 105n) / 10_000n);     // < 1.05%
+    expect(tre).to.be.greaterThan((supply0 * 14n) / 10_000n);   // > 0.14%
+    expect(tre).to.be.lessThan((supply0 * 17n) / 10_000n);      // < 0.17%
+    // explicitly reject the old "share-of-manager" shape (tre would be ~mgr/9 ≈ 0.11%)
+    expect(tre).to.be.greaterThan(mgr / 8n);
+  });
+
+  it("managerFeeBps == 0 still accrues the platform own line; manager gets nothing (#2)", async () => {
     const { tokens, unitQty, manager, meridian, treasury } = await loadFixture(deployManagedFixture);
-    const v = await deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 0, platformShareBps: 1000 }, "zerofee");
+    const v = await deployManagedWith(tokens, unitQty, { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps: 0, platformFeeBps: 15 }, "zerofee");
     const a = (await ethers.getSigners())[4]; // ap
     for (const t of tokens) {
       const erc = await ethers.getContractAt("IERC20", t);
@@ -151,8 +180,8 @@ describe("ManagedVault — fee accrual", () => {
     await (await v.connect(a).create(10n)).wait();
     await time.increase(Number(YEAR));
     await (await v.accrueFee()).wait();
-    expect(await v.balanceOf(manager.address)).to.equal(0);
-    expect(await v.balanceOf(treasury.address)).to.equal(0);
+    expect(await v.balanceOf(manager.address)).to.equal(0); // manager leg @0bps mints nothing
+    expect(await v.balanceOf(treasury.address)).to.be.gt(0); // platform own line @15bps still accrues
   });
 
   it("supply==0 and elapsed==0 are safe no-ops, lastAccrued advances on supply==0 (#11)", async () => {
@@ -195,7 +224,7 @@ describe("ManagedVault — fee accrual", () => {
     }
   });
 
-  it("C1: manager-timed poke at tiny feeShares does NOT starve the platform (#14)", async () => {
+  it("C1: manager-timed poke at tiny feeShares does NOT starve the platform own line (#14)", async () => {
     const { vault, manager, treasury, ap, approveFor } = await loadFixture(deployManagedFixture);
     await approveFor(ap, 1n);
     await (await vault.connect(ap).create(1n)).wait();
@@ -204,9 +233,10 @@ describe("ManagedVault — fee accrual", () => {
     await (await vault.accrueFee()).wait();
     const toTreasury = await vault.balanceOf(treasury.address);
     const toManager = await vault.balanceOf(manager.address);
-    expect(toTreasury).to.be.gt(0); // platform NOT starved
+    expect(toTreasury).to.be.gt(0); // platform NOT starved by the sub-SCALE remainder carry
+    // Platform own line is 15bps vs manager 100bps -> roughly tre ≈ mgr*15/100 (independent legs, same supply).
     if (toManager > 0n) {
-      expect(toTreasury).to.be.closeTo(((toTreasury + toManager) * 1000n) / BPS, 3n);
+      expect(toTreasury).to.be.closeTo((toManager * 15n) / 100n, toManager / 100n + 3n);
     }
   });
 
@@ -257,14 +287,14 @@ describe("ManagedVault — fee setters & timelock", () => {
   it("cap enforcement on setters (#3)", async () => {
     const { vault, manager, meridian } = await loadFixture(deployManagedFixture);
     await expect(vault.connect(manager).setManagerFeeBps(201)).to.be.revertedWithCustomError(vault, "FeeTooHigh");
-    await expect(vault.connect(meridian).setPlatformShareBps(2001)).to.be.revertedWithCustomError(vault, "ShareTooHigh");
+    await expect(vault.connect(meridian).setPlatformFeeBps(51)).to.be.revertedWithCustomError(vault, "PlatformFeeTooHigh");
   });
 
   it("only the owner role can set its knob", async () => {
     const { vault, manager, meridian, alice } = await loadFixture(deployManagedFixture);
     await expect(vault.connect(alice).setManagerFeeBps(50)).to.be.revertedWithCustomError(vault, "NotManager");
-    await expect(vault.connect(alice).setPlatformShareBps(500)).to.be.revertedWithCustomError(vault, "NotMeridian");
-    await expect(vault.connect(manager).setPlatformShareBps(500)).to.be.revertedWithCustomError(vault, "NotMeridian");
+    await expect(vault.connect(alice).setPlatformFeeBps(30)).to.be.revertedWithCustomError(vault, "NotMeridian");
+    await expect(vault.connect(manager).setPlatformFeeBps(30)).to.be.revertedWithCustomError(vault, "NotMeridian");
     await expect(vault.connect(meridian).setManagerFeeBps(50)).to.be.revertedWithCustomError(vault, "NotManager");
   });
 
@@ -285,27 +315,27 @@ describe("ManagedVault — fee setters & timelock", () => {
   it("activate before any schedule reverts NothingPending", async () => {
     const { vault, manager, meridian } = await loadFixture(deployManagedFixture);
     await expect(vault.connect(manager).activateManagerFee()).to.be.revertedWithCustomError(vault, "NothingPending");
-    await expect(vault.connect(meridian).activatePlatformShare()).to.be.revertedWithCustomError(vault, "NothingPending");
+    await expect(vault.connect(meridian).activatePlatformFee()).to.be.revertedWithCustomError(vault, "NothingPending");
   });
 
   it("activate ACL: manager-only / meridian-only (#18)", async () => {
     const { vault, manager, meridian, alice } = await loadFixture(deployManagedFixture);
     await (await vault.connect(manager).setManagerFeeBps(150)).wait();
-    await (await vault.connect(meridian).setPlatformShareBps(1500)).wait();
+    await (await vault.connect(meridian).setPlatformFeeBps(30)).wait();
     await time.increase(7 * 24 * 3600 + 1);
     await expect(vault.connect(alice).activateManagerFee()).to.be.revertedWithCustomError(vault, "NotManager");
-    await expect(vault.connect(alice).activatePlatformShare()).to.be.revertedWithCustomError(vault, "NotMeridian");
+    await expect(vault.connect(alice).activatePlatformFee()).to.be.revertedWithCustomError(vault, "NotMeridian");
   });
 
-  it("platform share: decrease instant, increase timelocked+activated (meridian)", async () => {
+  it("platform fee own line: decrease instant, increase timelocked+activated (meridian)", async () => {
     const { vault, meridian } = await loadFixture(deployManagedFixture);
-    await (await vault.connect(meridian).setPlatformShareBps(500)).wait();  // 1000 -> 500 instant
-    expect(await vault.platformShareBps()).to.equal(500);
-    await (await vault.connect(meridian).setPlatformShareBps(1500)).wait(); // schedules
-    expect(await vault.platformShareBps()).to.equal(500);
+    await (await vault.connect(meridian).setPlatformFeeBps(10)).wait();  // 15 -> 10 instant
+    expect(await vault.platformFeeBps()).to.equal(10);
+    await (await vault.connect(meridian).setPlatformFeeBps(40)).wait(); // schedules
+    expect(await vault.platformFeeBps()).to.equal(10);
     await time.increase(7 * 24 * 3600 + 1);
-    await (await vault.connect(meridian).activatePlatformShare()).wait();
-    expect(await vault.platformShareBps()).to.equal(1500);
+    await (await vault.connect(meridian).activatePlatformFee()).wait();
+    expect(await vault.platformFeeBps()).to.equal(40);
   });
 
   it("activation is NOT retroactive: the pre-effective window is charged at the OLD rate (#17)", async () => {
@@ -323,11 +353,15 @@ describe("ManagedVault — fee setters & timelock", () => {
     const rc = await (await vault.connect(manager).activateManagerFee()).wait(); // accrues window @ OLD 100, then flips
     const tAct = BigInt((await ethers.provider.getBlock(rc!.blockNumber))!.timestamp);
 
-    // total fee minted so far must reflect the OLD 1% over (tAct - t0), NOT 2%
-    const minted = (await vault.balanceOf(manager.address)) + (await vault.balanceOf(treasury.address));
+    // the MANAGER leg minted so far must reflect the OLD 1% over (tAct - t0), NOT 2%
+    const mgrMinted = await vault.balanceOf(manager.address);
     const elapsed = tAct - t0;
     const oldRateFee = (supply * (100n * elapsed)) / (BPS * YEAR - 100n * elapsed);
-    expect(minted).to.be.closeTo(oldRateFee, oldRateFee / 100000n + 5n);
+    expect(mgrMinted).to.be.closeTo(oldRateFee, oldRateFee / 100000n + 5n);
+    // platform own line (15bps) accrued INDEPENDENTLY over the same window, unaffected by the manager change
+    const treMinted = await vault.balanceOf(treasury.address);
+    const platRateFee = (supply * (15n * elapsed)) / (BPS * YEAR - 15n * elapsed);
+    expect(treMinted).to.be.closeTo(platRateFee, platRateFee / 100000n + 5n);
     expect(await vault.managerFeeBps()).to.equal(200);
   });
 });

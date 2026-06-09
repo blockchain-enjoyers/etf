@@ -137,16 +137,16 @@ describe("CloneFactory — managed baskets", () => {
     expect(await mv.manager()).to.equal(manager.address);
     expect(await mv.meridian()).to.equal(deployer.address);  // default = factory deployer
     expect(await mv.treasury()).to.equal(deployer.address);
-    expect(await mv.platformShareBps()).to.equal(1000);      // default 10%
+    expect(await mv.platformFeeBps()).to.equal(15);          // default 0.15%/yr own line
     expect(await mv.managerFeeBps()).to.equal(100);
   });
 
-  it("owner can set meridian/treasury/platformShareBps; caps enforced; non-owner blocked", async () => {
+  it("owner can set meridian/treasury/platformFeeBps; caps enforced; non-owner blocked", async () => {
     const [deployer, other] = await ethers.getSigners();
     const factory = await deployCloneFactory();
-    await (await factory.setPlatformShareBps(1500)).wait();
-    expect(await factory.platformShareBps()).to.equal(1500);
-    await expect(factory.setPlatformShareBps(2001)).to.be.revertedWithCustomError(factory, "ShareTooHigh");
+    await (await factory.setPlatformFeeBps(40)).wait();
+    expect(await factory.platformFeeBps()).to.equal(40);
+    await expect(factory.setPlatformFeeBps(51)).to.be.revertedWithCustomError(factory, "PlatformFeeTooHigh");
     await expect(factory.setTreasury(ethers.ZeroAddress)).to.be.revertedWithCustomError(factory, "ZeroAddress");
     await expect(factory.setMeridian(ethers.ZeroAddress)).to.be.revertedWithCustomError(factory, "ZeroAddress");
     await expect(factory.connect(other).setMeridian(other.address))
@@ -174,9 +174,9 @@ describe("CloneFactory — managed baskets", () => {
   });
 
   it("predicted managed address shifts when a factory global changes (globals baked into clone init)", async () => {
-    // In the clone model, globals (meridian/treasury/platformShareBps) are NOT part of the clone-args
+    // In the clone model, globals (meridian/treasury/platformFeeBps) are NOT part of the clone-args
     // (they don't affect the clone address). Only unitSize+recipeCommitment go into args.
-    // The salt determines the address. Changing platformShareBps does NOT shift the predicted address —
+    // The salt determines the address. Changing platformFeeBps does NOT shift the predicted address —
     // unlike the old CREATE2 initcode model. This test verifies the new semantics.
     const [deployer, manager] = await ethers.getSigners();
     const factory = await deployCloneFactory();
@@ -192,14 +192,14 @@ describe("CloneFactory — managed baskets", () => {
     const basket = { tokens: legs.map((l) => l.addr), unitQty: legs.map((l) => l.qty), unitSize: ONE, name: "M", symbol: "M", manager: manager.address, managerFeeBps: 100 };
     const salt = ethers.encodeBytes32String("s3");
     const before = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
-    await (await factory.setPlatformShareBps(1500)).wait();
+    await (await factory.setPlatformFeeBps(40)).wait();
     const after = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
     // In clone model: changing globals does NOT change the address (only unitSize+commitment+salt do).
     // This is a semantics CHANGE from the old factory (a footgun removed). Verify they're equal.
     expect(after).to.equal(before);
-    // But the deployed vault WILL get the updated platformShareBps (1500) from factory state at deploy time.
+    // But the deployed vault WILL get the updated platformFeeBps (40) from factory state at deploy time.
     await (await factory.createManagedBasket(basket, salt)).wait();
     const mv = await ethers.getContractAt("ManagedVault", await factory.allVaults(0));
-    expect(await mv.platformShareBps()).to.equal(1500);
+    expect(await mv.platformFeeBps()).to.equal(40);
   });
 });

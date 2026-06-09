@@ -47,7 +47,7 @@ async function baseDeploy() {
   const vaultAddr = await vault.getAddress();
   await vault.initializeRebalance(tokens, unitQty, "RB", "RB", {
     manager: manager.address, meridian: meridian.address, treasury: treasury.address,
-    managerFeeBps: 0, platformShareBps: 0, keeperBps: 0, keeperEscrow: await km.getAddress(),
+    managerFeeBps: 0, platformFeeBps: 0, keeperBps: 0, keeperEscrow: await km.getAddress(),
   });
 
   const Nav = await ethers.getContractFactory("MockHoldingsNav");

@@ -62,6 +62,15 @@ export async function signPermit(
 // A "skip this leg" PermitInput (deadline == 0): used when a constituent lacks permit or was approved classically.
 export const SKIP_PERMIT = { value: 0n, deadline: 0n, v: 0, r: ethers.ZeroHash, s: ethers.ZeroHash };
 
+// Whole shares the contract mints to ONE fee leg over `elapsed` seconds on `supply` at annual `bps`.
+// Mirrors _feeAddScaled (×SCALE) then floors by /SCALE. SCALE == 1e18.
+export function expectedFeeShares(supply: bigint, bps: bigint, elapsed: bigint, accOwed: bigint = 0n): bigint {
+  const BPS = 10_000n, YEAR = 365n * 24n * 60n * 60n, SCALE = 10n ** 18n;
+  const num = bps * elapsed, den = BPS * YEAR;
+  const addScaled = num >= den ? supply * SCALE : (supply * num * SCALE) / (den - num); // mulDiv floor
+  return (accOwed + addScaled) / SCALE;
+}
+
 export type Leg = { stock: any; addr: string; qty: bigint };
 
 // The vault constructor requires strictly ascending token addresses; sort the recipe to match.

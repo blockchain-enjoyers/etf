@@ -19,7 +19,7 @@ async function deploy() {
   const Helper = await ethers.getContractFactory("CloneWithArgsHelper"); const helper = await Helper.deploy();
   await helper.clone(await impl.getAddress(), argz);
   const vault = await ethers.getContractAt("ManagedRebalanceVault", await helper.lastClone());
-  await vault.initializeRebalance(tokens, unitQty, "RB","RB", { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps:0, platformShareBps:0, keeperBps:0, keeperEscrow: await km.getAddress() });
+  await vault.initializeRebalance(tokens, unitQty, "RB","RB", { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps:0, platformFeeBps: 0, keeperBps:0, keeperEscrow: await km.getAddress() });
 
   // bootstrap: deposit 10 A + 10 B for 1 share
   const [tA, tB] = tokens;

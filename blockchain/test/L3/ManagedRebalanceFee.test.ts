@@ -5,7 +5,9 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 const ONE = 10n ** 18n;
 const YEAR = 365 * 24 * 3600;
 
-async function deploy(keeperBps: number) {
+async function deploy(keeperBps: number, opts: { managerFeeBps?: number; platformFeeBps?: number } = {}) {
+  const managerFeeBps = opts.managerFeeBps ?? 200;
+  const platformFeeBps = opts.platformFeeBps ?? 15;
   const [deployer, manager, meridian, treasury] = await ethers.getSigners();
 
   const Tok = await ethers.getContractFactory("MockERC20Decimals");
@@ -35,19 +37,21 @@ async function deploy(keeperBps: number) {
 
   await vault.initializeRebalance(tokens, unitQty, "RB", "RB", {
     manager: manager.address, meridian: meridian.address, treasury: treasury.address,
-    managerFeeBps: 200, platformShareBps: 1000, keeperBps, keeperEscrow: await km.getAddress(),
+    managerFeeBps, platformFeeBps, keeperBps, keeperEscrow: await km.getAddress(),
   });
 
   await a.mint(deployer.address, ONE); await b.mint(deployer.address, ONE);
   await a.approve(cloneAddr, ONE); await b.approve(cloneAddr, ONE);
   await vault.create(ONE); // nShares (holdings-based override): 1e18 shares = 1 unitSize
 
-  return { vault, km, tokens, manager, meridian, treasury, share: cloneAddr };
+  return { vault, km, tokens, manager, meridian, treasury, share: cloneAddr,
+           keeperEscrow: await km.getAddress() };
 }
 
 // Named fixtures (loadFixture rejects anonymous arrows — must be stable references).
 const deploy0 = () => deploy(0);
 const deploy250 = () => deploy(250);
+const deployIndependentLegs = () => deploy(2000, { managerFeeBps: 100, platformFeeBps: 15 });
 
 describe("ManagedRebalanceVault — 3-way fee", () => {
   it("with keeperBps=0 behaves like ManagedVault (no keeper escrow growth)", async () => {
@@ -77,6 +81,27 @@ describe("ManagedRebalanceVault — 3-way fee", () => {
     expect(legs).to.equal(minted);
   });
 
+  it("splits the MANAGER leg into manager+keeper and accrues platform as its own independent leg", async () => {
+    // managerFeeBps=100, platformFeeBps=15, keeperBps=2000 (20% of the MANAGER fee).
+    const { vault, manager, treasury, keeperEscrow } = await loadFixture(deployIndependentLegs);
+    const supply0 = await vault.totalSupply();
+    await time.increase(YEAR);
+    await (await vault.accrueFee()).wait();
+
+    const mgr = await vault.balanceOf(manager.address);
+    const tre = await vault.balanceOf(treasury.address);
+    const kpr = await vault.balanceOf(keeperEscrow);
+
+    // platform (treasury) ≈ 0.15% of supply, INDEPENDENT of the manager fee
+    expect(tre).to.be.greaterThan((supply0 * 14n) / 10_000n);
+    expect(tre).to.be.lessThan((supply0 * 17n) / 10_000n);
+    // keeper = 20% of the MANAGER 1% leg ≈ 0.20% of supply; manager keeps the remaining ~0.80%
+    expect(kpr).to.be.greaterThan((supply0 * 18n) / 10_000n);
+    expect(kpr).to.be.lessThan((supply0 * 22n) / 10_000n);
+    expect(mgr).to.be.greaterThan((supply0 * 75n) / 10_000n);
+    expect(mgr).to.be.lessThan((supply0 * 85n) / 10_000n);
+  });
+
   it("rejects keeperBps over KEEPER_MAX and a zero escrow when keeperBps>0", async () => {
     const [deployer, manager, meridian, treasury] = await ethers.getSigners();
     const Tok = await ethers.getContractFactory("MockERC20Decimals");
@@ -103,7 +128,7 @@ describe("ManagedRebalanceVault — 3-way fee", () => {
     const v1 = await ethers.getContractAt("ManagedRebalanceVault", await h1.lastClone());
     await expect(v1.initializeRebalance(tokens, unitQty, "RB", "RB", {
       manager: manager.address, meridian: meridian.address, treasury: treasury.address,
-      managerFeeBps: 200, platformShareBps: 1000, keeperBps: 2001, keeperEscrow: deployer.address,
+      managerFeeBps: 200, platformFeeBps: 15, keeperBps: 2001, keeperEscrow: deployer.address,
     })).to.be.revertedWithCustomError(impl, "KeeperShareTooHigh");
 
     // keeperBps>0 with zero escrow -> ZeroEscrow
@@ -112,7 +137,7 @@ describe("ManagedRebalanceVault — 3-way fee", () => {
     const v2 = await ethers.getContractAt("ManagedRebalanceVault", await h2.lastClone());
     await expect(v2.initializeRebalance(tokens, unitQty, "RB", "RB", {
       manager: manager.address, meridian: meridian.address, treasury: treasury.address,
-      managerFeeBps: 200, platformShareBps: 1000, keeperBps: 250, keeperEscrow: ethers.ZeroAddress,
+      managerFeeBps: 200, platformFeeBps: 15, keeperBps: 250, keeperEscrow: ethers.ZeroAddress,
     })).to.be.revertedWithCustomError(impl, "ZeroEscrow");
   });
 

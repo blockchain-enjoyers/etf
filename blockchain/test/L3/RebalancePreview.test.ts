@@ -4,7 +4,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 
 const ONE = 10n ** 18n;
 
-async function deployWithFee(managerFeeBps: number, platformShareBps: number, keeperBps: number) {
+async function deployWithFee(managerFeeBps: number, platformFeeBps: number, keeperBps: number) {
   const [deployer, manager, meridian, treasury] = await ethers.getSigners();
   const Tok = await ethers.getContractFactory("MockERC20Decimals");
   const a = await Tok.deploy("A","A",18); const b = await Tok.deploy("B","B",18);
@@ -19,7 +19,7 @@ async function deployWithFee(managerFeeBps: number, platformShareBps: number, ke
   const Helper = await ethers.getContractFactory("CloneWithArgsHelper"); const helper = await Helper.deploy();
   await helper.clone(await impl.getAddress(), argz);
   const vault = await ethers.getContractAt("ManagedRebalanceVault", await helper.lastClone());
-  await vault.initializeRebalance(tokens, unitQty, "RB","RB", { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps, platformShareBps, keeperBps, keeperEscrow: await km.getAddress() });
+  await vault.initializeRebalance(tokens, unitQty, "RB","RB", { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps, platformFeeBps, keeperBps, keeperEscrow: await km.getAddress() });
   return { vault, cA, cB, tokens, deployer };
 }
 
@@ -28,8 +28,8 @@ async function deploy() {
 }
 
 async function deployFeeBearing() {
-  // managerFeeBps=100 (1%/yr), platform+keeper non-zero too so all three legs accrue.
-  return deployWithFee(100, 1000, 1000);
+  // managerFeeBps=100 (1%/yr), platform (own line, <=50) + keeper non-zero too so all three legs accrue.
+  return deployWithFee(100, 15, 1000);
 }
 
 describe("ManagedRebalanceVault — holdings-based previews", () => {

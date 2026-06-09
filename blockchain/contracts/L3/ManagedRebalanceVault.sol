@@ -10,16 +10,17 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 /// @notice is ManagedVault, so all audited in-kind create/redeem + fee timelock paths are reused. The
 ///         ONLY change here is a 3-way fee split: the management-fee dilution is carved into
 ///         manager / platform / KEEPER, the keeper slice minted to a KeeperModule escrow so keeper
-///         rewards self-fund from block 1 (R14). Rebalance execution is added in Part 2. Floor rule
-///         (Reserve/R11): platform and keeper rounded UP, manager takes the remainder; caps guarantee
-///         platformShareBps + keeperBps < BPS so the manager leg never underflows.
+///         rewards self-fund from block 1 (R14). Rebalance execution is added in Part 2. The platform
+///         fee is Meridian's OWN independent annual AUM leg (-> treasury, not split); the keeper slice
+///         is carved from the MANAGER leg (Reserve/R11 floor: keeper rounded UP, manager takes the
+///         remainder; KEEPER_MAX < BPS so the manager leg never underflows).
 /// @dev    Init goes through `initializeRebalance` (a distinctly-named entrypoint, NOT a second
 ///         `initialize` overload) so the bare `initialize` is never ambiguous on the subclass ABI. The
 ///         Part-3 rebalance factory creates the clone and calls `initializeRebalance` atomically.
 contract ManagedRebalanceVault is ManagedVault {
     using SafeERC20 for IERC20;
 
-    uint16 public constant KEEPER_MAX = 2000; // 20% of the fee; PLATFORM_SHARE_MAX + KEEPER_MAX < BPS
+    uint16 public constant KEEPER_MAX = 2000; // 20% of the MANAGER fee; KEEPER_MAX < BPS so the manager leg never underflows
 
     /// @notice Keeper cut as a share OF the manager fee (bps). 0 disables the keeper leg.
     uint16 public keeperBps;
@@ -36,7 +37,7 @@ contract ManagedRebalanceVault is ManagedVault {
         address meridian;
         address treasury;
         uint16 managerFeeBps;
-        uint16 platformShareBps;
+        uint16 platformFeeBps;
         uint16 keeperBps;
         address keeperEscrow;
     }
@@ -64,7 +65,7 @@ contract ManagedRebalanceVault is ManagedVault {
         __StorageVault_init(tokens, unitQty);
         __Managed_init(ManagedParams({
             manager: p.manager, meridian: p.meridian, treasury: p.treasury,
-            managerFeeBps: p.managerFeeBps, platformShareBps: p.platformShareBps
+            managerFeeBps: p.managerFeeBps, platformFeeBps: p.platformFeeBps
         }));
         if (p.keeperBps > KEEPER_MAX) revert KeeperShareTooHigh();
         if (p.keeperBps > 0 && p.keeperEscrow == address(0)) revert ZeroEscrow();
@@ -78,22 +79,25 @@ contract ManagedRebalanceVault is ManagedVault {
         uint256 supply = totalSupply();
         uint256 ts = block.timestamp;
         if (supply == 0 || ts == lastAccrued) { lastAccrued = ts; return; }
-        uint256 addScaled = _feeAddScaled(supply, ts - lastAccrued);
+        uint256 elapsed = ts - lastAccrued;
         lastAccrued = ts;
 
-        uint256 platformAddS = Math.ceilDiv(addScaled * platformShareBps, BPS); // platform UP
-        uint256 keeperAddS = Math.ceilDiv(addScaled * keeperBps, BPS);          // keeper UP
-        uint256 managerAddS = addScaled - platformAddS - keeperAddS;            // remainder (>=0 by caps)
+        // MANAGER leg (manager's own rate) is split into manager + keeper (R14, A-a).
+        uint256 managerLeg = _feeAddScaled(supply, elapsed, managerFeeBps);
+        uint256 keeperAddS = Math.ceilDiv(managerLeg * keeperBps, BPS); // keeper UP, carved from the manager leg
+        uint256 managerAddS = managerLeg - keeperAddS;                  // >= 0 since keeperBps <= KEEPER_MAX < BPS
+        // PLATFORM leg is Meridian's OWN independent rate -> treasury (NOT split).
+        uint256 platformAddS = _feeAddScaled(supply, elapsed, platformFeeBps);
 
-        uint256 p = accPlatformOwed + platformAddS;
-        uint256 k = accKeeperOwed + keeperAddS;
         uint256 m = accManagerOwed + managerAddS;
-        uint256 mintP = p / SCALE;
-        uint256 mintK = k / SCALE;
+        uint256 k = accKeeperOwed + keeperAddS;
+        uint256 p = accPlatformOwed + platformAddS;
         uint256 mintM = m / SCALE;
-        accPlatformOwed = p - mintP * SCALE;
-        accKeeperOwed = k - mintK * SCALE;
+        uint256 mintK = k / SCALE;
+        uint256 mintP = p / SCALE;
         accManagerOwed = m - mintM * SCALE;
+        accKeeperOwed = k - mintK * SCALE;
+        accPlatformOwed = p - mintP * SCALE;
 
         if (mintP > 0) _mint(treasury, mintP);
         if (mintK > 0) { _mint(keeperEscrow, mintK); emit KeeperFeeAccrued(mintK); }
@@ -105,14 +109,15 @@ contract ManagedRebalanceVault is ManagedVault {
     function pendingMintShares() public view override returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0 || block.timestamp == lastAccrued) return 0;
-        uint256 addScaled = _feeAddScaled(supply, block.timestamp - lastAccrued);
-        uint256 platformAddS = Math.ceilDiv(addScaled * platformShareBps, BPS);
-        uint256 keeperAddS = Math.ceilDiv(addScaled * keeperBps, BPS);
-        uint256 managerAddS = addScaled - platformAddS - keeperAddS;
-        uint256 mintP = (accPlatformOwed + platformAddS) / SCALE;
-        uint256 mintK = (accKeeperOwed + keeperAddS) / SCALE;
+        uint256 elapsed = block.timestamp - lastAccrued;
+        uint256 managerLeg = _feeAddScaled(supply, elapsed, managerFeeBps);
+        uint256 keeperAddS = Math.ceilDiv(managerLeg * keeperBps, BPS);
+        uint256 managerAddS = managerLeg - keeperAddS;
+        uint256 platformAddS = _feeAddScaled(supply, elapsed, platformFeeBps);
         uint256 mintM = (accManagerOwed + managerAddS) / SCALE;
-        return mintP + mintK + mintM;
+        uint256 mintK = (accKeeperOwed + keeperAddS) / SCALE;
+        uint256 mintP = (accPlatformOwed + platformAddS) / SCALE;
+        return mintM + mintK + mintP;
     }
 
     // ---- timelocked keeperBps setter (mirrors platform-share semantics) ----

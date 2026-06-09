@@ -24,14 +24,14 @@ contract CloneFactory is Ownable {
     // Meridian managed-vault globals (injected into every managed clone).
     address public meridian;
     address public treasury;
-    uint16 public platformShareBps;
-    uint16 public constant PLATFORM_SHARE_MAX = 2000;
+    uint16 public platformFeeBps;
+    uint16 public constant PLATFORM_FEE_MAX = 50;
 
     address public rebalanceImpl;
     mapping(address => bool) public constituentAllowed;
 
     error ZeroAddress();
-    error ShareTooHigh();
+    error PlatformFeeTooHigh();
     error NotWhitelisted();
 
     event BasketCreated(address indexed vault, address indexed creator, bytes32 userSalt, address[] tokens, uint256[] unitQty, uint256 unitSize, string name, string symbol);
@@ -47,12 +47,12 @@ contract CloneFactory is Ownable {
         committedImpl = committedImpl_;
         meridian = msg.sender;
         treasury = msg.sender;
-        platformShareBps = 1000;
+        platformFeeBps = 15; // Meridian's own line, 0.15%/yr default
     }
 
     function setMeridian(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); meridian = a; }
     function setTreasury(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); treasury = a; }
-    function setPlatformShareBps(uint16 b) external onlyOwner { if (b > PLATFORM_SHARE_MAX) revert ShareTooHigh(); platformShareBps = b; }
+    function setPlatformFeeBps(uint16 b) external onlyOwner { if (b > PLATFORM_FEE_MAX) revert PlatformFeeTooHigh(); platformFeeBps = b; }
     function setRebalanceImpl(address impl) external onlyOwner { if (impl == address(0)) revert ZeroAddress(); rebalanceImpl = impl; }
     function setConstituentAllowed(address token, bool ok) external onlyOwner { constituentAllowed[token] = ok; emit ConstituentAllowed(token, ok); }
 
@@ -102,7 +102,7 @@ contract CloneFactory is Ownable {
         vault = Clones.cloneDeterministicWithImmutableArgs(managedImpl, args, _salt(msg.sender, userSalt));
         ManagedVault(vault).initialize(
             _mem(b.tokens), _mem2(b.unitQty), b.name, b.symbol,
-            ManagedVault.ManagedParams({manager: b.manager, meridian: meridian, treasury: treasury, managerFeeBps: b.managerFeeBps, platformShareBps: platformShareBps})
+            ManagedVault.ManagedParams({manager: b.manager, meridian: meridian, treasury: treasury, managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps})
         );
         allVaults.push(vault);
         emit ManagedBasketCreated(vault, msg.sender, b.manager, b.managerFeeBps, userSalt);
@@ -127,7 +127,7 @@ contract CloneFactory is Ownable {
             _mem(b.tokens), _mem2(b.unitQty), b.name, b.symbol,
             ManagedRebalanceVault.RebalanceParams({
                 manager: b.manager, meridian: meridian, treasury: treasury,
-                managerFeeBps: b.managerFeeBps, platformShareBps: platformShareBps,
+                managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps,
                 keeperBps: b.keeperBps, keeperEscrow: b.keeperEscrow
             })
         );

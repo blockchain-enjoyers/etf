@@ -6,13 +6,15 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title ManagedVault — L1 managed in-kind basket with a rev-share management fee (Meridian)
 /// @notice Static recipe (no rebalance) + a streaming management fee charged by dilution. The
-///         manager sets its own fee; Meridian takes a bounded SHARE of that fee (rev-share). The
-///         investor pays only the manager fee; Meridian's cut comes out of it. See the L1-managed
-///         design spec. Fee accrues into high-precision owed-accumulators; only whole shares are
-///         minted and the fractional remainder is carried (no dust loss, platform cannot be starved).
+///         manager sets its own fee; Meridian charges its OWN independent annual platform fee
+///         (its own line, not a share of the manager fee). The investor pays both legs by dilution.
+///         See the L1-managed design spec. Fee accrues into high-precision owed-accumulators; only
+///         whole shares are minted and the fractional remainder is carried (no dust loss, platform
+///         cannot be starved).
 contract ManagedVault is StorageVaultBase {
-    uint16 public constant MANAGER_MAX = 200;          // 2%/yr
-    uint16 public constant PLATFORM_SHARE_MAX = 2000;  // 20% of the manager fee
+    uint16 public constant MANAGER_MAX = 200;        // 2%/yr (manager-set)
+    uint16 public constant PLATFORM_FEE_MAX = 50;    // 0.5%/yr — Meridian's OWN line (not a share of the manager fee)
+    uint16 public constant FLOW_FEE_BPS = 0;         // red line #3 in code: NO setter exists; no %-of-flow fee can ever be taken
     uint256 internal constant BPS = 10_000;
     uint256 internal constant YEAR = 365 days;
     uint256 internal constant SCALE = 1e18; // fixed-point precision of the owed accumulators (NOT tied to token decimals)
@@ -23,7 +25,7 @@ contract ManagedVault is StorageVaultBase {
         address meridian;
         address treasury;
         uint16 managerFeeBps;
-        uint16 platformShareBps;
+        uint16 platformFeeBps;
     }
 
     address public manager;
@@ -31,8 +33,8 @@ contract ManagedVault is StorageVaultBase {
     address public treasury;
     /// @notice Active annual management fee (bps of AUM), manager-set, ≤ MANAGER_MAX.
     uint16 public managerFeeBps;
-    /// @notice Active platform cut as a share OF the manager fee (bps), meridian-set, ≤ PLATFORM_SHARE_MAX.
-    uint16 public platformShareBps;
+    /// @notice Active platform fee — Meridian's OWN annual bps of AUM (≤ PLATFORM_FEE_MAX), by dilution.
+    uint16 public platformFeeBps;
 
     /// @notice Timestamp of the last fee accrual. Full uint256 (not packed): read on every accrual,
     ///         compared against the uint64 *EffectiveAt fields in time math — keep both as plain
@@ -44,37 +46,38 @@ contract ManagedVault is StorageVaultBase {
     uint256 public accManagerOwed;
     /// @notice Platform (Meridian) fee owed but not yet minted, in basket shares SCALED by SCALE (1e18).
     ///         Minted to `treasury` as `value / SCALE`; sub-SCALE remainder carried. SCALE units.
+    ///         Computed from Meridian's OWN platformFeeBps rate (an independent leg, not a share of manager).
     uint256 public accPlatformOwed;
 
     // Pending fee changes (increase only; timelocked). effectiveAt == 0 means none scheduled.
     // uint16 + uint64 grouped to share a storage slot — keep adjacent if reordering.
     uint16 public pendingManagerFeeBps;
     uint64 public managerFeeEffectiveAt;
-    uint16 public pendingPlatformShareBps;
-    uint64 public platformShareEffectiveAt;
+    uint16 public pendingPlatformFeeBps;
+    uint64 public platformFeeEffectiveAt;
 
     address public pendingManager;
     address public pendingMeridian;
 
     error ZeroAddress();
     error FeeTooHigh();
-    error ShareTooHigh();
+    error PlatformFeeTooHigh();
     error NotManager();
     error NotMeridian();
     error NothingPending();
     error TimelockNotElapsed();
     error NotPending();
 
-    /// @dev toTreasury = Meridian's rev-share cut (paid to `treasury`); toManager = the manager's remainder.
+    /// @dev toTreasury = Meridian's own platform-fee leg (paid to `treasury`); toManager = the manager's leg.
     event FeeAccrued(uint256 feeShares, uint256 toManager, uint256 toTreasury);
     event ManagerFeeSet(uint16 bps);
     event ManagerFeeScheduled(uint16 bps, uint64 effectiveAt);
     event ManagerFeeActivated(uint16 bps);
     event ManagerFeeScheduleCancelled();
-    event PlatformShareSet(uint16 bps);
-    event PlatformShareScheduled(uint16 bps, uint64 effectiveAt);
-    event PlatformShareActivated(uint16 bps);
-    event PlatformShareScheduleCancelled();
+    event PlatformFeeSet(uint16 bps);
+    event PlatformFeeScheduled(uint16 bps, uint64 effectiveAt);
+    event PlatformFeeActivated(uint16 bps);
+    event PlatformFeeScheduleCancelled();
     event TreasurySet(address treasury);
     event ManagerTransferStarted(address pending);
     event ManagerTransferred(address manager);
@@ -101,12 +104,12 @@ contract ManagedVault is StorageVaultBase {
     function __Managed_init(ManagedParams memory p) internal onlyInitializing {
         if (p.manager == address(0) || p.meridian == address(0) || p.treasury == address(0)) revert ZeroAddress();
         if (p.managerFeeBps > MANAGER_MAX) revert FeeTooHigh();
-        if (p.platformShareBps > PLATFORM_SHARE_MAX) revert ShareTooHigh();
+        if (p.platformFeeBps > PLATFORM_FEE_MAX) revert PlatformFeeTooHigh();
         manager = p.manager;
         meridian = p.meridian;
         treasury = p.treasury;
         managerFeeBps = p.managerFeeBps;
-        platformShareBps = p.platformShareBps;
+        platformFeeBps = p.platformFeeBps;
         lastAccrued = block.timestamp;
     }
 
@@ -121,54 +124,42 @@ contract ManagedVault is StorageVaultBase {
     function pendingMintShares() public view virtual returns (uint256) {
         uint256 supply = totalSupply();
         if (supply == 0 || block.timestamp == lastAccrued) return 0;
-        (uint256 platformAdd, uint256 managerAdd) = _owedAdds(supply, block.timestamp - lastAccrued);
-        uint256 mintP = (accPlatformOwed + platformAdd) / SCALE;
-        uint256 mintM = (accManagerOwed + managerAdd) / SCALE;
-        return mintP + mintM;
+        uint256 elapsed = block.timestamp - lastAccrued;
+        uint256 mintM = (accManagerOwed + _feeAddScaled(supply, elapsed, managerFeeBps)) / SCALE;
+        uint256 mintP = (accPlatformOwed + _feeAddScaled(supply, elapsed, platformFeeBps)) / SCALE;
+        return mintM + mintP;
     }
 
-    /// @dev Pre-split scaled (×SCALE) fee for `elapsed` seconds on `supply`. Virtual so a
-    ///      subclass can override for a different split (e.g. a 3-way keeper split). When not
-    ///      overridden, _owedAdds below produces the standard 2-way platform/manager result.
-    function _feeAddScaled(uint256 supply, uint256 elapsed) internal view virtual returns (uint256 addScaled) {
-        uint256 num = uint256(managerFeeBps) * elapsed; // BPS·seconds
+    /// @dev Scaled (×SCALE) compound-correct dilution shares for an annual `bps` rate over `elapsed` seconds on
+    ///      `supply`. Pure (rate passed in) so the same formula serves the manager leg and the independent
+    ///      platform leg. Saturates at supply·SCALE when the period fee would reach/exceed 100%.
+    ///      `elapsed`/`supply` are PASSED IN (not re-read) so the dependency on the OLD `lastAccrued` is
+    ///      explicit: callers must compute `elapsed` from `lastAccrued` BEFORE advancing it.
+    ///      INVARIANT for future fee setters: call `_accrue()` BEFORE changing managerFeeBps /
+    ///      platformFeeBps, so an elapsed window is never charged at a newly-set rate.
+    function _feeAddScaled(uint256 supply, uint256 elapsed, uint16 bps) internal pure returns (uint256 addScaled) {
+        uint256 num = uint256(bps) * elapsed; // BPS·seconds
         uint256 den = BPS * YEAR;
         addScaled = num >= den ? supply * SCALE : Math.mulDiv(supply, num * SCALE, den - num);
-    }
-
-    /// @dev Scaled (×SCALE) fee additions for `elapsed` seconds on `supply`, split into platform/manager.
-    ///      `elapsed`/`supply` are PASSED IN (not re-read) so the dependency on the OLD `lastAccrued` is
-    ///      explicit: callers must compute `elapsed` from `lastAccrued` BEFORE advancing it. The platform
-    ///      leg is rounded UP (Math.ceilDiv, dust -> platform) — the audited Reserve Folio convention, so
-    ///      Meridian's cut is never starved by rounding (on top of the per-leg accumulator carry).
-    ///      managerAdd stays >= 0 since platformShareBps <= PLATFORM_SHARE_MAX < BPS.
-    ///      INVARIANT for future fee/share setters: call `_accrue()` BEFORE changing managerFeeBps /
-    ///      platformShareBps, so an elapsed window is never charged at a newly-set rate.
-    function _owedAdds(uint256 supply, uint256 elapsed)
-        internal
-        view
-        returns (uint256 platformAdd, uint256 managerAdd)
-    {
-        uint256 addScaled = _feeAddScaled(supply, elapsed);
-        platformAdd = Math.ceilDiv(addScaled * platformShareBps, BPS); // round platform UP (dust -> platform), R11/Reserve
-        managerAdd = addScaled - platformAdd;
     }
 
     function _accrue() internal override virtual {
         uint256 supply = totalSupply();
         uint256 ts = block.timestamp;
         if (supply == 0 || ts == lastAccrued) { lastAccrued = ts; return; }
-        (uint256 platformAdd, uint256 managerAdd) = _owedAdds(supply, ts - lastAccrued);
-        lastAccrued = ts; // always advance — remainder carried in accumulators
-        uint256 p = accPlatformOwed + platformAdd;
-        uint256 m = accManagerOwed + managerAdd;
-        uint256 mintP = p / SCALE;
+        uint256 elapsed = ts - lastAccrued;
+        lastAccrued = ts;
+        uint256 managerLeg = _feeAddScaled(supply, elapsed, managerFeeBps);   // manager's own rate
+        uint256 platformLeg = _feeAddScaled(supply, elapsed, platformFeeBps); // Meridian's own rate (independent)
+        uint256 m = accManagerOwed + managerLeg;
+        uint256 p = accPlatformOwed + platformLeg;
         uint256 mintM = m / SCALE;
+        uint256 mintP = p / SCALE;
+        accManagerOwed = m - mintM * SCALE;   // carry sub-SCALE remainder (no dust)
         accPlatformOwed = p - mintP * SCALE;
-        accManagerOwed = m - mintM * SCALE;
-        if (mintP > 0) _mint(treasury, mintP);
         if (mintM > 0) _mint(manager, mintM);
-        if (mintP > 0 || mintM > 0) emit FeeAccrued(mintP + mintM, mintM, mintP);
+        if (mintP > 0) _mint(treasury, mintP);
+        if (mintM > 0 || mintP > 0) emit FeeAccrued(mintM + mintP, mintM, mintP);
     }
 
     // ============================= FEE SETTERS ===============================
@@ -207,36 +198,35 @@ contract ManagedVault is StorageVaultBase {
         emit ManagerFeeActivated(managerFeeBps);
     }
 
-    /// @notice Set the platform share (Meridian's cut of the manager fee). Same semantics as
-    ///         `setManagerFeeBps`: <= current applies instantly (cancels any pending increase), higher
-    ///         is timelocked via `activatePlatformShare`. `_accrue()` settles at the old rate first.
-    ///         onlyMeridian.
-    function setPlatformShareBps(uint16 bps) external onlyMeridian {
-        if (bps > PLATFORM_SHARE_MAX) revert ShareTooHigh();
+    /// @notice Set Meridian's platform fee (its own annual bps of AUM). <= current applies instantly (cancels a
+    ///         pending increase); higher is timelocked via `activatePlatformFee`. `_accrue()` settles at the old
+    ///         rate first. onlyMeridian.
+    function setPlatformFeeBps(uint16 bps) external onlyMeridian {
+        if (bps > PLATFORM_FEE_MAX) revert PlatformFeeTooHigh();
         _accrue();
-        if (bps <= platformShareBps) {
-            platformShareBps = bps;
-            if (platformShareEffectiveAt != 0) emit PlatformShareScheduleCancelled();
-            pendingPlatformShareBps = 0;
-            platformShareEffectiveAt = 0;
-            emit PlatformShareSet(bps);
+        if (bps <= platformFeeBps) {
+            platformFeeBps = bps;
+            if (platformFeeEffectiveAt != 0) emit PlatformFeeScheduleCancelled();
+            pendingPlatformFeeBps = 0;
+            platformFeeEffectiveAt = 0;
+            emit PlatformFeeSet(bps);
         } else {
-            pendingPlatformShareBps = bps;
-            platformShareEffectiveAt = uint64(block.timestamp + TIMELOCK);
-            emit PlatformShareScheduled(bps, platformShareEffectiveAt);
+            pendingPlatformFeeBps = bps;
+            platformFeeEffectiveAt = uint64(block.timestamp + TIMELOCK);
+            emit PlatformFeeScheduled(bps, platformFeeEffectiveAt);
         }
     }
 
-    /// @notice Apply a previously-scheduled platform-share increase after its timelock. onlyMeridian.
-    function activatePlatformShare() external onlyMeridian {
-        uint64 eff = platformShareEffectiveAt;
+    /// @notice Apply a previously-scheduled platform-fee increase after its timelock. onlyMeridian.
+    function activatePlatformFee() external onlyMeridian {
+        uint64 eff = platformFeeEffectiveAt;
         if (eff == 0) revert NothingPending();
         if (block.timestamp < eff) revert TimelockNotElapsed();
         _accrue();
-        platformShareBps = pendingPlatformShareBps;
-        pendingPlatformShareBps = 0;
-        platformShareEffectiveAt = 0;
-        emit PlatformShareActivated(platformShareBps);
+        platformFeeBps = pendingPlatformFeeBps;
+        pendingPlatformFeeBps = 0;
+        platformFeeEffectiveAt = 0;
+        emit PlatformFeeActivated(platformFeeBps);
     }
 
     // =============================== ROLES ===================================

@@ -7,8 +7,8 @@
 // Individual baskets are NOT deployed here: issuers mint them at runtime via factory.createBasket /
 // createCommittedBasket / createManagedBasket (clone-with-immutable-args).
 //
-// Post-deploy: CloneFactory.meridian/treasury default to the deployer and platformShareBps to 1000
-// (10%). Adjust later with setMeridian/setTreasury/setPlatformShareBps as the owner.
+// Post-deploy: CloneFactory.meridian/treasury default to the deployer and platformFeeBps to 15
+// (0.15%). Adjust later with setMeridian/setTreasury/setPlatformFeeBps as the owner.
 import { ensure, getDeployer, loadConfig, EXPLORER } from "./_shared";
 
 export async function deployL1() {

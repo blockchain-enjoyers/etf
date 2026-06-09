@@ -57,3 +57,49 @@ describe("RegistryCustody — wrap/unwrap", () => {
     await expect(H.connect(ap).unwrap(addr, 11n * UNIT, ap.address)).to.be.reverted;
   });
 });
+
+describe("RegistryCustody — internal port", () => {
+  it("custodyBalance reads the vault's own claim balance", async () => {
+    const { ap, token, H } = await deploy();
+    const addr = await token.getAddress();
+    await token.mint(ap.address, 50n * UNIT);
+    await token.connect(ap).approve(await H.getAddress(), 50n * UNIT);
+    await H.connect(ap).wrap(addr, 50n * UNIT);
+    // nothing in the vault's own custody yet (claims are the AP's)
+    expect(await H.custodyBalance(addr)).to.equal(0n);
+    // AP moves their claims into the vault (from == ap, the claim owner)
+    await H.connect(ap).custodyIn(ap.address, addr, 30n * UNIT);
+    expect(await H.custodyBalance(addr)).to.equal(30n * UNIT);
+  });
+
+  it("custodyOut moves claims from the vault to a recipient, internally (no ERC-20 move)", async () => {
+    const { ap, user, token, H } = await deploy();
+    const addr = await token.getAddress();
+    await token.mint(ap.address, 50n * UNIT);
+    await token.connect(ap).approve(await H.getAddress(), 50n * UNIT);
+    await H.connect(ap).wrap(addr, 50n * UNIT);
+    await H.connect(ap).custodyIn(ap.address, addr, 50n * UNIT);
+
+    const erc20Before = await token.balanceOf(await H.getAddress());
+    await H.custodyOut(user.address, addr, 20n * UNIT);
+
+    expect(await H.custodyBalance(addr)).to.equal(30n * UNIT);
+    expect(await H["balanceOf(address,uint256)"](user.address, await H.idOf(addr))).to.equal(20n * UNIT);
+    // the real ERC-20 never moved during the internal reassignment
+    expect(await token.balanceOf(await H.getAddress())).to.equal(erc20Before);
+  });
+
+  it("the unguarded port moves a third party's claims (documents the leaf MUST pass msg.sender)", async () => {
+    // _custodyIn uses internal _transfer with NO allowance/operator check. The harness exposes it openly,
+    // so a non-owner can move the victim's claims. This LOCKS that fact: the real Part-2 leaf must only
+    // ever call _custodyIn(msg.sender, ...). If this ever reverts, the mixin gained an (unexpected) guard.
+    const { deployer, ap, token, H } = await deploy();
+    const addr = await token.getAddress();
+    await token.mint(ap.address, 10n * UNIT);
+    await token.connect(ap).approve(await H.getAddress(), 10n * UNIT);
+    await H.connect(ap).wrap(addr, 10n * UNIT); // claims owned by ap
+    // deployer (NOT ap) drives custodyIn with from == ap and succeeds (no allowance enforced)
+    await H.connect(deployer).custodyIn(ap.address, addr, 10n * UNIT);
+    expect(await H.custodyBalance(addr)).to.equal(10n * UNIT);
+  });
+});

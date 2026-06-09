@@ -25,6 +25,7 @@
 | L6 | [L6-24-7-binding.md](L6-24-7-binding.md) | 24/7 binding ребаланс / forced-redeem ★ wedge |
 | L7 | [L7-leverage-derivatives.md](L7-leverage-derivatives.md) | Плечо / деривативы / structured |
 | Demo | [demo.md](demo.md) | ТЗ на интерактивное демо Buildathon (для BE+FE): сцена + панель управления рынком |
+| Pitch | [pitch-video.md](pitch-video.md) | Бриф питч-видео (DRAFT): ядро, арка shipped-first, финал-визия |
 
 ## Master-словарь (базовые термины)
 

@@ -4,7 +4,7 @@ pragma solidity 0.8.35;
 import {StorageVaultBase} from "./recipe/StorageVaultBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-/// @title ManagedVault — L1 managed in-kind basket with a rev-share management fee (Meridian)
+/// @title ManagedVault — L1 managed in-kind basket with streaming management + platform fee (Meridian's own AUM line)
 /// @notice Static recipe (no rebalance) + a streaming management fee charged by dilution. The
 ///         manager sets its own fee; Meridian charges its OWN independent annual platform fee
 ///         (its own line, not a share of the manager fee). The investor pays both legs by dilution.

@@ -120,7 +120,7 @@ contract ManagedRebalanceVault is ManagedVault {
         return mintM + mintK + mintP;
     }
 
-    // ---- timelocked keeperBps setter (mirrors platform-share semantics) ----
+    // ---- timelocked keeperBps setter (mirrors platform-fee semantics) ----
 
     /// @notice Set the keeper cut. <= current applies instantly (cancels pending); higher is timelocked.
     ///         `_accrue()` settles the elapsed window at the OLD rate first. onlyMeridian (platform-side).

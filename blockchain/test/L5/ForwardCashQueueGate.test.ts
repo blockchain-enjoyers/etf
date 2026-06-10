@@ -80,7 +80,7 @@ async function deploy() {
 describe("ForwardCashQueue — g0-g8 settle gate", () => {
   it("happy path: Open+safe+covered+fresh-TWAP+pegged returns navPerShare == 100e18", async () => {
     const { q, HELD } = await loadFixture(deploy);
-    expect(await q.settleGateView([HELD], [[]])).to.equal(100n * ONE);
+    expect(await q.settleGateView.staticCall([HELD], [[]])).to.equal(100n * ONE);
   });
 
   it("g2 NotOpen: marketStatus != 0 reverts NotOpen", async () => {

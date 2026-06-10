@@ -149,7 +149,7 @@ async function bootstrapped() {
 describe("ForwardCashQueue — settle create/redeem flows", () => {
   it("gate sanity: navPerShare == 1e6 on the bootstrapped real vault", async () => {
     const { q, tokens } = await loadFixture(bootstrapped);
-    expect(await q.settleGateView(tokens, [[], []])).to.equal(NAV_SCALAR);
+    expect(await q.settleGateView.staticCall(tokens, [[], []])).to.equal(NAV_SCALAR);
   });
 
   it("CREATE: user gets N shares, AP keeps full ticket cash, no queue constituent leftover", async () => {
@@ -600,7 +600,7 @@ describe("ForwardCashQueue — settle create/redeem flows", () => {
     await peg.setUpdatedAt(await time.latest());
 
     // The queue derives N from navPerShare at settle; quote previewCreate(N) and fund the AP exactly.
-    const navPerShare = await q.settleGateView(tokens, [[], []]);
+    const navPerShare = await q.settleGateView.staticCall(tokens, [[], []]);
     const N = (cash * ONE) / navPerShare; // spread 0
     const [pTok, pAmt] = await fvault.previewCreate(N);
     const Filler = await ethers.getContractFactory("MockAPFiller");

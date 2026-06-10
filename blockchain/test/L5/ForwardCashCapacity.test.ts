@@ -242,7 +242,7 @@ describe("ForwardCashQueue — per-window CREATE capacity (partial fill + roll-o
     const remCash = cash - fillCash; // 1e6
     await time.increase(3600 + 1);
     await ctx.reseedObs();
-    const navPS2 = await q.settleGateView(tokens, [[], []]); // 5e5
+    const navPS2 = await q.settleGateView.staticCall(tokens, [[], []]); // 5e5
     const remN = (remCash * ONE) / navPS2; // 2e18
     const { apAddr: apAddr2 } = await fundCreateAP(ctx, remN);
 

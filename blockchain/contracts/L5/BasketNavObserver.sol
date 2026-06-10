@@ -4,7 +4,7 @@ pragma solidity 0.8.35;
 interface IHoldingsNav {
     struct NavResult { uint256 nav; uint256 confLower; uint256 confUpper; uint8 marketStatus; bool safe; uint256 timestamp; }
     function navOfHoldings(address vault, address[] calldata tokens, bytes[][] calldata payloads)
-        external view returns (NavResult memory);
+        external returns (NavResult memory);
 }
 
 interface ISupplyVault {

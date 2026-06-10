@@ -10,7 +10,7 @@ import {IRegistryVault} from "./interfaces/IRegistryVault.sol";
 
 interface INav {
     struct NavResult { uint256 nav; uint256 confLower; uint256 confUpper; uint8 marketStatus; bool safe; uint256 timestamp; }
-    function navOfHoldings(address vault, address[] calldata tokens, bytes[][] calldata payloads) external view returns (NavResult memory);
+    function navOfHoldings(address vault, address[] calldata tokens, bytes[][] calldata payloads) external returns (NavResult memory);
 }
 interface IRebVault {
     function heldTokens() external view returns (address[] memory);
@@ -172,7 +172,7 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
     /// @dev g1-g8 (g0 enforced at settle entry). Returns the struck navPerShare (1e18). The caller-supplied
     ///      `heldTokens` is VALIDATED == vault.heldTokens() and indexes both navOfHoldings and the g1 loop.
     function _settleGate(address[] calldata heldTokens, bytes[][] calldata payloads)
-        internal view returns (uint256 navPerShare)
+        internal returns (uint256 navPerShare)
     {
         address[] memory held = IRebVault(vault).heldTokens();
         if (heldTokens.length != held.length) revert HeldMismatch();
@@ -204,9 +204,11 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
         if (pdiff * BPS > pegBandBps * one) revert PegBreached();
     }
 
-    /// @notice Test/inspection wrapper around the gate.
+    /// @notice Test/inspection wrapper around the gate. NON-VIEW: the gate now calls a non-view NAV seam
+    ///         (a state-mutating price source like Chainlink Streams verifies in-tx). For `eth_call`/
+    ///         staticCall simulation only — it reverts with non-view sources under a real STATICCALL.
     function settleGateView(address[] calldata heldTokens, bytes[][] calldata payloads)
-        external view returns (uint256) { return _settleGate(heldTokens, payloads); }
+        external returns (uint256) { return _settleGate(heldTokens, payloads); }
 
     // ============================== SETTLE (create+redeem) ==============================
 

@@ -86,6 +86,7 @@ contract ManagedVault is StorageVaultBase {
     error TimelockNotElapsed();
     error NotPending();
     error FlatFeeTooHigh();
+    error FeeTokenUnset();
 
     /// @dev toTreasury = Meridian's own platform-fee leg (paid to `treasury`); toManager = the manager's leg.
     event FeeAccrued(uint256 feeShares, uint256 toManager, uint256 toTreasury);
@@ -133,6 +134,7 @@ contract ManagedVault is StorageVaultBase {
         managerFeeBps = p.managerFeeBps;
         platformFeeBps = p.platformFeeBps;
         if (p.flatCreateFee > FLAT_FEE_MAX || p.flatRedeemFee > FLAT_FEE_MAX) revert FlatFeeTooHigh();
+        if ((p.flatCreateFee > 0 || p.flatRedeemFee > 0) && p.feeToken == address(0)) revert FeeTokenUnset();
         feeToken = p.feeToken;
         flatCreateFee = p.flatCreateFee;
         flatRedeemFee = p.flatRedeemFee;
@@ -148,18 +150,24 @@ contract ManagedVault is StorageVaultBase {
         if (fee > 0) IERC20(feeToken).safeTransferFrom(msg.sender, treasury, fee);
     }
 
-    /// @notice Set the flat-fee asset (USDG). onlyMeridian.
-    function setFeeToken(address t) external onlyMeridian { feeToken = t; emit FeeTokenSet(t); }
+    /// @notice Set the flat-fee asset (USDG). onlyMeridian. Cannot be zeroed while a flat fee is live
+    ///         (that would brick create — `_chargeFlatCreateFee` would call IERC20(address(0)).safeTransferFrom).
+    function setFeeToken(address t) external onlyMeridian {
+        if (t == address(0) && (flatCreateFee > 0 || flatRedeemFee > 0)) revert FeeTokenUnset();
+        feeToken = t; emit FeeTokenSet(t);
+    }
 
-    /// @notice Set the flat create fee (≤ FLAT_FEE_MAX). onlyMeridian.
+    /// @notice Set the flat create fee (≤ FLAT_FEE_MAX). onlyMeridian. A non-zero fee requires feeToken set.
     function setFlatCreateFee(uint256 fee) external onlyMeridian {
         if (fee > FLAT_FEE_MAX) revert FlatFeeTooHigh();
+        if (fee > 0 && feeToken == address(0)) revert FeeTokenUnset();
         flatCreateFee = fee; emit FlatCreateFeeSet(fee);
     }
 
     /// @notice Set the flat redeem fee CONFIG (≤ FLAT_FEE_MAX). Charged only on the L5 cash path, never in-kind.
     function setFlatRedeemFee(uint256 fee) external onlyMeridian {
         if (fee > FLAT_FEE_MAX) revert FlatFeeTooHigh();
+        if (fee > 0 && feeToken == address(0)) revert FeeTokenUnset();
         flatRedeemFee = fee; emit FlatRedeemFeeSet(fee);
     }
 

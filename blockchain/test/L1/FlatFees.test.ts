@@ -34,7 +34,57 @@ async function deploy() {
   for (const l of legs) await (await l.stock.mint(ap.address, 1_000_000n * ONE)).wait();
   for (const l of legs) await (await l.stock.connect(ap).approve(addr, l.qty * 1000n)).wait();
   await (await usdg.mint(ap.address, 1000n * ONE)).wait();
-  return { deployer, manager, meridian, treasury, ap, vault, addr, usdg, legs };
+  return { deployer, manager, meridian, treasury, ap, vault, addr, usdg, legs, factory, basket };
+}
+
+// Variant: factory has a non-zero default flat fee but feeToken left UNSET.
+async function deployFeeNoToken() {
+  const [deployer, manager, meridian, treasury] = await ethers.getSigners();
+  const registry = await deployRegistry(deployer.address);
+  await (await registry.grantRole(MINTER_ROLE, deployer.address)).wait();
+  const a = await deployStock(registry, "Alpha", "ALPHA");
+  const b = await deployStock(registry, "Beta", "BETA");
+  const legs: Leg[] = sortRecipe([
+    { stock: a, addr: await a.getAddress(), qty: 2n * ONE },
+    { stock: b, addr: await b.getAddress(), qty: 3n * ONE },
+  ]);
+  const tokens = legs.map((l) => l.addr), unitQty = legs.map((l) => l.qty);
+
+  const factory = await deployCloneFactory();
+  await (await factory.setMeridian(meridian.address)).wait();
+  await (await factory.setTreasury(treasury.address)).wait();
+  // feeToken deliberately NOT set; a non-zero create fee is configured.
+  await (await factory.setDefaultFlatFees(5n * ONE, 0n)).wait();
+
+  const basket = { tokens, unitQty, unitSize: ONE, name: "M", symbol: "M", manager: manager.address, managerFeeBps: 100 };
+  const salt = ethers.id("flatfee-no-token");
+  return { factory, basket, salt };
+}
+
+// Variant: a managed vault with feeToken UNSET and both flat fees 0 (a clean no-fee vault).
+async function deployNoFee() {
+  const [deployer, manager, meridian, treasury] = await ethers.getSigners();
+  const registry = await deployRegistry(deployer.address);
+  await (await registry.grantRole(MINTER_ROLE, deployer.address)).wait();
+  const a = await deployStock(registry, "Alpha", "ALPHA");
+  const b = await deployStock(registry, "Beta", "BETA");
+  const legs: Leg[] = sortRecipe([
+    { stock: a, addr: await a.getAddress(), qty: 2n * ONE },
+    { stock: b, addr: await b.getAddress(), qty: 3n * ONE },
+  ]);
+  const tokens = legs.map((l) => l.addr), unitQty = legs.map((l) => l.qty);
+
+  const factory = await deployCloneFactory();
+  await (await factory.setMeridian(meridian.address)).wait();
+  await (await factory.setTreasury(treasury.address)).wait();
+  // feeToken left at address(0), default flat fees stay 0.
+
+  const basket = { tokens, unitQty, unitSize: ONE, name: "M", symbol: "M", manager: manager.address, managerFeeBps: 100 };
+  const salt = ethers.id("flatfee-no-fee");
+  const addr = await factory.predictManagedVaultAddress(deployer.address, basket, salt);
+  await (await factory.createManagedBasket(basket, salt)).wait();
+  const vault = await ethers.getContractAt("ManagedVault", addr);
+  return { deployer, manager, meridian, treasury, vault, addr };
 }
 
 describe("Flat create fee", () => {
@@ -67,5 +117,27 @@ describe("Flat create fee", () => {
     const usdgBefore = await usdg.balanceOf(ap.address);
     await (await vault.connect(ap).redeem(1n * ONE)).wait();
     expect(await usdg.balanceOf(ap.address)).to.equal(usdgBefore); // redeem pulled no USDG
+  });
+});
+
+describe("Flat fee — feeToken no-brick guard", () => {
+  it("init reverts FeeTokenUnset when a flat fee is non-zero but feeToken is unset", async () => {
+    const { factory, basket, salt } = await loadFixture(deployFeeNoToken);
+    const impl = await ethers.getContractAt("ManagedVault", await factory.managedImpl());
+    await expect(factory.createManagedBasket(basket, salt)).to.be.revertedWithCustomError(impl, "FeeTokenUnset");
+  });
+
+  it("setFeeToken(0) reverts FeeTokenUnset while a flat fee is live", async () => {
+    const { meridian, vault } = await loadFixture(deploy);
+    await expect(
+      vault.connect(meridian).setFeeToken(ethers.ZeroAddress)
+    ).to.be.revertedWithCustomError(vault, "FeeTokenUnset");
+  });
+
+  it("setFlatCreateFee(>0) reverts FeeTokenUnset when feeToken is unset", async () => {
+    const { meridian, vault } = await loadFixture(deployNoFee);
+    await expect(
+      vault.connect(meridian).setFlatCreateFee(1n)
+    ).to.be.revertedWithCustomError(vault, "FeeTokenUnset");
   });
 });

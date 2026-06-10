@@ -57,6 +57,12 @@ abstract contract VaultCore is Initializable, ERC20Upgradeable, ReentrancyGuardT
     /// @dev Seam: managed flavor settles fees here before any supply change. No-op default.
     function _accrue() internal virtual {}
 
+    /// @dev Seam: managed flavor charges a FLAT per-create processing fee here (a fixed USDG amount, NOT a %
+    ///      of notional — red line #3 stays clean). No-op default ⇒ free vaults are unaffected. Called in the
+    ///      create paths AFTER _accrue. There is deliberately NO redeem-side seam: in-kind redeem must stay
+    ///      free and unconditional (redeem never pauses); the cash-path redeem fee is handled in L5.
+    function _chargeFlatCreateFee() internal virtual {}
+
     /// @dev Recipe invariant: strictly-ascending tokens (=> unique + non-zero), each unitQty > 0,
     ///      equal non-zero lengths.
     function _assertValidRecipe(address[] memory tokens, uint256[] memory unitQty) internal pure {

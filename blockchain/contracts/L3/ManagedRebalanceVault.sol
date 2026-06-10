@@ -247,6 +247,7 @@ contract ManagedRebalanceVault is ManagedVault {
     ///         pulls pro-rata over CURRENT holdings (rounding UP, favors the vault). Oracle-free.
     function create(uint256 nShares) external override nonReentrant {
         _accrue();
+        _chargeFlatCreateFee();
         if (nShares == 0) revert ZeroUnits();
         uint256 supply = totalSupply();
         if (supply == 0) {

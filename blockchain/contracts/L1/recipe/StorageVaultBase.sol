@@ -57,6 +57,7 @@ abstract contract StorageVaultBase is VaultCore {
     ///      CEI + nonReentrant. Permissionless.
     function create(uint256 nUnits) external virtual nonReentrant {
         _accrue();
+        _chargeFlatCreateFee();
         _pullAndMint(nUnits);
     }
 
@@ -68,6 +69,7 @@ abstract contract StorageVaultBase is VaultCore {
     /// @param permits per-constituent permit signatures (same length as the recipe)
     function createWithPermit(uint256 nUnits, PermitInput[] calldata permits) external virtual nonReentrant {
         _accrue();
+        _chargeFlatCreateFee();
         uint256 len = _tokens.length;
         if (permits.length != len) revert PermitsLengthMismatch();
         for (uint256 i = 0; i < len; ++i) {

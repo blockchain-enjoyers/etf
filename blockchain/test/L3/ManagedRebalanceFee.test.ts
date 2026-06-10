@@ -38,6 +38,7 @@ async function deploy(keeperBps: number, opts: { managerFeeBps?: number; platfor
   await vault.initializeRebalance(tokens, unitQty, "RB", "RB", {
     manager: manager.address, meridian: meridian.address, treasury: treasury.address,
     managerFeeBps, platformFeeBps, keeperBps, keeperEscrow: await km.getAddress(),
+    feeToken: ethers.ZeroAddress, flatCreateFee: 0n, flatRedeemFee: 0n,
   });
 
   await a.mint(deployer.address, ONE); await b.mint(deployer.address, ONE);
@@ -129,6 +130,7 @@ describe("ManagedRebalanceVault — 3-way fee", () => {
     await expect(v1.initializeRebalance(tokens, unitQty, "RB", "RB", {
       manager: manager.address, meridian: meridian.address, treasury: treasury.address,
       managerFeeBps: 200, platformFeeBps: 15, keeperBps: 2001, keeperEscrow: deployer.address,
+      feeToken: ethers.ZeroAddress, flatCreateFee: 0n, flatRedeemFee: 0n,
     })).to.be.revertedWithCustomError(impl, "KeeperShareTooHigh");
 
     // keeperBps>0 with zero escrow -> ZeroEscrow
@@ -138,6 +140,7 @@ describe("ManagedRebalanceVault — 3-way fee", () => {
     await expect(v2.initializeRebalance(tokens, unitQty, "RB", "RB", {
       manager: manager.address, meridian: meridian.address, treasury: treasury.address,
       managerFeeBps: 200, platformFeeBps: 15, keeperBps: 250, keeperEscrow: ethers.ZeroAddress,
+      feeToken: ethers.ZeroAddress, flatCreateFee: 0n, flatRedeemFee: 0n,
     })).to.be.revertedWithCustomError(impl, "ZeroEscrow");
   });
 

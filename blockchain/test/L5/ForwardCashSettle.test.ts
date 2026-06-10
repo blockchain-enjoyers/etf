@@ -57,6 +57,7 @@ async function baseDeploy() {
   await vault.initializeRebalance(tokens, unitQty, "RB", "RB", {
     manager: manager.address, meridian: meridian.address, treasury: treasury.address,
     managerFeeBps: 0, platformFeeBps: 0, keeperBps: 0, keeperEscrow: await km.getAddress(),
+    feeToken: ethers.ZeroAddress, flatCreateFee: 0n, flatRedeemFee: 0n,
   });
 
   // Gate price path mocks.
@@ -543,6 +544,7 @@ describe("ForwardCashQueue — settle create/redeem flows", () => {
     await fvault.initializeRebalance(tokens, unitQty, "RB", "RB", {
       manager: manager.address, meridian: meridian.address, treasury: treasury.address,
       managerFeeBps: 100, platformFeeBps: 0, keeperBps: 0, keeperEscrow: await km.getAddress(),
+    feeToken: ethers.ZeroAddress, flatCreateFee: 0n, flatRedeemFee: 0n,
     });
 
     // Bootstrap the fee vault.

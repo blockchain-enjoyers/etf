@@ -18,7 +18,7 @@ async function deploy() {
   const Helper = await ethers.getContractFactory("CloneWithArgsHelper"); const helper = await Helper.deploy();
   await helper.clone(await impl.getAddress(), argz);
   const vault = await ethers.getContractAt("ManagedRebalanceVault", await helper.lastClone());
-  await vault.initializeRebalance(tokens, unitQty, "RB","RB", { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps:200, platformFeeBps:15, keeperBps:250, keeperEscrow: await km.getAddress() });
+  await vault.initializeRebalance(tokens, unitQty, "RB","RB", { manager: manager.address, meridian: meridian.address, treasury: treasury.address, managerFeeBps:200, platformFeeBps:15, keeperBps:250, keeperEscrow: await km.getAddress(), feeToken: ethers.ZeroAddress, flatCreateFee: 0n, flatRedeemFee: 0n });
   const [tA, tB] = tokens; const cA = pairs.find(p=>p[0]===tA)![1] as any; const cB = pairs.find(p=>p[0]===tB)![1] as any;
   await cA.mint(deployer.address, 10n*ONE); await cB.mint(deployer.address, 10n*ONE);
   await cA.approve(await vault.getAddress(), 10n*ONE); await cB.approve(await vault.getAddress(), 10n*ONE);

@@ -12,7 +12,12 @@ import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 ///         Clones.fetchCloneArgs — no SSTORE, fixed for the clone's life). name/symbol + per-type storage
 ///         are set in `initialize`. A minimal proxy forwards to a FIXED implementation (no admin, no
 ///         upgrade), so behavior is immutable and funds can't be drained — same moat as the old ctor model.
-abstract contract VaultCore is Initializable, ERC20Upgradeable, ReentrancyGuardTransient {
+// @dev Base order: ReentrancyGuardTransient BEFORE ERC20Upgradeable so the C3 linearization is compatible
+//      with RegistryCustody (`Initializable, ReentrancyGuardTransient, ERC6909Upgradeable`), letting the
+//      dual-token RegistryRebalanceVault inherit both branches. Storage-safe: all three bases use
+//      namespaced (ERC-7201) / transient storage, no sequential slots — reordering changes no layout and
+//      no behavior (the fee+rebalance green gate is the regression net).
+abstract contract VaultCore is Initializable, ReentrancyGuardTransient, ERC20Upgradeable {
     event Created(address indexed creator, uint256 nUnits, uint256 minted);
     event Redeemed(address indexed redeemer, uint256 amount);
 

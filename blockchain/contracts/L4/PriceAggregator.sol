@@ -104,7 +104,9 @@ contract PriceAggregator is Ownable {
         for (uint256 i = 0; i < n; ++i) {
             SourceReading memory r = srcs[i].read(payloads[i]);
             if (!r.healthy || r.price == 0) continue;
-            if (block.timestamp - r.lastUpdate > staleHorizon) continue;
+            // F3: a future-dated lastUpdate (signed/Pyth adapters don't clamp it) would underflow the
+            // checked subtraction and revert the whole read; treat future timestamps as fresh (age 0).
+            if (r.lastUpdate < block.timestamp && block.timestamp - r.lastUpdate > staleHorizon) continue;
             depth += r.depth;
         }
     }
@@ -132,7 +134,8 @@ contract PriceAggregator is Ownable {
         for (uint256 i = 0; i < n; ++i) {
             SourceReading memory r = srcs[i].read(payloads[i]);
             if (!r.healthy || r.price == 0) continue;
-            if (block.timestamp - r.lastUpdate > staleHorizon) continue;
+            // F3: future-dated timestamp guard (see acceptedDepthOf) — treat future as fresh, don't underflow.
+            if (r.lastUpdate < block.timestamp && block.timestamp - r.lastUpdate > staleHorizon) continue;
             prices[m] = r.price;
             depths[m] = r.depth;
             if (!r.weekendAware) anyWeekday = true;

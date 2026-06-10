@@ -9,6 +9,8 @@ import {ManagedVault} from "./ManagedVault.sol";
 import {FeeCore} from "./fee/FeeCore.sol";
 import {CommittedVault} from "./CommittedVault.sol";
 import {ManagedRebalanceVault} from "../L3/ManagedRebalanceVault.sol";
+import {RegistryRebalanceVault} from "../L3/RegistryRebalanceVault.sol";
+import {RebalanceFeeCore} from "../L3/rebalance/RebalanceFeeCore.sol";
 
 /// @title CloneFactory — deploys every Meridian vault type as an EIP-1167 clone of a fixed implementation
 /// @notice Holds one immutable implementation per type; each vault is a clone-with-immutable-args
@@ -34,9 +36,11 @@ contract CloneFactory is Ownable {
     uint256 public defaultFlatRedeemFee;
 
     address public rebalanceImpl;
+    address public registryRebalanceImpl;
     mapping(address => bool) public constituentAllowed;
 
     error ZeroAddress();
+    error ZeroRoot();
     error PlatformFeeTooHigh();
     error NotWhitelisted();
 
@@ -44,6 +48,7 @@ contract CloneFactory is Ownable {
     event ManagedBasketCreated(address indexed vault, address indexed creator, address indexed manager, uint16 managerFeeBps, bytes32 userSalt);
     event CommittedBasketCreated(address indexed vault, address indexed creator, bytes32 userSalt, address[] tokens, uint256[] unitQty, uint256 unitSize, string name, string symbol);
     event RebalanceBasketCreated(address indexed vault, address indexed creator, address indexed manager, bytes32 userSalt);
+    event RegistryIndexCreated(address indexed vault, address indexed creator, address indexed manager, bytes32 userSalt);
     event ConstituentAllowed(address indexed token, bool allowed);
 
     constructor(address basketImpl_, address managedImpl_, address committedImpl_) Ownable(msg.sender) {
@@ -60,6 +65,7 @@ contract CloneFactory is Ownable {
     function setTreasury(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); treasury = a; }
     function setPlatformFeeBps(uint16 b) external onlyOwner { if (b > PLATFORM_FEE_MAX) revert PlatformFeeTooHigh(); platformFeeBps = b; }
     function setRebalanceImpl(address impl) external onlyOwner { if (impl == address(0)) revert ZeroAddress(); rebalanceImpl = impl; }
+    function setRegistryRebalanceImpl(address impl) external onlyOwner { if (impl == address(0)) revert ZeroAddress(); registryRebalanceImpl = impl; }
     function setFeeToken(address t) external onlyOwner { feeToken = t; }
     function setDefaultFlatFees(uint256 createFee, uint256 redeemFee) external onlyOwner {
         defaultFlatCreateFee = createFee; defaultFlatRedeemFee = redeemFee;
@@ -144,6 +150,46 @@ contract CloneFactory is Ownable {
         );
         allVaults.push(vault);
         emit RebalanceBasketCreated(vault, msg.sender, b.manager, userSalt);
+    }
+
+    // -------- registry index (500-native, Merkle-anchored) --------
+    struct RegistryIndex {
+        bytes32 genesisRoot;        // StandardMerkleTree root over (token, unitQty, unitSize), computed OFF-CHAIN
+        address[] tokens;           // whitelist-checked constituents (membership; NOT stored on the vault)
+        uint256 unitSize;
+        string name; string symbol;
+        address manager; uint16 managerFeeBps; uint16 keeperBps; address keeperEscrow;
+    }
+
+    /// @notice Deploy a 500-native registry rebalance vault. `genesisRoot` is computed OFF-CHAIN (no
+    ///         on-chain 500-leaf tree build); `bootstrap` later validates every constituent against this
+    ///         root with proofs, so an honest root is enforced at first mint and a wrong root cannot be
+    ///         bootstrapped. The clone-args carry `(unitSize, genesisRoot)` so recipeCommitment() == the root.
+    function createRegistryIndex(RegistryIndex calldata b, bytes32 userSalt) external returns (address vault) {
+        if (registryRebalanceImpl == address(0)) revert ZeroAddress();
+        if (b.genesisRoot == bytes32(0)) revert ZeroRoot();
+        for (uint256 i = 0; i < b.tokens.length; ++i) if (!constituentAllowed[b.tokens[i]]) revert NotWhitelisted();
+        bytes memory args = abi.encode(b.unitSize, b.genesisRoot); // clone-args: (unitSize, genesisRoot)
+        vault = Clones.cloneDeterministicWithImmutableArgs(registryRebalanceImpl, args, _salt(msg.sender, userSalt));
+        RegistryRebalanceVault(vault).initializeRegistry(
+            b.genesisRoot, b.name, b.symbol,
+            RebalanceFeeCore.RebalanceParams({
+                manager: b.manager, meridian: meridian, treasury: treasury,
+                managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps,
+                keeperBps: b.keeperBps, keeperEscrow: b.keeperEscrow,
+                feeToken: feeToken, flatCreateFee: defaultFlatCreateFee, flatRedeemFee: defaultFlatRedeemFee
+            })
+        );
+        allVaults.push(vault);
+        emit RegistryIndexCreated(vault, msg.sender, b.manager, userSalt);
+    }
+
+    function predictRegistryIndexAddress(address issuer, uint256 unitSize, bytes32 genesisRoot, bytes32 userSalt)
+        external view returns (address)
+    {
+        return Clones.predictDeterministicAddressWithImmutableArgs(
+            registryRebalanceImpl, abi.encode(unitSize, genesisRoot), _salt(issuer, userSalt), address(this)
+        );
     }
 
     // -------- registry / internal --------

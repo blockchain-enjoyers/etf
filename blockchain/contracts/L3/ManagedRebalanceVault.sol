@@ -40,6 +40,9 @@ contract ManagedRebalanceVault is ManagedVault {
         uint16 platformFeeBps;
         uint16 keeperBps;
         address keeperEscrow;
+        address feeToken;
+        uint256 flatCreateFee;
+        uint256 flatRedeemFee;
     }
 
     error KeeperShareTooHigh();
@@ -65,7 +68,8 @@ contract ManagedRebalanceVault is ManagedVault {
         __StorageVault_init(tokens, unitQty);
         __Managed_init(ManagedParams({
             manager: p.manager, meridian: p.meridian, treasury: p.treasury,
-            managerFeeBps: p.managerFeeBps, platformFeeBps: p.platformFeeBps
+            managerFeeBps: p.managerFeeBps, platformFeeBps: p.platformFeeBps,
+            feeToken: p.feeToken, flatCreateFee: p.flatCreateFee, flatRedeemFee: p.flatRedeemFee
         }));
         if (p.keeperBps > KEEPER_MAX) revert KeeperShareTooHigh();
         if (p.keeperBps > 0 && p.keeperEscrow == address(0)) revert ZeroEscrow();

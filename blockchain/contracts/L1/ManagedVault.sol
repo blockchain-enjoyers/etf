@@ -3,6 +3,8 @@ pragma solidity 0.8.35;
 
 import {StorageVaultBase} from "./recipe/StorageVaultBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title ManagedVault — L1 managed in-kind basket with streaming management + platform fee (Meridian's own AUM line)
 /// @notice Static recipe (no rebalance) + a streaming management fee charged by dilution. The
@@ -12,6 +14,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 ///         whole shares are minted and the fractional remainder is carried (no dust loss, platform
 ///         cannot be starved).
 contract ManagedVault is StorageVaultBase {
+    using SafeERC20 for IERC20;
+
     uint16 public constant MANAGER_MAX = 200;        // 2%/yr (manager-set)
     uint16 public constant PLATFORM_FEE_MAX = 50;    // 0.5%/yr — Meridian's OWN line (not a share of the manager fee)
     uint16 public constant FLOW_FEE_BPS = 0;         // red line #3 in code: NO setter exists; no %-of-flow fee can ever be taken
@@ -20,12 +24,19 @@ contract ManagedVault is StorageVaultBase {
     uint256 internal constant SCALE = 1e18; // fixed-point precision of the owed accumulators (NOT tied to token decimals)
     uint256 public constant TIMELOCK = 7 days;
 
+    /// @notice Absolute cap on each flat fee, in `feeToken` units. Cost-recovery ceiling (assumes 18-dec USDG,
+    ///         ~$100). Adjust this literal if USDG uses different decimals.
+    uint256 public constant FLAT_FEE_MAX = 100e18;
+
     struct ManagedParams {
         address manager;
         address meridian;
         address treasury;
         uint16 managerFeeBps;
         uint16 platformFeeBps;
+        address feeToken;
+        uint256 flatCreateFee;
+        uint256 flatRedeemFee;
     }
 
     address public manager;
@@ -35,6 +46,13 @@ contract ManagedVault is StorageVaultBase {
     uint16 public managerFeeBps;
     /// @notice Active platform fee — Meridian's OWN annual bps of AUM (≤ PLATFORM_FEE_MAX), by dilution.
     uint16 public platformFeeBps;
+
+    /// @notice The asset the flat fees are denominated/charged in (USDG). Set at init, meridian-updatable.
+    address public feeToken;
+    /// @notice Fixed fee pulled from the creator on `create` (in `feeToken` units, ≤ FLAT_FEE_MAX). 0 = off.
+    uint256 public flatCreateFee;
+    /// @notice Fixed redeem fee CONFIG (≤ FLAT_FEE_MAX). NOT charged on in-kind redeem; read by the L5 cash path.
+    uint256 public flatRedeemFee;
 
     /// @notice Timestamp of the last fee accrual. Full uint256 (not packed): read on every accrual,
     ///         compared against the uint64 *EffectiveAt fields in time math — keep both as plain
@@ -67,6 +85,7 @@ contract ManagedVault is StorageVaultBase {
     error NothingPending();
     error TimelockNotElapsed();
     error NotPending();
+    error FlatFeeTooHigh();
 
     /// @dev toTreasury = Meridian's own platform-fee leg (paid to `treasury`); toManager = the manager's leg.
     event FeeAccrued(uint256 feeShares, uint256 toManager, uint256 toTreasury);
@@ -83,6 +102,9 @@ contract ManagedVault is StorageVaultBase {
     event ManagerTransferred(address manager);
     event MeridianTransferStarted(address pending);
     event MeridianTransferred(address meridian);
+    event FeeTokenSet(address feeToken);
+    event FlatCreateFeeSet(uint256 fee);
+    event FlatRedeemFeeSet(uint256 fee);
 
     modifier onlyManager() { if (msg.sender != manager) revert NotManager(); _; }
     modifier onlyMeridian() { if (msg.sender != meridian) revert NotMeridian(); _; }
@@ -110,7 +132,35 @@ contract ManagedVault is StorageVaultBase {
         treasury = p.treasury;
         managerFeeBps = p.managerFeeBps;
         platformFeeBps = p.platformFeeBps;
+        if (p.flatCreateFee > FLAT_FEE_MAX || p.flatRedeemFee > FLAT_FEE_MAX) revert FlatFeeTooHigh();
+        feeToken = p.feeToken;
+        flatCreateFee = p.flatCreateFee;
+        flatRedeemFee = p.flatRedeemFee;
         lastAccrued = block.timestamp;
+    }
+
+    // ============================== FLAT FEE =================================
+
+    /// @dev Pull the flat create fee in USDG from the creator to the treasury. Fixed amount, never a % of
+    ///      notional (red line #3). CEI: collected before mint; create is already nonReentrant.
+    function _chargeFlatCreateFee() internal override {
+        uint256 fee = flatCreateFee;
+        if (fee > 0) IERC20(feeToken).safeTransferFrom(msg.sender, treasury, fee);
+    }
+
+    /// @notice Set the flat-fee asset (USDG). onlyMeridian.
+    function setFeeToken(address t) external onlyMeridian { feeToken = t; emit FeeTokenSet(t); }
+
+    /// @notice Set the flat create fee (≤ FLAT_FEE_MAX). onlyMeridian.
+    function setFlatCreateFee(uint256 fee) external onlyMeridian {
+        if (fee > FLAT_FEE_MAX) revert FlatFeeTooHigh();
+        flatCreateFee = fee; emit FlatCreateFeeSet(fee);
+    }
+
+    /// @notice Set the flat redeem fee CONFIG (≤ FLAT_FEE_MAX). Charged only on the L5 cash path, never in-kind.
+    function setFlatRedeemFee(uint256 fee) external onlyMeridian {
+        if (fee > FLAT_FEE_MAX) revert FlatFeeTooHigh();
+        flatRedeemFee = fee; emit FlatRedeemFeeSet(fee);
     }
 
     // ================================ ACCRUAL ================================

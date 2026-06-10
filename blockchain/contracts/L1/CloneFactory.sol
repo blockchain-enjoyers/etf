@@ -27,6 +27,11 @@ contract CloneFactory is Ownable {
     uint16 public platformFeeBps;
     uint16 public constant PLATFORM_FEE_MAX = 50;
 
+    // Flat-fee globals (injected into every managed/rebalance clone). 0 / address(0) = off.
+    address public feeToken;
+    uint256 public defaultFlatCreateFee;
+    uint256 public defaultFlatRedeemFee;
+
     address public rebalanceImpl;
     mapping(address => bool) public constituentAllowed;
 
@@ -54,6 +59,10 @@ contract CloneFactory is Ownable {
     function setTreasury(address a) external onlyOwner { if (a == address(0)) revert ZeroAddress(); treasury = a; }
     function setPlatformFeeBps(uint16 b) external onlyOwner { if (b > PLATFORM_FEE_MAX) revert PlatformFeeTooHigh(); platformFeeBps = b; }
     function setRebalanceImpl(address impl) external onlyOwner { if (impl == address(0)) revert ZeroAddress(); rebalanceImpl = impl; }
+    function setFeeToken(address t) external onlyOwner { feeToken = t; }
+    function setDefaultFlatFees(uint256 createFee, uint256 redeemFee) external onlyOwner {
+        defaultFlatCreateFee = createFee; defaultFlatRedeemFee = redeemFee;
+    }
     function setConstituentAllowed(address token, bool ok) external onlyOwner { constituentAllowed[token] = ok; emit ConstituentAllowed(token, ok); }
 
     // -------- static (storage) --------
@@ -102,7 +111,7 @@ contract CloneFactory is Ownable {
         vault = Clones.cloneDeterministicWithImmutableArgs(managedImpl, args, _salt(msg.sender, userSalt));
         ManagedVault(vault).initialize(
             _mem(b.tokens), _mem2(b.unitQty), b.name, b.symbol,
-            ManagedVault.ManagedParams({manager: b.manager, meridian: meridian, treasury: treasury, managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps})
+            ManagedVault.ManagedParams({manager: b.manager, meridian: meridian, treasury: treasury, managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps, feeToken: feeToken, flatCreateFee: defaultFlatCreateFee, flatRedeemFee: defaultFlatRedeemFee})
         );
         allVaults.push(vault);
         emit ManagedBasketCreated(vault, msg.sender, b.manager, b.managerFeeBps, userSalt);
@@ -128,7 +137,8 @@ contract CloneFactory is Ownable {
             ManagedRebalanceVault.RebalanceParams({
                 manager: b.manager, meridian: meridian, treasury: treasury,
                 managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps,
-                keeperBps: b.keeperBps, keeperEscrow: b.keeperEscrow
+                keeperBps: b.keeperBps, keeperEscrow: b.keeperEscrow,
+                feeToken: feeToken, flatCreateFee: defaultFlatCreateFee, flatRedeemFee: defaultFlatRedeemFee
             })
         );
         allVaults.push(vault);

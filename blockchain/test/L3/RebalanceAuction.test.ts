@@ -79,6 +79,12 @@ describe("RebalanceAuction", () => {
       .to.be.revertedWithCustomError(auc, "InvalidAuctionParams"); // same token both sides
   });
 
+  it("rejects PERMISSIONLESS exec mode in v1", async () => {
+    const { auc, vault, manager } = await loadFixture(deploy);
+    await expect(auc.connect(manager).setExecMode(await vault.getAddress(), EXEC.PERMISSIONLESS))
+      .to.be.revertedWithCustomError(auc, "PermissionlessDisabled");
+  });
+
   it("bid reverts after the auction expires", async () => {
     const { auc, vault, manager, tokens, cAddr, c } = await loadFixture(deploy);
     const [tA] = tokens; const share = await vault.getAddress();

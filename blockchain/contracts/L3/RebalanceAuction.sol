@@ -33,12 +33,12 @@ interface IRebVault {
 ///         This is the MINIMAL-VIABLE single-fill version; partial fills / exponential decay / CoW routing
 ///         are deferred.
 /// @dev    WARNINGS (operational, security review M2/I1 follow-ups):
-///         - PERMISSIONLESS mode with a funded keeper escrow is UNSAFE until the post-swap L4
-///           navOfHoldings value-floor check lands: a keeper can self-open+self-bid to extract the bounded
-///           keeper-escrow (never principal). Ship MANAGER_ONLY / ALLOWLIST for now. ExecMode defaults to
-///           MANAGER_ONLY (the zero value) so an un-configured vault is closed by default; PERMISSIONLESS
-///           must be explicitly enabled and remains unsafe with a funded escrow until the L4 navOfHoldings
-///           value-floor lands.
+///         - PERMISSIONLESS is DISABLED in v1 (setExecMode reverts PermissionlessDisabled). With no
+///           `acquire.length > 0` / post-swap navOfHoldings value floor, an empty-acquire self-bid could
+///           drain the release legs (PRINCIPAL, not just the bounded keeper escrow) — the old "never
+///           principal" claim was wrong. Re-enable only once that value floor lands. ExecMode defaults to
+///           MANAGER_ONLY (the zero value), so an un-configured vault is closed by default; only
+///           MANAGER_ONLY + ALLOWLIST are selectable in v1.
 ///         - The rebalance auction is the ONE curator action with NO timelock (unlike scheduleTarget); a
 ///           compromised manager can set endIn low and self-bid in MANAGER_ONLY. manager==curator is the
 ///           trust root.
@@ -68,10 +68,12 @@ contract RebalanceAuction is ReentrancyGuardTransient {
     error NoActiveAuction();
     error InvalidAuctionParams();
     error AuctionExpired();
+    error PermissionlessDisabled();
 
     constructor(IKeeperPay km, uint256 maxTip_) { keeperModule = km; maxTip = maxTip_; }
 
     function setExecMode(address vault, ExecMode m) external {
+        if (m == ExecMode.PERMISSIONLESS) revert PermissionlessDisabled(); // F5: disabled in v1 (see WARNINGS)
         if (msg.sender != IRebVault(vault).manager()) revert NotAllowedToOpen();
         execMode[vault] = m;
     }
@@ -82,6 +84,8 @@ contract RebalanceAuction is ReentrancyGuardTransient {
 
     function _mayOpen(address vault) internal view returns (bool) {
         ExecMode m = execMode[vault];
+        // F5: currently UNREACHABLE — setExecMode reverts PERMISSIONLESS, the only writer of execMode, so
+        // no vault can hold this value in v1. Kept for when the value floor lands and PERMISSIONLESS re-opens.
         if (m == ExecMode.PERMISSIONLESS) return true;
         if (m == ExecMode.MANAGER_ONLY) return msg.sender == IRebVault(vault).manager();
         return openAllow[vault][msg.sender];

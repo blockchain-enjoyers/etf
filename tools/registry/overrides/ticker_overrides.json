@@ -1,0 +1,36 @@
+{
+  "_doc": "Manual overrides applied in stage 03. Per ticker any of: yf_symbol (symbol yfinance knows it by, e.g. class shares BRK.B -> BRK-B), sector (force a §4 sector), asset_class (stock/etf/treasury/commodity), etf_category, crypto (true -> крипто и блокчейн), drop (true -> exclude from registry, e.g. junk/non-asset contracts). Sector overrides below are for valid companies yfinance's quoteSummary endpoint refuses to serve (404) or returns without a sector; they carry a sector but no market_cap.",
+  "470CNT015": {"drop": true},
+  "436CVR021": {"drop": true},
+  "037CVR016": {"drop": true},
+
+  "FISV": {"yf_symbol": "FI", "sector": "Financials"},
+  "Chemours": {"yf_symbol": "CC"},
+
+  "CYBR": {"sector": "Technology"},
+  "CFLT": {"sector": "Technology"},
+  "DAY": {"sector": "Technology"},
+  "LAZRQ": {"sector": "Technology"},
+  "EXAS": {"sector": "Healthcare"},
+  "SMLR": {"sector": "Healthcare"},
+  "VERO": {"sector": "Healthcare"},
+  "HOLX": {"sector": "Healthcare"},
+  "CIVI": {"sector": "Energy"},
+  "VTLE": {"sector": "Energy"},
+  "NINEQ": {"sector": "Energy"},
+  "NGD": {"sector": "Materials"},
+  "GES": {"sector": "Consumer Discretionary"},
+  "DENN": {"sector": "Consumer Discretionary"},
+  "IRBTQ": {"sector": "Consumer Discretionary"},
+  "SGN": {"sector": "Consumer Discretionary"},
+  "FRGE": {"sector": "Financials"},
+  "SWKH": {"sector": "Financials"},
+  "VSNTV": {"sector": "Communication Services"},
+  "SPACEX": {"sector": "Technology", "asset_class": "stock"},
+
+  "OPENW": {"sector": "Real Estate", "asset_class": "stock"},
+  "OPENZ": {"sector": "Real Estate", "asset_class": "stock"},
+  "OPENL": {"sector": "Real Estate", "asset_class": "stock"},
+  "GME-WT": {"sector": "Consumer Discretionary", "asset_class": "stock"},
+  "XRXDW": {"sector": "Technology", "asset_class": "stock"}
+}

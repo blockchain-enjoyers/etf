@@ -6,6 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {RecipeLib} from "./core/RecipeLib.sol";
 import {BasketVault} from "./BasketVault.sol";
 import {ManagedVault} from "./ManagedVault.sol";
+import {FeeCore} from "./fee/FeeCore.sol";
 import {CommittedVault} from "./CommittedVault.sol";
 import {ManagedRebalanceVault} from "../L3/ManagedRebalanceVault.sol";
 
@@ -111,7 +112,7 @@ contract CloneFactory is Ownable {
         vault = Clones.cloneDeterministicWithImmutableArgs(managedImpl, args, _salt(msg.sender, userSalt));
         ManagedVault(vault).initialize(
             _mem(b.tokens), _mem2(b.unitQty), b.name, b.symbol,
-            ManagedVault.ManagedParams({manager: b.manager, meridian: meridian, treasury: treasury, managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps, feeToken: feeToken, flatCreateFee: defaultFlatCreateFee, flatRedeemFee: defaultFlatRedeemFee})
+            FeeCore.ManagedParams({manager: b.manager, meridian: meridian, treasury: treasury, managerFeeBps: b.managerFeeBps, platformFeeBps: platformFeeBps, feeToken: feeToken, flatCreateFee: defaultFlatCreateFee, flatRedeemFee: defaultFlatRedeemFee})
         );
         allVaults.push(vault);
         emit ManagedBasketCreated(vault, msg.sender, b.manager, b.managerFeeBps, userSalt);

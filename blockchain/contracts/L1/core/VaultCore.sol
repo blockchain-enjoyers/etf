@@ -5,6 +5,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title VaultCore — shared clone-based spine for every Meridian in-kind vault
 /// @notice Deployed once per vault TYPE as an immutable implementation; per-vault instances are EIP-1167
@@ -49,6 +50,13 @@ abstract contract VaultCore is Initializable, ReentrancyGuardTransient, ERC20Upg
     /// @notice keccak256(abi.encode(tokens, unitQty, unitSize)) — anchor for the L2 valuation layer.
     function recipeCommitment() public view returns (bytes32 c) {
         (, c) = _cloneArgs();
+    }
+
+    /// @notice The vault's OWN holding of constituent `token`, the polymorphic NAV seam (F2). ERC-20-custody
+    ///         default: the vault's real ERC20 balance. A registry vault overrides this to its ERC-6909 claim
+    ///         backing, so FairValueNAV values it by true custody and not by APs' staged ERC20 inventory.
+    function holdingsOf(address token) public view virtual returns (uint256) {
+        return IERC20(token).balanceOf(address(this));
     }
 
     /// @dev Init the shared spine. Call from each leaf's `initialize`. ReentrancyGuardTransient needs no init.

@@ -48,6 +48,14 @@ contract RegistryRebalanceVault is RegistryCustody, RebalanceCore, RootCommitmen
     function _portBalance(address token) internal view override returns (uint256) {
         return _custodyBalance(token);   // RegistryCustody (Part 1), non-virtual, called directly
     }
+
+    /// @notice The vault's own holding of `token` (VaultCore override).
+    /// @dev F2: a registry vault is backed by its ERC-6909 CLAIM balance, not the constituent's ERC20
+    ///      balanceOf (which also holds every AP's staged-but-undeposited inventory). FairValueNAV reads
+    ///      this so the registry NAV is the true claim backing.
+    function holdingsOf(address token) public view override returns (uint256) {
+        return _custodyBalance(token); // balanceOf(address(this), idOf(token))
+    }
     function _portIn(address from, address token, uint256 amount) internal override {
         _custodyIn(from, token, amount);   // claim _transfer(from -> this) — from == msg.sender at create
     }

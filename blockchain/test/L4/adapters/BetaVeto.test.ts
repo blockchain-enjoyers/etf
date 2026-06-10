@@ -7,7 +7,7 @@ const EMPTY = "0x";
 const FEED = ethers.id("A");
 
 async function deploy() {
-  const [owner, vault] = await ethers.getSigners();
+  const [owner] = await ethers.getSigners();
   const Agg = await ethers.getContractFactory("PriceAggregator");
   const agg = await Agg.deploy(owner.address);
 
@@ -21,7 +21,11 @@ async function deploy() {
     await m.set(100n * ONE, 10_000_000n * ONE, BigInt(await time.latest()), 1, 0n, false, true);
     await agg.addSource(await a.getAddress(), await m.getAddress());
   }
-  await a.mint(vault.address, 5n * ONE); // holdings nav = 5 * 100 = 500
+  // F2: navOfHoldings + _betaNav read vault.holdingsOf(token). Use a holdingsOf vault with backing 5 A
+  // (holdings nav = 5 * 100 = 500), the amount the test previously expressed by minting to the vault.
+  const Vault = await ethers.getContractFactory("MockHoldingsVault");
+  const vault = await Vault.deploy();
+  await vault.setHoldings(await a.getAddress(), 5n * ONE);
 
   const Nav = await ethers.getContractFactory("FairValueNAV");
   const nav = await Nav.deploy(await agg.getAddress());
@@ -59,7 +63,7 @@ describe("FairValueNAV.navWithBetaCheck (EP-3 beta veto)", () => {
     const tokens = [await a.getAddress()];
     const payloads = [[EMPTY, EMPTY]];
     const bp = [await betaPayload(100n * ONE)]; // P̂ = 100 => betaNav = 500 == holdings
-    const r = await nav.navWithBetaCheck.staticCall(vault.address, tokens, payloads, await beta.getAddress(), bp, 200);
+    const r = await nav.navWithBetaCheck.staticCall(await vault.getAddress(), tokens, payloads, await beta.getAddress(), bp, 200);
     expect(r.nav).to.equal(500n * ONE);
     expect(r.safe).to.equal(true);
   });
@@ -69,7 +73,7 @@ describe("FairValueNAV.navWithBetaCheck (EP-3 beta veto)", () => {
     const tokens = [await a.getAddress()];
     const payloads = [[EMPTY, EMPTY]];
     const bp = [await betaPayload(200n * ONE)]; // P̂ = 200 => betaNav = 1000, 100% divergence
-    const r = await nav.navWithBetaCheck.staticCall(vault.address, tokens, payloads, await beta.getAddress(), bp, 200);
+    const r = await nav.navWithBetaCheck.staticCall(await vault.getAddress(), tokens, payloads, await beta.getAddress(), bp, 200);
     expect(r.safe).to.equal(false);
   });
 });

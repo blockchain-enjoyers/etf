@@ -5,7 +5,12 @@ import {PriceAggregator} from "./PriceAggregator.sol";
 import {IRecipeVault} from "./interfaces/IRecipeVault.sol";
 import {IPriceSource, SourceReading} from "./IPriceSource.sol";
 import {MarketStatus, MarketStatusLib} from "./OracleTypes.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/// @notice Polymorphic vault-side holdings seam (F2): the vault reports its OWN holding of a constituent.
+///         Managed/static vaults return IERC20(token).balanceOf(self); a registry vault returns its ERC-6909
+///         claim backing. Reading this (not the raw ERC20 balance) keeps a registry vault from counting
+///         every AP's staged ERC20 inventory in NAV.
+interface IHoldings { function holdingsOf(address token) external view returns (uint256); }
 
 /// @title FairValueNAV — read-only basket NAV over the L4 aggregator
 /// @notice Validates the calldata recipe against vault.recipeCommitment() (the only L1<->L4 seam, same
@@ -102,7 +107,7 @@ contract FairValueNAV {
         res.safe = true;
         for (uint256 i = 0; i < n; ++i) {
             PriceAggregator.AggregateResult memory a = aggregator.priceOf(tokens[i], payloads[i]);
-            uint256 bal = IERC20(tokens[i]).balanceOf(vault);
+            uint256 bal = IHoldings(vault).holdingsOf(tokens[i]);
             res.nav += (bal * a.price) / 1e18;
             res.confLower += (bal * a.confLower) / 1e18;
             res.confUpper += (bal * a.confUpper) / 1e18;
@@ -146,7 +151,7 @@ contract FairValueNAV {
     {
         for (uint256 i = 0; i < tokens.length; ++i) {
             SourceReading memory b = IPriceSource(betaSource).read(betaPayloads[i]);
-            betaNav += (IERC20(tokens[i]).balanceOf(vault) * b.price) / 1e18;
+            betaNav += (IHoldings(vault).holdingsOf(tokens[i]) * b.price) / 1e18;
         }
     }
 }

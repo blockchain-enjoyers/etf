@@ -4,7 +4,7 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ONE, Kind, EMPTY } from "./helpers";
 
 async function deploy() {
-  const [owner, vault] = await ethers.getSigners();
+  const [owner] = await ethers.getSigners();
   const Agg = await ethers.getContractFactory("PriceAggregator");
   const agg = await Agg.deploy(owner.address);
   const Mock = await ethers.getContractFactory("MockSource");
@@ -22,9 +22,12 @@ async function deploy() {
   await addSource(await a.getAddress(), 100n * ONE);
   await addSource(await b.getAddress(), 50n * ONE);
 
-  // vault holds 3 A + 4 B
-  await a.mint(vault.address, 3n * ONE);
-  await b.mint(vault.address, 4n * ONE);
+  // F2: the NAV engine reads vault.holdingsOf(token), not ERC20 balanceOf. Use a vault that implements
+  // holdingsOf and set the backing the test previously expressed by minting to the vault (3 A + 4 B).
+  const Vault = await ethers.getContractFactory("MockHoldingsVault");
+  const vault = await Vault.deploy();
+  await vault.setHoldings(await a.getAddress(), 3n * ONE);
+  await vault.setHoldings(await b.getAddress(), 4n * ONE);
 
   const Nav = await ethers.getContractFactory("FairValueNAV");
   const nav = await Nav.deploy(await agg.getAddress());
@@ -36,7 +39,7 @@ describe("FairValueNAV — navOfHoldings", () => {
     const { nav, a, b, vault } = await loadFixture(deploy);
     const tokens = [await a.getAddress(), await b.getAddress()];
     const payloads = [[EMPTY, EMPTY], [EMPTY, EMPTY]];
-    const res = await nav.navOfHoldings.staticCall(vault.address, tokens, payloads);
+    const res = await nav.navOfHoldings.staticCall(await vault.getAddress(), tokens, payloads);
     // 3*100 + 4*50 = 500 (1e18 scaled)
     expect(res.nav).to.equal(500n * ONE);
     expect(res.safe).to.equal(true);

@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {IAPFiller} from "./interfaces/IAPFiller.sol";
+import {IRegistryVault} from "./interfaces/IRegistryVault.sol";
 
 interface INav {
     struct NavResult { uint256 nav; uint256 confLower; uint256 confUpper; uint8 marketStatus; bool safe; uint256 timestamp; }
@@ -25,14 +26,22 @@ interface IPegFeed { function latestRoundData() external view returns (uint80,in
 
 /// @title ForwardCashQueue — forward-priced cash create/redeem (ERC-7540-style) for a rebalanceable basket
 /// @notice Trustless escrow (red line #1: user principal sits here across blocks but is always cancelable
-///         before cutoff, settle is code-only, no team key). settle() (later tasks) is gated g0-g8 and reuses
-///         the vault's PUBLIC create/redeem; the queue is NOT a vault executor. Settle NAV = L4
-///         FairValueNAV.navOfHoldings; the AP is paid by its spread; the keeper a clamped tip from L3.
+///         before cutoff, settle is code-only, no team key). settle() is gated g0-g8 and reuses the vault's
+///         PUBLIC create/redeem (managed vaults) or the vault's `settleCreate` primitive (registry vaults);
+///         the queue is NOT a vault executor. Settle NAV = L4 FairValueNAV.navOfHoldings; the AP is paid by its
+///         spread; the keeper a clamped tip from L3. The registry path is SINGLE-SHOT (Q7: ~500 internal claim
+///         moves fit one tx); the chunking lives at the AP's one-time `wrap`, not the settle.
 contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     address public immutable vault;
     IERC20 public immutable stable;
+
+    /// @notice True iff `vault` is a 500-native registry vault (detected by the registry-only `recipeRoot()`
+    ///         selector). A registry vault routes CREATE through `vault.settleCreate` and its cash REDEEM pays
+    ///         CLAIMS + deducts the vault's flatRedeemFee; a non-registry (small ManagedRebalanceVault) keeps
+    ///         the legacy single-shot settle byte-for-byte.
+    bool public immutable isRegistry;
 
     address public immutable navEngine;
     address public immutable observer;
@@ -65,6 +74,7 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
     error PastCutoff();
     error NotPending();
     error InvalidCutoffDelay();
+    error FeeTokenMismatch();
 
     constructor(
         address vault_,
@@ -83,6 +93,15 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
         keeperModule = keeperModule_;
         router = router_;
         pegFeed = pegFeed_;
+
+        // Impl-check the vault: a registry vault exposes recipeRoot() (RootCommitment); a ManagedRebalanceVault
+        // does not, so the call reverts and is caught. For the registry path the escrow asset (stable) and the
+        // vault's flat-fee asset (feeToken, USDG) MUST be identical, else the create-fee pull / redeem-fee
+        // deduction would use the wrong unit — enforce it once at construction (design §D invariant).
+        bool reg;
+        try IRegistryVault(vault_).recipeRoot() returns (bytes32) { reg = true; } catch { reg = false; }
+        if (reg && IRegistryVault(vault_).feeToken() != stable_) revert FeeTokenMismatch();
+        isRegistry = reg;
     }
 
     function setCutoffDelay(uint64 d) external onlyOwner {
@@ -94,7 +113,7 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
         return tickets.length;
     }
 
-    /// @notice Queue a cash entry. Escrows `cash` USDC. Reverts if the vault is not yet bootstrapped
+    /// @notice Queue a cash entry. Escrows `cash` USDG. Reverts if the vault is not yet bootstrapped
     ///         (cash-create never bootstraps an empty vault — first deposit is in-kind, spec section C).
     function requestCreate(uint256 cash) external nonReentrant returns (uint256 id) {
         if (cash == 0) revert ZeroAmount();
@@ -232,15 +251,14 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
     /// @param heldTokens The vault's current custody set; VALIDATED == vault.heldTokens() by the gate and
     ///                   indexes both the NAV read and the redeem deltas.
     /// @param payloads   Per-token oracle payloads forwarded to navOfHoldings.
-    /// @param ap         The authorized participant. For CREATE it must hold the constituents and have
-    ///                   pre-approved THIS queue to pull previewCreate(N); for REDEEM it must implement
-    ///                   IAPFiller.onRedeem and pay the user >= cashOut. Plain address (MVP): the design
-    ///                   spec §D `apData` (opaque bytes for multi-hop AP routing) is deferred.
+    /// @param ap         The authorized participant. For CREATE it must hold the constituents and (registry)
+    ///                   have authorized this queue as its ERC-6909 operator, or (managed) pre-approved this
+    ///                   queue to pull previewCreate(N); for REDEEM it must implement IAPFiller.onRedeem and
+    ///                   pay >= cashOut. Plain address (MVP): the design spec §D `apData` is deferred.
     /// @dev GATE-ONCE-SETTLE-MANY: g0 (bootstrap) and g0-g8 (_settleGate) run ONCE up front, BEFORE any
     ///      ticket state is mutated — so a single gated open print prices the whole batch and a gate
-    ///      failure reverts before any fund moves. Each per-ticket leg is atomic (an under-deliver on
-    ///      create or an underpay on redeem reverts the whole settle). The keeper tip is paid ONLY if at
-    ///      least one ticket actually settled (no work -> no tip); KeeperModule then clamps the payout.
+    ///      failure reverts before any fund moves. Each per-ticket leg is atomic. The keeper tip is paid ONLY
+    ///      if at least one ticket actually settled (no work -> no tip); KeeperModule then clamps the payout.
     function settle(uint256[] calldata ids, address[] calldata heldTokens, bytes[][] calldata payloads, address ap)
         external nonReentrant
     {
@@ -274,7 +292,11 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
                 //     cap gives it a non-zero slice. C2: refresh the cutoff so the rolled remainder stays
                 //     cancelable (a capacity defer can only happen post-cutoff, else it'd be stuck forever).
                 if (fillCash == 0) { t.cutoff = uint64(block.timestamp + cutoffDelay); continue; }
-                bool fully = _settleCreate(t, navPerShare, ap, fillCash);
+                // Registry vaults mint via the vault's settleCreate primitive (pull-from-AP, mint-to-user);
+                // managed vaults keep the legacy real-ERC-20 previewCreate path. Same capacity/partial machinery.
+                bool fully = isRegistry
+                    ? _settleCreateRegistry(t, navPerShare, ap, fillCash)
+                    : _settleCreate(t, navPerShare, ap, fillCash);
                 if (fully) { t.status = 1; emit Settled(ids[i]); }
                 else {
                     // C2: partial fill leaves the ticket pending past its old cutoff; refresh it so the user
@@ -306,12 +328,10 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
         }
     }
 
-    /// @dev Settle a create ticket against `fillCash` (== t.amount on a full fill; a pro-rata fraction under
-    ///      the cap). Runs the SAME create flow on fillCash (net-of-spread N, previewCreate(N) exact pull from
-    ///      the AP, vault.create, shares to the user, fillCash to the AP). Returns whether the ticket was
-    ///      FULLY consumed. On a partial fill it decrements t.amount by fillCash and leaves status pending (0)
-    ///      so the remainder rolls to the next window and stays cancelable (red line #1, non-custody). The
-    ///      full-fill path (fillCash == t.amount) is identical to the legacy single-shot settle.
+    /// @dev Settle a MANAGED create ticket against `fillCash` (== t.amount on a full fill; a pro-rata fraction
+    ///      under the cap). net-of-spread N, previewCreate(N) exact pull from the AP, vault.create, shares to the
+    ///      user, fillCash to the AP. Returns whether the ticket was FULLY consumed. The full-fill path
+    ///      (fillCash == t.amount) is identical to the legacy single-shot settle.
     function _settleCreate(Ticket storage t, uint256 navPerShare, address ap, uint256 fillCash)
         private returns (bool fully)
     {
@@ -330,15 +350,43 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
         if (!fully) t.amount -= fillCash;                 // roll the remainder; ticket stays pending
     }
 
+    /// @dev Settle a REGISTRY create against `fillCash`. The FIXED flatCreateFee comes off the top (to the
+    ///      treasury, via the vault's settleCreate -> _chargeFlatCreateFee — the single collection point); the
+    ///      rest (cashToAP) is the AP's fill. N = net-of-spread cashToAP / navPerShare; the vault pulls the AP's
+    ///      VAULT-COMPUTED pro-rata claims and mints N to the user (single-shot — Q7: 500 claim moves fit one
+    ///      tx). The AP must have authorized THIS queue as its ERC-6909 operator. Capacity/partial machinery is
+    ///      shared with the managed path (fillCash is the capacity-scaled amount).
+    function _settleCreateRegistry(Ticket storage t, uint256 navPerShare, address ap, uint256 fillCash)
+        private returns (bool fully)
+    {
+        uint256 fee = IRegistryVault(vault).flatCreateFee();
+        if (fillCash <= fee) revert ZeroShares();         // a fill must at least cover the fixed fee
+        uint256 cashToAP = fillCash - fee;
+        uint256 netCash = (cashToAP * (BPS - spreadBps)) / BPS;
+        uint256 N = (netCash * WAD) / navPerShare;
+        if (N == 0) revert ZeroShares();
+        if (fee > 0) stable.forceApprove(vault, fee);     // settleCreate pulls the FIXED fee from the queue
+        IRegistryVault(vault).settleCreate(ap, t.owner, N); // pulls AP's pro-rata claims; mints N to the user
+        stable.safeTransfer(ap, cashToAP);                // AP keeps the spread (its margin, not a protocol cut)
+        fully = (fillCash == t.amount);
+        if (!fully) t.amount -= fillCash;                 // roll the remainder; ticket stays pending
+    }
+
     function _settleRedeem(Ticket storage t, uint256 navPerShare, address[] calldata heldTokens, address ap) private {
         address owner_ = t.owner;
         uint256 N = t.amount;
-        // net of spread; the AP's minimum payment obligation to the user.
+        // net of spread; the AP's minimum payment obligation.
         uint256 cashOut = (((N * navPerShare) / WAD) * (BPS - spreadBps)) / BPS;
-        uint256[] memory deltas = _redeemToAP(N, heldTokens, ap);
-        uint256 userBefore = stable.balanceOf(owner_);
-        IAPFiller(ap).onRedeem(heldTokens, deltas, cashOut, owner_);  // AP MUST pay the user
-        if (stable.balanceOf(owner_) - userBefore < cashOut) revert APUnderpaid();
+        if (isRegistry) {
+            // A registry vault pays CLAIMS (ERC-6909), not real ERC-20, on redeem.
+            uint256[] memory deltas = _redeemToAPClaims(N, heldTokens, ap);
+            _payRegistryRedeem(owner_, deltas, heldTokens, cashOut, ap);  // deduct the FIXED flatRedeemFee
+        } else {
+            uint256[] memory deltas = _redeemToAP(N, heldTokens, ap);
+            uint256 userBefore = stable.balanceOf(owner_);
+            IAPFiller(ap).onRedeem(heldTokens, deltas, cashOut, owner_);  // AP MUST pay the user
+            if (stable.balanceOf(owner_) - userBefore < cashOut) revert APUnderpaid();
+        }
     }
 
     /// @dev Redeem `N` from the vault and forward the measured pro-rata delta of each held token to `ap`.
@@ -357,4 +405,40 @@ contract ForwardCashQueue is Ownable, ReentrancyGuardTransient {
             if (deltas[i] > 0) IERC20(heldTokens[i]).safeTransfer(ap, deltas[i]); // delta -> AP
         }
     }
+
+    /// @dev Registry redeem-to-AP: burn the queue's escrowed N shares and forward the measured pro-rata CLAIM
+    ///      (ERC-6909) delta of each held token to the AP. Mirrors _redeemToAP but in claims, since a registry
+    ///      vault reassigns claims (not ERC-20) on redeem. Floor-dust stays in the vault for remaining holders.
+    function _redeemToAPClaims(uint256 N, address[] calldata heldTokens, address ap)
+        private returns (uint256[] memory deltas)
+    {
+        uint256 len = heldTokens.length;
+        uint256[] memory balancesBefore = new uint256[](len);
+        for (uint256 i = 0; i < len; ++i) balancesBefore[i] = IRegistryVault(vault).balanceOf(address(this), _idOf(heldTokens[i]));
+        IRegistryVault(vault).redeem(N);                  // burns the escrowed N, pays pro-rata CLAIMS to the queue
+        deltas = new uint256[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            deltas[i] = IRegistryVault(vault).balanceOf(address(this), _idOf(heldTokens[i])) - balancesBefore[i];
+            if (deltas[i] > 0) IRegistryVault(vault).transfer(ap, _idOf(heldTokens[i]), deltas[i]); // claim -> AP
+        }
+    }
+
+    /// @dev Registry CASH-redeem payout: the AP pays the gross `cashOut` to the QUEUE, which forwards
+    ///      `cashOut - flatRedeemFee` to the redeemer and the FIXED `flatRedeemFee` to the treasury. This is
+    ///      the ONLY redeem-fee collection point — in-kind redeem on the vault stays free and unconditional
+    ///      (redeem never pauses). The fee is FIXED USDG, never a % of value (red line #3), and is CLAMPED to
+    ///      `cashOut` so it is a deduction from proceeds, never a precondition that could block a small exit.
+    function _payRegistryRedeem(
+        address owner_, uint256[] memory deltas, address[] calldata heldTokens, uint256 cashOut, address ap
+    ) private {
+        uint256 fee = IRegistryVault(vault).flatRedeemFee();
+        if (fee > cashOut) fee = cashOut;                 // clamp: never a precondition, just a deduction
+        uint256 qBefore = stable.balanceOf(address(this));
+        IAPFiller(ap).onRedeem(heldTokens, deltas, cashOut, address(this)); // AP pays the queue the GROSS
+        if (stable.balanceOf(address(this)) - qBefore < cashOut) revert APUnderpaid();
+        if (fee > 0) stable.safeTransfer(IRegistryVault(vault).treasury(), fee);
+        stable.safeTransfer(owner_, cashOut - fee);
+    }
+
+    function _idOf(address token) private pure returns (uint256) { return uint256(uint160(token)); }
 }

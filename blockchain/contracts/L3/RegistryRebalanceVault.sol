@@ -7,6 +7,7 @@ import {RootCommitment} from "../L1/recipe/RootCommitment.sol";
 import {MerkleRecipeLib} from "../L1/core/MerkleRecipeLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 // NOTE (dual-token): this contract is BOTH ERC-20 (the index share, via VaultCore) AND ERC-6909 (the
 // constituent claims, via RegistryCustody). `_mint`/`_burn` resolve by ARITY: `_mint(addr,uint)` = ERC-20 share,
 // `_mint(addr,uint,uint)` = ERC-6909 claim. The wrap/unwrap below use the 3-arg ERC-6909 form. Do NOT "simplify"
@@ -95,5 +96,52 @@ contract RegistryRebalanceVault is RegistryCustody, RebalanceCore, RootCommitmen
     /// @dev Curator gate for RootCommitment = the manager (matches scheduleTarget's onlyManager on the storage leaf).
     function _requireRootCurator() internal view override {
         if (msg.sender != manager) revert NotManager();
+    }
+
+    // ===================== L5 SETTLE PRIMITIVE (Part 3) =====================
+    //
+    // The L5 ForwardCashQueue does forward-priced cash-in/out. As-built `create` pulls from AND mints to
+    // msg.sender; the queue flow needs pull-from-AP, mint-to-user. `settleCreate` is that primitive: same
+    // holdings-pro-rata share-math as `create`, gated to a registered settler (the queue). Q7: ~500 internal
+    // claim moves fit one tx, so this settle is SINGLE-SHOT (the chunking lives at the AP's one-time `wrap`).
+
+    /// @notice Settlers (the L5 queue) allowed to call settleCreate. Meridian (platform) governs the set,
+    ///         mirroring the executor registry. A settler is trusted to supply a gate-derived nShares.
+    mapping(address => bool) public isSettler;
+    event SettlerSet(address indexed settler, bool allowed);
+    error NotSettler();
+
+    function setSettler(address s, bool allowed) external onlyMeridian {
+        isSettler[s] = allowed;
+        emit SettlerSet(s, allowed);
+    }
+
+    /// @notice Set the AP wrap-batch bound (RegistryCustody.chunkSize). RUNTIME per the Q7 poster-gas caveat.
+    ///         Platform-governed (onlyMeridian), mirroring the other registry knobs.
+    function setChunkSize(uint256 n) external onlyMeridian {
+        _setChunkSize(n);
+    }
+
+    /// @notice Single-shot cash-in: pull the AP's VAULT-COMPUTED pro-rata claim slice into custody and mint
+    ///         `nShares` to `to`. Identical share-math to `create` (`need_i = ceil(_portBalance·nShares/supply)`),
+    ///         but pull-from-`ap` / mint-to-`to`. The per-token amount is computed HERE, never caller-supplied,
+    ///         so a settler can never pull MORE than the pro-rata need (the over-pull invariant). The AP must
+    ///         have authorized the SETTLER as its ERC-6909 operator (`setOperator(settler, true)`). `_accrue`
+    ///         and the FIXED flat-create-fee run exactly as in `create` (the fee is pulled from the settler).
+    function settleCreate(address ap, address to, uint256 nShares) external nonReentrant {
+        if (!isSettler[msg.sender]) revert NotSettler();
+        _accrue();
+        _chargeFlatCreateFee();                    // FIXED USDG fee: feeToken pulled from msg.sender (the queue)
+        if (nShares == 0) revert ZeroUnits();
+        uint256 supply = totalSupply();
+        if (supply == 0) revert NotBootstrapped();
+        uint256 n = _held.length;
+        for (uint256 i = 0; i < n; ++i) {
+            address t = _held[i];
+            uint256 need = Math.mulDiv(_portBalance(t), nShares, supply, Math.Rounding.Ceil);
+            if (need > 0) transferFrom(ap, address(this), idOf(t), need); // operator-authorized; vault-computed amt
+        }
+        _mint(to, nShares);
+        emit Created(to, nShares, nShares);
     }
 }

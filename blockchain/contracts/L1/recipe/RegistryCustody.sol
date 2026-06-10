@@ -20,8 +20,26 @@ abstract contract RegistryCustody is Initializable, ReentrancyGuardTransient, ER
     event Wrapped(address indexed token, address indexed account, uint256 amount);
     event Unwrapped(address indexed token, address indexed to, uint256 amount);
 
+    /// @notice Max constituents one `batchWrap` may wrap in a tx. RUNTIME (not a constant): Q7's poster-gas
+    ///         caveat may force ~55 on mainnet without a redeploy. Default 200. The settle is single-shot; this
+    ///         bounds the AP's ONE-TIME inventory build (turning 500 real ERC-20 into claims), the only step
+    ///         that does not fit one tx (500 × 60.6k external transfer = 30M > the 32M cap).
+    uint256 public chunkSize;
+
+    error BatchLengthMismatch();
+    error BadBatchSize();
+    error ZeroChunkSize();
+
     function __RegistryCustody_init() internal onlyInitializing {
         __ERC6909_init();
+        chunkSize = 200;
+    }
+
+    /// @dev Set the wrap-batch bound (leaf gates the caller, e.g. onlyMeridian). Reverts on 0 (would brick
+    ///      batchWrap's `n <= chunkSize` bound).
+    function _setChunkSize(uint256 n) internal {
+        if (n == 0) revert ZeroChunkSize();
+        chunkSize = n;
     }
 
     /// @notice The ERC-6909 id for a constituent token.
@@ -36,6 +54,22 @@ abstract contract RegistryCustody is Initializable, ReentrancyGuardTransient, ER
 
     /// @notice Deposit `amount` of real `token`, receive an equal ERC-6909 claim id. The ONLY external pull-in.
     function wrap(address token, uint256 amount) external nonReentrant {
+        _wrap(token, amount);
+    }
+
+    /// @notice Batch the wrap boundary: turn up to `chunkSize` real constituents into claims in ONE tx. This is
+    ///         the AP's one-time inventory build (Q7: the external-transfer step is what does NOT fit one tx at
+    ///         500, so it is chunked here; the L5 settle stays single-shot). With Permit2 the AP authorizes all
+    ///         underlying pulls with ONE signature; here each token must be approved to this vault.
+    function batchWrap(address[] calldata tokens, uint256[] calldata amounts) external nonReentrant {
+        uint256 n = tokens.length;
+        if (n != amounts.length) revert BatchLengthMismatch();
+        if (n == 0 || n > chunkSize) revert BadBatchSize();
+        for (uint256 i = 0; i < n; ++i) _wrap(tokens[i], amounts[i]);
+    }
+
+    /// @dev Shared wrap body (no guard); callers (`wrap`/`batchWrap`) are nonReentrant.
+    function _wrap(address token, uint256 amount) internal {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         _mint(msg.sender, idOf(token), amount);
         emit Wrapped(token, msg.sender, amount);

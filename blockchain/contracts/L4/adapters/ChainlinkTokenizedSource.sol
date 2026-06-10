@@ -19,6 +19,10 @@ contract ChainlinkTokenizedSource is IPriceSource {
         depthTier = depthTier_;
     }
 
+    /// @dev INVARIANT (F4): every branch returns a per-RAW-share price (currentMultiplier applied), so
+    ///      navOfHoldings = rawBalance * price is split-consistent across the Fri-close -> weekend boundary.
+    ///      RECONCILE whether tokenizedPrice is reported per-UI (needs xmultiplier, as here) or per-raw
+    ///      against the canonical Chainlink v10 schema before mainnet; if per-raw, scale the Open branch instead.
     function read(bytes calldata payload) external returns (SourceReading memory r) {
         ReportV10 memory v = abi.decode(verifierProxy.verify(payload, bytes("")), (ReportV10));
         r.kind = SourceKind.RWA_STREAM;
@@ -26,8 +30,9 @@ contract ChainlinkTokenizedSource is IPriceSource {
         r.confidence = 0;
         r.lastUpdate = uint64(uint256(v.lastUpdateTimestamp) / 1e9);
         if (v.marketStatus == 5) {
-            // Closed: underlying frozen, tokenizedPrice live from CEX secondary markets.
-            r.price = v.tokenizedPrice > 0 ? uint256(int256(v.tokenizedPrice)) : 0;
+            // Closed: underlying frozen, tokenizedPrice live from CEX secondary markets. Apply
+            // currentMultiplier so the weekend price is on the SAME per-RAW scale as the Open branch (F4).
+            r.price = v.tokenizedPrice > 0 ? (uint256(int256(v.tokenizedPrice)) * v.currentMultiplier) / 1e18 : 0;
             r.weekendAware = true;
             r.healthy = r.price > 0;
         } else {

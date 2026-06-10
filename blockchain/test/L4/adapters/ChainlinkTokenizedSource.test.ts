@@ -44,6 +44,17 @@ describe("ChainlinkTokenizedSource — v10 (weekend tokenizedPrice)", () => {
     expect(r.healthy).to.equal(true);
   });
 
+  it("Closed with currentMultiplier != 1e18: tokenizedPrice is scaled to per-RAW (F4)", async () => {
+    const { verifier, src } = await loadFixture(deploy);
+    const tsNs = BigInt(await time.latest()) * 10n ** 9n;
+    // post-split mult 2.0, weekend tokenizedPrice 150 (per-UI) => per-RAW 300, same scale as the Open branch
+    await verifier.setVerifyResult(encodeV10(300n * ONE, 5, 2n * ONE, 150n * ONE, tsNs));
+    const r = await src.read.staticCall("0x");
+    expect(r.price).to.equal(300n * ONE); // 150e18 * 2e18 / 1e18
+    expect(r.weekendAware).to.equal(true);
+    expect(r.healthy).to.equal(true);
+  });
+
   it("Closed with non-positive tokenizedPrice -> unhealthy", async () => {
     const { verifier, src } = await loadFixture(deploy);
     const tsNs = BigInt(await time.latest()) * 10n ** 9n;

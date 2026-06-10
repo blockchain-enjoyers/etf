@@ -11,6 +11,8 @@ import {CommittedVault} from "./CommittedVault.sol";
 import {ManagedRebalanceVault} from "../L3/ManagedRebalanceVault.sol";
 import {RegistryRebalanceVault} from "../L3/RegistryRebalanceVault.sol";
 import {RebalanceFeeCore} from "../L3/rebalance/RebalanceFeeCore.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title CloneFactory — deploys every Meridian vault type as an EIP-1167 clone of a fixed implementation
 /// @notice Holds one immutable implementation per type; each vault is a clone-with-immutable-args
@@ -18,6 +20,11 @@ import {RebalanceFeeCore} from "../L3/rebalance/RebalanceFeeCore.sol";
 ///         creationCode) -> the 24KB factory wall is gone; new types = register an implementation.
 ///         Issuer-namespaced CREATE2 salt + bounded registry, as before.
 contract CloneFactory is Ownable {
+    using SafeERC20 for IERC20;
+
+    /// @notice Vault implementation types — the key for the per-type one-time fund-creation fee.
+    enum VaultType { BASKET, COMMITTED, MANAGED, REBALANCE, REGISTRY }
+
     address public basketImpl;
     address public managedImpl;
     address public committedImpl;
@@ -39,6 +46,12 @@ contract CloneFactory is Ownable {
     address public registryRebalanceImpl;
     mapping(address => bool) public constituentAllowed;
 
+    // One-time fund-creation fee: charged from the deployer at createX -> treasury. Default 0 = off.
+    // Deliberately standalone + simple: a single fee token + a fixed per-type amount, owner-set. NOT an
+    // allowlist and NOT tied to the per-vault flat create/redeem feeToken. Flat (not %-of-flow) — red line #3.
+    address public creationFeeToken;
+    mapping(VaultType => uint256) public creationFee;
+
     error ZeroAddress();
     error ZeroRoot();
     error PlatformFeeTooHigh();
@@ -50,6 +63,9 @@ contract CloneFactory is Ownable {
     event RebalanceBasketCreated(address indexed vault, address indexed creator, address indexed manager, bytes32 userSalt);
     event RegistryIndexCreated(address indexed vault, address indexed creator, address indexed manager, bytes32 userSalt);
     event ConstituentAllowed(address indexed token, bool allowed);
+    event CreationFeeTokenSet(address token);
+    event CreationFeeSet(VaultType indexed vaultType, uint256 amount);
+    event CreationFeeCharged(VaultType indexed vaultType, address indexed payer, address token, uint256 amount);
 
     constructor(address basketImpl_, address managedImpl_, address committedImpl_) Ownable(msg.sender) {
         if (basketImpl_ == address(0) || managedImpl_ == address(0) || committedImpl_ == address(0)) revert ZeroAddress();
@@ -72,11 +88,28 @@ contract CloneFactory is Ownable {
     }
     function setConstituentAllowed(address token, bool ok) external onlyOwner { constituentAllowed[token] = ok; emit ConstituentAllowed(token, ok); }
 
+    /// @notice The token the one-time fund-creation fee is charged in (e.g. USDG). Owner-set. 0 = unset.
+    function setCreationFeeToken(address t) external onlyOwner { creationFeeToken = t; emit CreationFeeTokenSet(t); }
+    /// @notice The fixed one-time creation fee for a given vault TYPE (in `creationFeeToken` units). 0 = off.
+    function setCreationFee(VaultType vaultType, uint256 amount) external onlyOwner { creationFee[vaultType] = amount; emit CreationFeeSet(vaultType, amount); }
+
+    /// @dev Pull the one-time creation fee (if set for this type) from the deployer to the treasury. Flat,
+    ///      not a %-of-flow (red line #3 clean). Reverts if a fee is set but `creationFeeToken` is unset
+    ///      (owner must set the token before a non-zero fee).
+    function _chargeCreationFee(VaultType vaultType) private {
+        uint256 amt = creationFee[vaultType];
+        if (amt > 0) {
+            IERC20(creationFeeToken).safeTransferFrom(msg.sender, treasury, amt);
+            emit CreationFeeCharged(vaultType, msg.sender, creationFeeToken, amt);
+        }
+    }
+
     // -------- static (storage) --------
     function createBasket(
         address[] calldata tokens, uint256[] calldata unitQty, uint256 unitSize,
         string calldata name, string calldata symbol, bytes32 userSalt
     ) external returns (address vault) {
+        _chargeCreationFee(VaultType.BASKET);
         bytes memory args = _args(tokens, unitQty, unitSize);
         vault = Clones.cloneDeterministicWithImmutableArgs(basketImpl, args, _salt(msg.sender, userSalt));
         BasketVault(vault).initialize(_mem(tokens), _mem2(unitQty), name, symbol);
@@ -96,6 +129,7 @@ contract CloneFactory is Ownable {
         address[] calldata tokens, uint256[] calldata unitQty, uint256 unitSize,
         string calldata name, string calldata symbol, bytes32 userSalt
     ) external returns (address vault) {
+        _chargeCreationFee(VaultType.COMMITTED);
         bytes memory args = _args(tokens, unitQty, unitSize);
         vault = Clones.cloneDeterministicWithImmutableArgs(committedImpl, args, _salt(msg.sender, userSalt));
         CommittedVault(vault).initialize(_mem(tokens), _mem2(unitQty), name, symbol);
@@ -114,6 +148,7 @@ contract CloneFactory is Ownable {
     struct ManagedBasket { address[] tokens; uint256[] unitQty; uint256 unitSize; string name; string symbol; address manager; uint16 managerFeeBps; }
 
     function createManagedBasket(ManagedBasket calldata b, bytes32 userSalt) external returns (address vault) {
+        _chargeCreationFee(VaultType.MANAGED);
         bytes memory args = _args(b.tokens, b.unitQty, b.unitSize);
         vault = Clones.cloneDeterministicWithImmutableArgs(managedImpl, args, _salt(msg.sender, userSalt));
         ManagedVault(vault).initialize(
@@ -137,6 +172,7 @@ contract CloneFactory is Ownable {
     function createRebalanceBasket(RebalanceBasket calldata b, bytes32 userSalt) external returns (address vault) {
         if (rebalanceImpl == address(0)) revert ZeroAddress();
         for (uint256 i = 0; i < b.tokens.length; ++i) if (!constituentAllowed[b.tokens[i]]) revert NotWhitelisted();
+        _chargeCreationFee(VaultType.REBALANCE);
         bytes memory args = _args(b.tokens, b.unitQty, b.unitSize);
         vault = Clones.cloneDeterministicWithImmutableArgs(rebalanceImpl, args, _salt(msg.sender, userSalt));
         ManagedRebalanceVault(vault).initializeRebalance(
@@ -169,6 +205,7 @@ contract CloneFactory is Ownable {
         if (registryRebalanceImpl == address(0)) revert ZeroAddress();
         if (b.genesisRoot == bytes32(0)) revert ZeroRoot();
         for (uint256 i = 0; i < b.tokens.length; ++i) if (!constituentAllowed[b.tokens[i]]) revert NotWhitelisted();
+        _chargeCreationFee(VaultType.REGISTRY);
         bytes memory args = abi.encode(b.unitSize, b.genesisRoot); // clone-args: (unitSize, genesisRoot)
         vault = Clones.cloneDeterministicWithImmutableArgs(registryRebalanceImpl, args, _salt(msg.sender, userSalt));
         RegistryRebalanceVault(vault).initializeRegistry(

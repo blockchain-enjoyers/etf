@@ -51,6 +51,12 @@ export async function deployL3() {
     await (await f.setRebalanceImpl(rebalanceImpl)).wait();
   }
 
+  const registryImpl = await ensure(config, "RegistryRebalanceVault", [], deployer);
+  if ((await f.registryRebalanceImpl()) !== registryImpl) {
+    console.log("  wiring: factory.setRegistryRebalanceImpl");
+    await (await f.setRegistryRebalanceImpl(registryImpl)).wait();
+  }
+
   const km = await ethers.getContractAt("KeeperModule", keeperModule);
   if (!(await km.isExecutor(auction))) {
     console.log("  wiring: keeperModule.setExecutor(auction, true)");
@@ -69,12 +75,13 @@ export async function deployL3() {
   }
 
   console.log(`\n✅ L3 ready.`);
-  console.log(`   KeeperModule:    ${EXPLORER}${keeperModule}`);
-  console.log(`   RebalanceImpl:   ${EXPLORER}${rebalanceImpl}`);
-  console.log(`   Auction:         ${EXPLORER}${auction}`);
-  console.log(`   Observer/Module: ${observer} / ${module}`);
-  console.log(`   Next: factory.setMeridian/Treasury(gov); per-fund createRebalanceBasket + setExecutor.`);
-  return { keeperModule, rebalanceImpl, observer, module, auction };
+  console.log(`   KeeperModule:      ${EXPLORER}${keeperModule}`);
+  console.log(`   RebalanceImpl:     ${EXPLORER}${rebalanceImpl}`);
+  console.log(`   RegistryImpl:      ${EXPLORER}${registryImpl}`);
+  console.log(`   Auction:           ${EXPLORER}${auction}`);
+  console.log(`   Observer/Module:   ${observer} / ${module}`);
+  console.log(`   Next: factory.setMeridian/Treasury(gov); per-fund createRebalanceBasket/createRegistryIndex + setExecutor.`);
+  return { keeperModule, rebalanceImpl, registryImpl, observer, module, auction };
 }
 
 if (require.main === module) {

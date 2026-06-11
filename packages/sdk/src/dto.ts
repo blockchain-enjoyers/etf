@@ -1,0 +1,526 @@
+import { z } from "zod";
+
+/**
+ * DTO contract — the single source of truth (spec §7).
+ * Backend imports these schemas for nestjs-zod validation; frontend imports the z.infer types.
+ * Decimals are string-encoded (18-dec USD) so JSON never loses precision (IRON RULE: see estimated).
+ */
+
+// String literals mirror MeridianTypes.MarketStatus / OracleSource (lowercased over the wire).
+export const marketStatusSchema = z.enum([
+  "unknown",
+  "preMarket",
+  "regular",
+  "postMarket",
+  "overnight",
+  "closed",
+]);
+export type MarketStatus = z.infer<typeof marketStatusSchema>;
+
+export const oracleSourceSchema = z.enum([
+  "chainlink",
+  "pyth",
+  "redstone",
+  "dexTwap",
+  "perpMark",
+  "lastClose",
+]);
+export type OracleSource = z.infer<typeof oracleSourceSchema>;
+
+export const vaultTypeSchema = z.enum(["basket", "managed", "committed", "rebalance"]);
+export type VaultType = z.infer<typeof vaultTypeSchema>;
+
+export const oracleSeveritySchema = z.enum(["open", "degraded", "halted", "closed", "unknown"]);
+export type OracleSeverity = z.infer<typeof oracleSeveritySchema>;
+
+/** 18-dec USD as a decimal string. */
+const decimalString = z.string().regex(/^-?\d+(\.\d+)?$/, "expected a decimal string");
+
+export const navResponseSchema = z.object({
+  vaultAddress: z.string(),
+  nav: decimalString,
+  confidenceLower: decimalString,
+  confidenceUpper: decimalString,
+  marketStatus: marketStatusSchema,
+  estimated: z.boolean(), // IRON RULE: true => never a settlement price
+  source: oracleSourceSchema,
+  timestampMs: z.number().int().nonnegative(),
+  severity: oracleSeveritySchema.optional(),
+  safe: z.boolean().optional(),
+});
+export type NavResponse = z.infer<typeof navResponseSchema>;
+
+export const constituentDtoSchema = z.object({
+  token: z.string(),
+  unitQty: decimalString,
+  symbol: z.string().optional(),
+  name: z.string().optional(),
+  decimals: z.number().int().nonnegative().optional(),
+});
+export type ConstituentDto = z.infer<typeof constituentDtoSchema>;
+
+export const holdingRowSchema = z.object({
+  token: z.string(),
+  symbol: z.string(),
+  name: z.string().nullable(),
+  decimals: z.number().int().nonnegative(),
+  qtyPerUnit: decimalString,
+  priceUsd: decimalString,
+  valuePerUnitUsd: decimalString,
+  currentWeightBps: z.number().int(),
+  targetWeightBps: z.number().int(),
+  driftBps: z.number().int(),
+  estimated: z.boolean(),
+});
+export type HoldingRow = z.infer<typeof holdingRowSchema>;
+
+export const holdingsResponseSchema = z.object({
+  vaultAddress: z.string(),
+  navPerUnit: decimalString,
+  estimated: z.boolean(),
+  timestampMs: z.number().int().nonnegative(),
+  holdings: z.array(holdingRowSchema),
+});
+export type HoldingsResponse = z.infer<typeof holdingsResponseSchema>;
+
+export const basketSummarySchema = z.object({
+  vaultAddress: z.string(),
+  name: z.string(),
+  symbol: z.string(),
+  frozen: z.boolean(),
+  // Rebalance scheme label (Static / Target ±band / Reconstitution). Optional: the
+  // backend may not expose it yet, so the UI falls back to "—".
+  weightMethod: z.string().optional(),
+  vaultType: vaultTypeSchema.default("basket"),
+  manager: z.string().nullable().optional(),
+  managerFeeBps: z.number().int().nonnegative().nullable().optional(),
+  keeperBps: z.number().int().nonnegative().nullable().optional(),
+  keeperEscrow: z.string().nullable().optional(),
+});
+export type BasketSummary = z.infer<typeof basketSummarySchema>;
+
+export const basketDetailSchema = basketSummarySchema.extend({
+  basketToken: z.string().nullable(),
+  cashToken: z.string().nullable(),
+  unitSize: decimalString,
+  constituents: z.array(constituentDtoSchema),
+  recipeCommitment: z.string().nullable().optional(),
+});
+export type BasketDetail = z.infer<typeof basketDetailSchema>;
+
+export const marketPriceSchema = z.object({
+  vaultAddress: z.string(),
+  marketPrice: decimalString,
+  timestampMs: z.number().int().nonnegative(),
+});
+export type MarketPrice = z.infer<typeof marketPriceSchema>;
+
+export const premiumDiscountSchema = z.object({
+  premiumBps: z.number().int(), // signed: positive = premium, negative = discount
+  nav: decimalString,
+  marketPrice: decimalString,
+});
+export type PremiumDiscount = z.infer<typeof premiumDiscountSchema>;
+
+export const historyPointSchema = z.object({
+  timestampMs: z.number().int().nonnegative(),
+  nav: decimalString,
+  estimated: z.boolean(),
+});
+export type HistoryPoint = z.infer<typeof historyPointSchema>;
+
+export const historyQuerySchema = z.object({
+  range: z.enum(["1h", "1d", "1w", "1m"]).default("1d"),
+});
+export type HistoryQuery = z.infer<typeof historyQuerySchema>;
+
+export const redeemQuoteRequestSchema = z.object({
+  basketTokenAmount: decimalString,
+});
+export type RedeemQuoteRequest = z.infer<typeof redeemQuoteRequestSchema>;
+
+export const gateStateSchema = z.object({
+  gated: z.boolean(),
+  reason: z.enum(["none", "estimated", "frozen", "halted"]),
+});
+export type GateState = z.infer<typeof gateStateSchema>;
+
+export const redeemQuoteResponseSchema = z.object({
+  assets: z.array(z.object({
+    token: z.string(),
+    amount: decimalString,
+    symbol: z.string().optional(),
+    valueUsd: decimalString.optional(),
+  })),
+  gateState: gateStateSchema,
+});
+export type RedeemQuoteResponse = z.infer<typeof redeemQuoteResponseSchema>;
+
+export const feedItemSchema = z.object({
+  vaultAddress: z.string(),
+  symbol: z.string(),
+  nav: decimalString,
+  estimated: z.boolean(),
+  marketStatus: marketStatusSchema,
+  timestampMs: z.number().int().nonnegative(),
+  // Signed 24h change in basis points. Optional: absent until the backend computes it.
+  change24hBps: z.number().int().optional(),
+});
+export type FeedItem = z.infer<typeof feedItemSchema>;
+
+export const feedResponseSchema = z.object({ items: z.array(feedItemSchema) });
+export type FeedResponse = z.infer<typeof feedResponseSchema>;
+
+export const demoFrameSchema = z.object({ t: z.number(), v: decimalString });
+export type DemoFrame = z.infer<typeof demoFrameSchema>;
+
+export const demoSeriesSchema = z.object({
+  id: z.string(),
+  event: z.string(),
+  name: z.string(),
+  frames: z.array(demoFrameSchema),
+});
+export type DemoSeries = z.infer<typeof demoSeriesSchema>;
+
+/** Unsigned integer string in 18-dec base units (no float, no decimal point on the wire). */
+const baseUnitString = z
+  .string()
+  .regex(/^\d+$/, "must be an unsigned integer string (18-dec base units)");
+
+/** 0x-prefixed hex helper (bytes32 / address / signature). */
+const hexString = z.string().regex(/^0x[0-9a-fA-F]+$/, "must be 0x-prefixed hex");
+
+/**
+ * Off-chain-fitted, signed closed-market fair value submitted by the beta-fitting
+ * pipeline to the backend ingest endpoint/job. The backend verifies the signer + freshness.
+ */
+export const fairValueAttestationSchema = z.object({
+  basketId: hexString,
+  nav: baseUnitString,
+  lower: baseUnitString,
+  upper: baseUnitString,
+  /** Unix seconds the off-chain model timestamped the estimate. */
+  timestamp: z.number().int().nonnegative(),
+  /** Recovered signer address must match the configured attestation signer. */
+  signer: hexString,
+  /** EIP-712 signature over the fair-value typed data. */
+  signature: hexString,
+});
+
+export type FairValueAttestationDto = z.infer<typeof fairValueAttestationSchema>;
+
+const tokenBalanceSchema = z.object({ token: z.string(), balance: decimalString });
+const tokenAmountSchema = z.object({ token: z.string(), amount: decimalString });
+
+export const rebalanceDetailSchema = z.object({
+  vaultAddress: z.string(),
+  heldTokens: z.array(tokenBalanceSchema),
+  target: z.array(constituentDtoSchema),
+  pendingTarget: z
+    .object({
+      tokens: z.array(constituentDtoSchema),
+      effectiveAtMs: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  lastRebalanceAtMs: z.number().int().nonnegative().nullable(),
+  drift: z
+    .object({
+      isDue: z.boolean(),
+      triggerBandBps: z.number().int().nonnegative(),
+      items: z.array(z.object({ token: z.string(), driftBps: z.number().int() })),
+    })
+    .nullable(),
+  // Basket-token supply (18-dec) so the UI can derive holdings-based deposit previews. Optional.
+  totalSupply: decimalString.optional(),
+});
+export type RebalanceDetail = z.infer<typeof rebalanceDetailSchema>;
+
+export const keeperStatusSchema = z.object({
+  escrow: decimalString,
+  keeperBps: z.number().int().nonnegative(),
+  payouts: z.array(
+    z.object({
+      to: z.string(),
+      amount: decimalString,
+      txHash: z.string(),
+      timestampMs: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type KeeperStatus = z.infer<typeof keeperStatusSchema>;
+
+export const rebalanceHistorySchema = z.object({
+  items: z.array(
+    z.object({
+      txHash: z.string(),
+      blockNumber: z.number().int().nonnegative(),
+      recipient: z.string(),
+      acquire: z.array(tokenAmountSchema),
+      release: z.array(tokenAmountSchema),
+      timestampMs: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type RebalanceHistory = z.infer<typeof rebalanceHistorySchema>;
+
+/**
+ * L5 forward-cash queue DTOs. amountRaw/remainingRaw are raw INTEGER base-unit strings whose
+ * decimals are kind-dependent (create = 6-dec USDC, redeem = 18-dec shares); the FE formats per kind.
+ */
+export const forwardTicketKindSchema = z.enum(["create", "redeem"]);
+export type ForwardTicketKind = z.infer<typeof forwardTicketKindSchema>;
+
+export const forwardTicketStatusSchema = z.enum(["pending", "partial", "settled", "cancelled"]);
+export type ForwardTicketStatus = z.infer<typeof forwardTicketStatusSchema>;
+
+export const forwardTicketSchema = z.object({
+  id: z.number().int().nonnegative(),
+  vaultAddress: z.string(),
+  owner: z.string(),
+  kind: forwardTicketKindSchema,
+  amountRaw: decimalString,
+  remainingRaw: decimalString,
+  status: forwardTicketStatusSchema,
+  cutoffMs: z.number().int().nonnegative(),
+  createdAtMs: z.number().int().nonnegative(),
+});
+export type ForwardTicket = z.infer<typeof forwardTicketSchema>;
+
+export const settleGateGuardIdSchema = z.enum(["g0", "g1", "g2", "g3", "g6", "g7", "g8"]);
+export type SettleGateGuardId = z.infer<typeof settleGateGuardIdSchema>;
+
+export const settleGateGuardSchema = z.object({
+  id: settleGateGuardIdSchema,
+  ok: z.boolean(),
+  reason: z.string().nullable(),
+});
+export type SettleGateGuard = z.infer<typeof settleGateGuardSchema>;
+
+export const settleGateStatusSchema = z.object({
+  open: z.boolean(), // true iff every guard ok
+  navPerShare: decimalString.nullable(),
+  twap: decimalString.nullable(),
+  guards: z.array(settleGateGuardSchema),
+  estimated: z.literal(true), // IRON RULE: informational only, never a settlement price
+});
+export type SettleGateStatus = z.infer<typeof settleGateStatusSchema>;
+
+export const queueCapacitySchema = z.object({
+  maxCreateFlowBps: z.number().int().nonnegative(),
+  windowCapShares: decimalString.nullable(), // supply*bps/BPS, 18-dec shares; null when uncapped (bps==0)
+  pendingCreateCash: decimalString,          // Σ pending+partial CREATE tickets' remaining, 6-dec USDC (exact)
+  pendingRedeemShares: decimalString,        // Σ pending+partial REDEEM tickets' remaining, 18-dec (exact)
+});
+export type QueueCapacity = z.infer<typeof queueCapacitySchema>;
+
+export const forwardQueueSchema = z.object({
+  queueAddress: z.string().nullable(),
+  tickets: z.array(forwardTicketSchema),
+  capacity: queueCapacitySchema,
+});
+export type ForwardQueue = z.infer<typeof forwardQueueSchema>;
+
+export const forwardHistoryKindSchema = z.enum([
+  "CreateRequested",
+  "RedeemRequested",
+  "Cancelled",
+  "Settled",
+  "PartialFill",
+]);
+export type ForwardHistoryKind = z.infer<typeof forwardHistoryKindSchema>;
+
+export const forwardHistoryItemSchema = z.object({
+  kind: forwardHistoryKindSchema,
+  id: z.number().int().nonnegative(),
+  txHash: z.string(),
+  timestampMs: z.number().int().nonnegative(),
+  payload: z.record(z.string(), z.string()),
+});
+export type ForwardHistoryItem = z.infer<typeof forwardHistoryItemSchema>;
+
+export const forwardHistorySchema = z.object({ items: z.array(forwardHistoryItemSchema) });
+export type ForwardHistory = z.infer<typeof forwardHistorySchema>;
+
+export const accountHoldingSchema = z.object({
+  vaultAddress: z.string(),
+  symbol: z.string(),
+  balance: decimalString,
+  valueUsd: decimalString,
+  estimated: z.boolean(),
+});
+export type AccountHolding = z.infer<typeof accountHoldingSchema>;
+export const accountHoldingsResponseSchema = z.object({
+  account: z.string(),
+  holdings: z.array(accountHoldingSchema),
+});
+export type AccountHoldingsResponse = z.infer<typeof accountHoldingsResponseSchema>;
+
+export const txActionSchema = z.enum([
+  "mint", "redeemInKind", "deploy",
+  "forwardCreate", "forwardRedeem", "forwardCancel",
+  "curatorSchedule", "curatorActivate",
+  "keeperRecord", "keeperSettle",
+  "auctionOpen", "auctionBid", "auctionSetExecMode",
+]);
+export type TxAction = z.infer<typeof txActionSchema>;
+
+export const availabilityReasonSchema = z.enum([
+  "ok", "not-deployed", "frozen", "market-closed", "halted",
+  "manager-mismatch", "not-authorized", "nothing-pending",
+  "unsupported-vault-type",
+]);
+export const availabilityItemSchema = z.object({
+  action: txActionSchema,
+  enabled: z.boolean(),
+  reason: availabilityReasonSchema,
+});
+export const availabilityResponseSchema = z.object({
+  vaultAddress: z.string(),
+  account: z.string().nullable(),
+  items: z.array(availabilityItemSchema),
+});
+export type AvailabilityResponse = z.infer<typeof availabilityResponseSchema>;
+
+export const mintQuoteRequestSchema = z.object({
+  units: baseUnitString,
+  account: z.string().optional(),
+  mode: z.enum(["permit", "approve"]).optional(),
+});
+export const mintQuoteDepositSchema = z.object({
+  token: z.string(), symbol: z.string(),
+  amount: decimalString, valueUsd: decimalString,
+});
+export const mintQuoteResponseSchema = z.object({
+  unitsOut: decimalString,
+  deposits: z.array(mintQuoteDepositSchema),
+  estTotalUsd: decimalString,
+  gate: gateStateSchema,
+});
+export type MintQuoteResponse = z.infer<typeof mintQuoteResponseSchema>;
+
+const txSendStepBase = {
+  to: hexString, data: hexString, value: baseUnitString,
+  contractName: z.string(), label: z.string(), summary: z.string(), simulated: z.boolean(),
+};
+export const permitTypedDataSchema = z.object({
+  domain: z.object({
+    name: z.string(), version: z.string(),
+    chainId: z.number().int(), verifyingContract: hexString,
+  }),
+  types: z.record(z.string(), z.array(z.object({ name: z.string(), type: z.string() }))),
+  primaryType: z.literal("Permit"),
+  message: z.object({
+    owner: hexString, spender: hexString,
+    value: baseUnitString, nonce: baseUnitString, deadline: baseUnitString,
+  }),
+});
+export const txStepSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("approve"), ...txSendStepBase }),
+  z.object({ kind: z.literal("call"), ...txSendStepBase }),
+  z.object({
+    kind: z.literal("sign712"), token: z.string(),
+    typedData: permitTypedDataSchema, label: z.string(), summary: z.string(),
+  }),
+]);
+export type TxStep = z.infer<typeof txStepSchema>;
+export const txPlanSchema = z.object({
+  chainId: z.number().int(),
+  gate: gateStateSchema,
+  steps: z.array(txStepSchema),
+  finalize: z.object({ path: z.string() }).nullable(),
+});
+export type TxPlan = z.infer<typeof txPlanSchema>;
+
+const addr = z.string();
+export const mintTxRequestSchema = mintQuoteRequestSchema;
+export const mintFinalizeRequestSchema = z.object({
+  units: baseUnitString, account: addr,
+  permits: z.array(z.object({
+    token: addr, value: baseUnitString, deadline: baseUnitString,
+    v: z.number().int(), r: hexString, s: hexString,
+  })),
+});
+export const redeemTxRequestSchema = z.object({ amount: baseUnitString, account: addr });
+export const deployTxRequestSchema = z.object({
+  account: addr,
+  vaultKind: vaultTypeSchema,
+  name: z.string(), symbol: z.string(),
+  tokens: z.array(addr), unitQty: z.array(baseUnitString), unitSize: baseUnitString,
+  manager: addr.optional(), managerFeeBps: z.number().int().optional(),
+  keeperBps: z.number().int().optional(), keeperEscrow: addr.optional(),
+  userSalt: hexString.optional(),
+});
+/** Composition of a new vault: literal per-unit quantities, or target weights + a USD notional. */
+export const deployCompositionSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("quantities"), qty: z.array(decimalString) }),
+  z.object({ mode: z.literal("weights"), weightsBps: z.array(z.number().int()), valuePerUnitUsd: decimalString }),
+]);
+export type DeployComposition = z.infer<typeof deployCompositionSchema>;
+
+export const previewDeployRequestSchema = z.object({
+  account: addr,
+  vaultKind: vaultTypeSchema,
+  name: z.string(), symbol: z.string(),
+  tokens: z.array(addr),
+  unitSize: decimalString,
+  composition: deployCompositionSchema,
+  manager: addr.optional(), managerFeeBps: z.number().int().optional(),
+  keeperBps: z.number().int().optional(), keeperEscrow: addr.optional(),
+  userSalt: hexString.optional(),
+});
+export type PreviewDeployRequest = z.infer<typeof previewDeployRequestSchema>;
+
+export const previewDeployBreakdownSchema = z.object({
+  token: z.string(), symbol: z.string(),
+  qty: decimalString, valueUsd: decimalString, weightBps: z.number().int(),
+});
+export type PreviewDeployBreakdown = z.infer<typeof previewDeployBreakdownSchema>;
+
+/** Free-form revert reason (not the fixed gateStateSchema enum). */
+export const previewGateSchema = z.object({ gated: z.boolean(), reason: z.string() });
+export type PreviewGate = z.infer<typeof previewGateSchema>;
+
+export const previewDeployResponseSchema = z.object({
+  unitQty: z.array(baseUnitString),
+  breakdown: z.array(previewDeployBreakdownSchema),
+  totalValueUsd: decimalString,
+  priceMissing: z.array(z.string()),
+  predictedVault: z.string().nullable(),
+  gate: previewGateSchema,
+});
+export type DeployPreview = z.infer<typeof previewDeployResponseSchema>;
+
+export const forwardCreateTxRequestSchema = z.object({ cash: baseUnitString, account: addr });
+export const forwardRedeemTxRequestSchema = z.object({ shares: baseUnitString, account: addr });
+export const forwardCancelTxRequestSchema = z.object({ ticketId: z.number().int().nonnegative(), account: addr });
+export const curatorScheduleTxRequestSchema = z.object({ tokens: z.array(addr), unitQty: z.array(baseUnitString), account: addr });
+export const curatorActivateTxRequestSchema = z.object({ account: addr });
+export const keeperRecordTxRequestSchema = z.object({ account: addr });
+export const keeperSettleTxRequestSchema = z.object({ ticketIds: z.array(z.number().int()), ap: addr, account: addr });
+// Open carries the operator-entered Dutch-auction legs from AuctionPanel: release legs (vault sends
+// token → releaseOut) and acquire legs (vault receives token, price decays startIn → endIn). amounts
+// are 18-dec base-unit strings (the panel parseUnits(_, 18)); the backend maps them to the contract's
+// open(vault, release[], releaseOut[], acquire[], startIn[], endIn[], duration) arrays.
+export const auctionOpenTxRequestSchema = z.object({
+  account: addr,
+  durationSec: z.number().int().positive(),
+  release: z.array(z.object({ token: addr, releaseOut: baseUnitString })),
+  acquire: z.array(z.object({ token: addr, startIn: baseUnitString, endIn: baseUnitString })),
+});
+// Bid carries the operator-entered acquire tokens paired with their currentAcquireIn amounts (18-dec
+// base units) so the backend can emit the approve(token → auction) steps the bid's transferFrom needs;
+// the on-chain call itself is bid(vault).
+export const auctionBidTxRequestSchema = z.object({
+  account: addr,
+  acquire: z.array(z.object({ token: addr, amount: baseUnitString })),
+});
+export const auctionSetExecModeTxRequestSchema = z.object({ mode: z.number().int(), account: addr });
+
+export const auctionStatusSchema = z.object({
+  vaultAddress: z.string(),
+  deployed: z.boolean(),
+  execMode: z.number().int(),
+  openAllow: z.boolean(),
+  acquireIn: z.array(decimalString),
+});
+export type AuctionStatus = z.infer<typeof auctionStatusSchema>;

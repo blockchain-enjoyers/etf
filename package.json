@@ -2,17 +2,18 @@
   "name": "meridian",
   "private": true,
   "workspaces": [
-    "contracts",
     "backend",
-    "frontend",
+    "app",
     "packages/*"
   ],
   "scripts": {
     "build": "yarn workspaces foreach -At run build",
     "test": "yarn workspaces foreach -At run test",
     "lint": "yarn workspaces foreach -At run lint",
-    "contracts:build": "yarn workspace contracts build",
-    "contracts:export-abi": "yarn workspace contracts export-abi"
+    "abi:sync": "node scripts/sync-contracts.mjs"
+  },
+  "resolutions": {
+    "vite": "^7.0.0"
   },
   "packageManager": "yarn@4.16.0"
 }

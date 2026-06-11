@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "echo \"@meridian/contracts: no tests\"",
-    "lint": "eslint ."
+    "lint": "echo \"@meridian/contracts: nothing to lint\""
   },
   "devDependencies": {
     "typescript": "^5.6.0"

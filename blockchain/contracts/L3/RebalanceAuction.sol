@@ -101,6 +101,7 @@ contract RebalanceAuction is ReentrancyGuardTransient {
         if (!_mayOpen(vault)) revert NotAllowedToOpen();
         if (release.length != releaseOut.length) revert InvalidAuctionParams();
         if (acquire.length != startIn.length || acquire.length != endIn.length) revert InvalidAuctionParams();
+        if (acquire.length == 0) revert InvalidAuctionParams(); // empty-acquire = pure release-drain, no value in
         if (duration == 0) revert InvalidAuctionParams();
         for (uint256 i = 0; i < acquire.length; ++i) {
             if (startIn[i] < endIn[i]) revert InvalidAuctionParams();

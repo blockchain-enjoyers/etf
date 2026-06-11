@@ -74,8 +74,8 @@ def recommend_vault(weighting, n):
     if n <= _BASKET_MAX_N:
         return (
             "BasketVault", "L1",
-            "Static cap-weighted basket: weights drift naturally like a cap-weighted "
-            "index, so no rebalance is needed (UIT). Recipe held on-chain.",
+            "Static basket (published weights as a snapshot): weights drift naturally "
+            "like a cap-weighted index, so no rebalance is needed (UIT). Recipe on-chain.",
         )
     if n <= _COMMITTED_MAX_N:
         return (

@@ -4,9 +4,13 @@
 (pre-filled корзин) для конструктора: пользователь в 1 клик выбирает фонд, получает состав +
 веса + рекомендованный тип vault.
 
-- Генерируется скриптом `tools/registry/src/build_funds.py` из `out/registry.json`.
-- Логика весов и выбора vault — в `tools/registry/src/registry/funds.py` (чистый, покрыт тестами).
-- Тексты `name`/`description` — английские (как и в реестре).
+**Схема v2.0:** фонды строятся **репликацией реальных популярных ETF** — тянем опубликованный
+состав ETF (тикеры + веса) из файлов эмитентов (SPDR, ARK), пересекаем с нашим реестром
+токенизированных акций, перенормируем веса на доступном подмножестве. Источники и обоснование —
+`research/results/Q8.md`.
+
+- Генерируется `tools/registry/src/build_funds.py`; пуллер holdings — `src/registry/etf_holdings.py`.
+- Тексты `name`/`description` — английские.
 
 ---
 
@@ -14,23 +18,27 @@
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "generated_at": "2026-06-11T...Z",
   "source_registry": "out/registry.json",
-  "weighting_note": "...",
-  "fund_count": 15,
-  "funds": [ ... ]
+  "methodology": "...",
+  "min_coverage_pct": 70.0,
+  "fund_count": 16,
+  "funds": [ ... ],
+  "skipped": [ ... ]
 }
 ```
 
 | Поле | Тип | Описание |
 |---|---|---|
-| `schema_version` | string | Версия схемы. |
+| `schema_version` | string | Версия схемы (`2.0` = реплики реальных ETF). |
 | `generated_at` | string (ISO-8601 UTC) | Когда сгенерировано. |
-| `source_registry` | string | Из какого реестра построено. |
-| `weighting_note` | string | Краткое пояснение методологии весов. |
-| `fund_count` | integer | Число фондов. |
-| `funds` | object[] | Массив шаблонов фондов (см. §2). |
+| `source_registry` | string | Из какого реестра строилось пересечение. |
+| `methodology` | string | Краткое описание метода (реплика + перенормировка + coverage). |
+| `min_coverage_pct` | number | Порог покрытия (по умолчанию 70%); фонды ниже уходят в `skipped`. |
+| `fund_count` | integer | Число фондов в каталоге. |
+| `funds` | object[] | Готовые шаблоны (покрытие ≥ порога). См. §2. |
+| `skipped` | object[] | Фонды, исключённые из-за низкого покрытия. См. §3. |
 
 ---
 
@@ -38,13 +46,18 @@
 
 ```json
 {
-  "id": "mag7",
-  "name": "Magnificent 7",
-  "description": "The seven mega-cap US tech leaders driving market returns.",
-  "theme": "mega-cap tech",
-  "weighting": "cap",
-  "max_weight_pct": 25.0,
-  "constituent_count": 7,
+  "id": "sector-technology",
+  "name": "Technology",
+  "description": "S&P 500 Technology sector (XLK).",
+  "theme": "sector",
+  "source_etf": {
+    "ticker": "XLK",
+    "issuer": "spdr",
+    "weighting": "cap-weighted S&P sector",
+    "source_holdings": 72
+  },
+  "coverage_pct": 96.59,
+  "constituent_count": 67,
   "vault": { ... },
   "constituents": [ ... ]
 }
@@ -52,99 +65,114 @@
 
 | Поле | Тип | Описание |
 |---|---|---|
-| `id` | string | Стабильный идентификатор фонда (для URL/ключа в UI). |
-| `name` | string | Отображаемое имя фонда. |
-| `description` | string | Короткое описание темы. |
-| `theme` | string\|null | Тег темы (для группировки/фильтра в UI). |
-| `weighting` | string (enum) | Схема весов: `cap` (по капитализации) или `equal` (равные доли). |
-| `max_weight_pct` | number\|null | Кэп на одно имя в процентах (только для `cap`; для `equal` = `null`). |
-| `constituent_count` | integer | Число акций в корзине. |
-| `vault` | object | Рекомендованный тип vault + обоснование. См. §2.1. |
-| `constituents` | object[] | Состав с весами. См. §2.2. |
+| `id` | string | Стабильный идентификатор фонда (ключ в UI/URL). |
+| `name` | string | Отображаемое имя темы. |
+| `description` | string | Короткое описание + тикер исходного ETF. |
+| `theme` | string | Тег группы: `broad market` / `sector` / `thematic / ...`. |
+| `source_etf` | object | Какой реальный ETF реплицируется. См. §2.1. |
+| `coverage_pct` | number | **Какую долю исходного ETF (по весу) мы реально покрываем** нашими токенами. 100% = все имена есть на Robinhood. |
+| `constituent_count` | integer | Сколько имён в нашей корзине (после пересечения с реестром). |
+| `vault` | object | Рекомендованный тип vault. См. §2.2. |
+| `constituents` | object[] | Состав с перенормированными весами. См. §2.3. |
 
-### 2.1 Блок `vault`
-
-```json
-"vault": {
-  "type": "BasketVault",
-  "level": "L1",
-  "rationale": "Static cap-weighted basket: weights drift naturally...",
-  "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash..."
-}
-```
+### 2.1 Блок `source_etf`
 
 | Поле | Тип | Описание |
 |---|---|---|
-| `type` | string (enum) | Тип контракта vault: `BasketVault` \| `CommittedVault` \| `ManagedRebalanceVault` \| `RegistryRebalanceVault`. |
-| `level` | string | Уровень протокола (`L1` / `L1b` / `L3`). |
-| `rationale` | string | Почему именно этот тип (по `docs/guides/contracts-reference.md`). |
-| `cash_entry` | string | Подсказка: любой фонд можно обернуть в `ForwardCashQueue` (L5) для cash-входа; in-kind работает и без него. |
+| `ticker` | string | Тикер исходного ETF (XLK, SPY, ARKK…). |
+| `issuer` | string | Эмитент-источник holdings: `spdr` / `ark`. |
+| `weighting` | string | Методология весов исходного ETF (для справки): `cap-weighted S&P sector`, `price-weighted Dow 30`, `active`… |
+| `source_holdings` | integer | Сколько позиций было в исходном ETF (до пересечения). Разница с `constituent_count` = непокрытые (часто иностранные листинги). |
 
-### 2.2 Элемент состава (`constituents[]`)
+### 2.2 Блок `vault`
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `type` | string (enum) | `BasketVault` \| `CommittedVault` \| `ManagedRebalanceVault` \| `RegistryRebalanceVault`. |
+| `level` | string | Уровень протокола (`L1` / `L1b` / `L3`). |
+| `rationale` | string | Почему этот тип (по числу имён и характеру весов). |
+| `cash_entry` | string | Подсказка: можно обернуть в `ForwardCashQueue` (L5) для cash-входа. |
+
+Правило выбора (по `registry/funds.recommend_vault`): N ≤ 30 → BasketVault; 31–200 →
+CommittedVault; > 200 → RegistryRebalanceVault; equal-weight → ManagedRebalanceVault.
+Подробности по контрактам — `docs/guides/contracts-reference.md`.
+
+### 2.3 Элемент состава (`constituents[]`)
 
 ```json
 {
-  "ticker": "AAPL",
-  "name": "Apple Inc.",
+  "ticker": "NVDA",
+  "name": "NVIDIA Corporation",
   "sector": "Technology",
-  "weight_pct": 19.58,
-  "address": "0x012c768e5162d5Ed965D45935634EFCe705A57AC",
-  "market_cap_usd": 4282539048960
+  "weight_pct": 14.1163,
+  "address": "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E",
+  "market_cap_usd": 4854372630528
 }
 ```
 
 | Поле | Тип | Описание |
 |---|---|---|
-| `ticker` | string | Тикер. Ссылка на запись в реестре. |
-| `name` | string | Название компании. |
+| `ticker` | string | Тикер (как в нашем реестре). |
+| `name` | string | Название компании (из реестра). |
 | `sector` | string | Сектор (из реестра). |
-| `weight_pct` | number | Целевой вес в корзине, %. Сумма по фонду = 100.0. |
-| `address` | string | Адрес контракта токена (checksummed) — то, что пойдёт в рецепт vault. |
-| `market_cap_usd` | number | Капитализация underlying (на чём считался cap-вес). |
+| `weight_pct` | number | **Перенормированный** вес в корзине, %. Это вес из исходного ETF, поделённый на сумму покрытых весов → сумма по фонду = 100.0. |
+| `address` | string | Адрес контракта токена (checksummed) — пойдёт в рецепт vault. |
+| `market_cap_usd` | number\|null | Капитализация underlying. |
 
 ---
 
-## 3. Методология (как это собирается)
+## 3. Объект `skipped[]`
 
-### 3.1 Выбор состава
-- **Курируемые** фонды — явный список тикеров (Magnificent 7) или top-N по капитализации внутри
-  сектора / индустрии (AI & Semiconductors, Crypto & Blockchain Leaders, Mega-Cap 20).
-- **Авто-секторные** — «Top 15 {Sector}» по капитализации для каждого сектора (кроме тонких/уже
-  курируемых).
+Фонды, у которых покрытие < `min_coverage_pct` — реплика была бы недостоверной (на Robinhood
+токенизировано слишком мало имён темы), поэтому в основной каталог не попали, но показаны для
+прозрачности.
 
-### 3.2 Веса
-- `cap` — по капитализации: `weight_i = market_cap_i / Σ market_cap`, затем **кэп на имя**
-  (по умолчанию 15–25%) с пропорциональным перераспределением излишка на остальные — чтобы один
-  мегакап (NVDA) не доминировал в маленькой корзине. Округление до 2 знаков, остаток сворачивается
-  в наибольший вес, сумма = 100.0.
-- `equal` — `1/N` на каждое имя.
+```json
+{ "id": "sector-real-estate", "name": "Real Estate", "etf": "XLRE",
+  "coverage_pct": 5.59, "reason": "coverage 5.59% < 70.0% (too few constituents tokenized on Robinhood)" }
+```
 
-> Веса (`weight_pct`) — это **каноничный pre-fill**. On-chain рецепт (`unitQty[]`, `unitSize`)
-> выводится в момент создания фонда из живых цен токенов (вес → количество). Веса не зависят от
-> цены, поэтому хранятся именно они.
+| Поле | Тип | Описание |
+|---|---|---|
+| `id` / `name` / `etf` | string | Идентификатор / имя / тикер исходного ETF. |
+| `coverage_pct` | number | Фактическое покрытие. |
+| `reason` | string | Причина исключения. |
 
-### 3.3 Выбор типа vault (`registry/funds.recommend_vault`)
-
-| Условие фонда | Тип vault | Уровень | Почему |
-|---|---|:---:|---|
-| `cap`, N ≤ 30 | **BasketVault** | L1 | Статичная корзина; cap-веса дрейфуют сами как у cap-weighted индекса → ребаланс не нужен (UIT). Рецепт on-chain. |
-| `cap`, 31–200 | **CommittedVault** | L1b | Большая статичная корзина; рецепт off-chain под коммитментом (дёшево при большом N). |
-| `equal`, любой N | **ManagedRebalanceVault** | L3 | `1/N` надо поддерживать → периодический reweight через AP-аукцион (RSP-подобный). |
-| N > 200 | **RegistryRebalanceVault** | L3 | 500-native индекс: reconstitution через Merkle-корень + ERC-6909 claims. |
-| + нужна AUM-комиссия | ManagedVault | L1m | Вариант BasketVault со streaming management fee. |
-| + cash-вход в 1 клик | + **ForwardCashQueue** | L5 | Обёртка над любым: forward-priced cash create/redeem. |
-
-Подробности по каждому контракту и фиатные аналоги — `docs/guides/contracts-reference.md`.
+> Пример: **Real Estate (XLRE)** покрыт лишь на ~5.6% — Robinhood токенизировал почти ни одного
+> из REIT-ов сектора. Это факт данных, а не ошибка: при появлении новых токенов покрытие вырастет.
 
 ---
 
-## 4. Перегенерация
+## 4. Методология (как это собирается)
+
+1. **Источник состава** — файлы эмитентов (primary, без ключа, ежедневно):
+   - **SPDR** (XLSX) — 11 Select Sector + SPY/DIA: `holdings-daily-us-en-{ticker}.xlsx`.
+   - **ARK** (CSV) — ARKK/ARKW/ARKG/ARKF/ARKX: `assets.ark-funds.com/.../{FUND}_{TICKER}_HOLDINGS.csv`.
+   - iShares/Invesco отдают HTML consent-wall голым клиентам → отложены (нужна сессия / aggregator).
+   - Обязателен браузерный `User-Agent`. Холдинги кэшируются в `cache/etf/<TICKER>.json`.
+2. **Нормализация тикеров** — фолдинг разделителей класс-акций (`BRK-B` ↔ `BRK.B`), отсев
+   не-акционных строк (cash, futures, swaps).
+3. **Матчинг** — пересечение с реестром по тикеру; непокрытые (иностранные листинги, не
+   токенизированные имена) отбрасываются.
+4. **Перенормировка** — веса оставшихся имён делятся на сумму покрытых весов → сумма = 100%.
+   `coverage_pct` = сумма покрытых исходных весов (насколько достоверна реплика).
+5. **Vault** — по числу имён (см. §2.2).
+
+> **Лицензии (важно перед продакшеном):** мы **не редистрибутируем сырой файл эмитента** — только
+> производные веса, посчитанные пересечением с нашим реестром, + coverage. Состав индексов —
+> IP индекс-провайдеров (S&P/Nasdaq/MSCI). Перед тем как показывать дословные веса эмитента в
+> продукте — юридическая проверка (см. `research/results/Q8.md` §D).
+
+---
+
+## 5. Перегенерация / добавление фондов
 
 ```bash
 cd tools/registry
-./.venv/bin/python src/run.py --skip-enrich   # пересобрать реестр (если менялся)
-./.venv/bin/python src/build_funds.py          # пересобрать suggested_funds.json
+./.venv/bin/python src/build_funds.py            # из кэша holdings
+./.venv/bin/python src/build_funds.py --force    # перетянуть holdings заново
 ```
 
-Каталог фондов (курируемые + правила секторных) задаётся в `src/build_funds.py` (`CURATED`,
-`sector_specs`). Добавить фонд = добавить запись в `CURATED`.
+Каталог целевых ETF — таблица `TARGETS` в `src/build_funds.py`. Добавить фонд = добавить строку
+`{id, ticker, issuer, ark_file?, name, theme, weighting, description}`. Новый эмитент = добавить
+адаптер в `src/registry/etf_holdings.py`.

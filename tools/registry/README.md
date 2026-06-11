@@ -12,13 +12,14 @@ Design: `../../docs/superpowers/specs/2026-06-11-stock-token-registry-design.md`
 input/stocksTable.json          source snapshot (Dune export: address, ticker, name, AUM, supply)
 overrides/ticker_overrides.json  manual fixes (yf_symbol remap, forced sector/class, drop junk)
 cache/yf/<TICKER>.json           per-ticker yfinance cache (gitignored; makes reruns free)
+cache/etf/<ETF>.json             per-ETF issuer-holdings cache (gitignored)
 build/0{1,2,3}_*.json            intermediate stage artifacts (gitignored)
 out/registry.json                FINAL registry (§5 schema)
 out/unclassified_review.csv      tokens that need manual classification
 out/suggested_funds.json         pre-filled fund templates (built from the registry)
-src/registry/                    loader / enrich / classify / build / taxonomy / schema / funds
+src/registry/                    loader / enrich / classify / build / taxonomy / schema / funds / etf_holdings
 src/run.py                       orchestrator (01 -> 04)
-src/build_funds.py               suggested-fund generator (reads out/registry.json)
+src/build_funds.py               suggested-fund generator (replicates real ETFs into the registry)
 tests/                           unit tests for the pure logic
 ```
 
@@ -28,7 +29,8 @@ tests/                           unit tests for the pure logic
 cd tools/registry
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -U pip
-./.venv/bin/python -m pip install yfinance jsonschema "eth-hash[pycryptodome]" eth-utils pytest
+./.venv/bin/python -m pip install yfinance jsonschema "eth-hash[pycryptodome]" eth-utils pytest \
+                                  requests openpyxl   # requests/openpyxl for the ETF-holdings puller
 ```
 
 ## Run
@@ -47,14 +49,17 @@ sequential with a small pause). Results are cached, so every later run is fast. 
 ## Suggested funds (pre-filled basket templates)
 
 ```bash
-./.venv/bin/python src/build_funds.py   # reads out/registry.json -> out/suggested_funds.json
+./.venv/bin/python src/build_funds.py            # uses cached ETF holdings
+./.venv/bin/python src/build_funds.py --force    # refetch issuer holdings files
 ```
 
-Generates "1-click create" fund templates: curated themes (Magnificent 7, AI & Semiconductors,
-Crypto & Blockchain, Mega-Cap 20, Equal-Weight Tech 20) + an auto "Top 15 <Sector>" per sector.
-Each fund carries its constituents + target weights + the recommended vault type. Methodology
-(weighting + vault choice) lives in `src/registry/funds.py`; the catalog in `src/build_funds.py`.
-Field reference: `../../docs/guides/suggested-funds-fields-ru.md`.
+Generates "1-click create" fund templates by **replicating real, popular ETFs**: pulls each
+target ETF's published holdings (constituents + weights) from the issuer file
+(`src/registry/etf_holdings.py` — SPDR XLSX, ARK CSV; browser UA required), intersects them with
+our registry, renormalizes weights over the tokenizable subset, and reports a `coverage_pct`.
+Funds below 70% coverage are moved to a `skipped` list. Output: `out/suggested_funds.json`.
+Target ETF catalog = the `TARGETS` table in `src/build_funds.py`; data-source rationale lives in
+`../../research/results/Q8.md`. Field reference: `../../docs/guides/suggested-funds-fields-ru.md`.
 
 ## Tests
 

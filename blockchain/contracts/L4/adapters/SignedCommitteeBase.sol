@@ -17,6 +17,7 @@ abstract contract SignedCommitteeBase is Ownable {
     constructor(address owner_) Ownable(owner_) {}
 
     function setCommittee(address[] calldata members, uint256 threshold_) external onlyOwner {
+        if (threshold_ == 0 || threshold_ > members.length) revert ThresholdNotMet();
         for (uint256 i = 0; i < _committee.length; ++i) isCommittee[_committee[i]] = false;
         _committee = members;
         for (uint256 i = 0; i < members.length; ++i) isCommittee[members[i]] = true;
@@ -29,6 +30,7 @@ abstract contract SignedCommitteeBase is Ownable {
     function _countValidSigners(bytes32 h, bytes32[] memory r, bytes32[] memory s, uint8[] memory v)
         internal view returns (uint256 valid)
     {
+        if (threshold == 0) revert ThresholdNotMet();
         address last = address(0);
         for (uint256 j = 0; j < r.length; ++j) {
             address signer = ecrecover(h, v[j], r[j], s[j]);

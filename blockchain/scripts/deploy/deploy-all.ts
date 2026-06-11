@@ -1,4 +1,4 @@
-// Orchestrator — deploys the full Meridian stack in dependency order: L1 -> L4 -> L3.
+// Orchestrator — deploys the full Meridian stack in dependency order: L1 -> L4 -> L3 -> demoStocks -> L5.
 //
 //   npx hardhat run scripts/deploy/deploy-all.ts --network robinhoodTestnet
 //
@@ -10,12 +10,16 @@
 import { deployL1 } from "./deploy-l1";
 import { deployL3 } from "./deploy-l3";
 import { deployL4 } from "./deploy-l4";
+import { deployDemoStocks } from "./deploy-demo-stocks";
+import { deployL5 } from "./deploy-l5";
 import { loadConfig } from "./_shared";
 
 async function main() {
   await deployL1();
   await deployL4();
   await deployL3();
+  await deployDemoStocks();
+  await deployL5();
 
   console.log("== Full stack deployed ==");
   const d = loadConfig().deployments ?? {};

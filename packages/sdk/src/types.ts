@@ -1,16 +1,3 @@
-// Mirrors MeridianTypes.MarketStatus / OracleSource (contracts/src/types/MeridianTypes.sol).
-export type MarketStatus =
-  | "unknown"
-  | "preMarket"
-  | "regular"
-  | "postMarket"
-  | "overnight"
-  | "closed";
-
-export type OracleSource =
-  | "chainlink"
-  | "pyth"
-  | "redstone"
-  | "dexTwap"
-  | "perpMark"
-  | "lastClose";
+// MarketStatus / OracleSource now derive from the Zod schemas in dto.ts (single source of truth).
+// Re-exported here for backward compatibility with existing imports from "@meridian/sdk".
+export type { MarketStatus, OracleSource } from "./dto.js";

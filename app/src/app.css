@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  /* terminal palette — deep navy-black base, calmer accents (darker, a touch less juice) */
+  --color-bg: #05070c;
+  --color-bg2: #080b12;
+  --color-surface: #0c1119;
+  --color-surface2: #111824;
+  --color-surface3: #18212e;
+  --color-line: #232d3b;
+  --color-line-soft: #131923;
+  --color-txt: #e6edf5;
+  --color-txt2: #97a6b8;
+  --color-txt3: #5e6a79;
+  --color-cyan: #33cfe1;
+  --color-cyan-dim: #1c5360;
+  --color-emerald: #28e07e;
+  --color-amber: #f7b62b;
+  --color-red: #f8586a;
+  --color-violet: #9d82f6;
+  --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* back-compat aliases: existing utilities (text-ink/bg-paper/...) now resolve dark */
+  --color-ink: #e6edf5;
+  --color-paper: #05070c;
+  --color-muted: #97a6b8;
+  --color-fill: #0c1119;
+  --color-fill2: #111824;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-size: 13px;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--color-txt);
+  background:
+    linear-gradient(transparent 0, transparent calc(100% - 1px), var(--color-line-soft) 100%) 0 0 / 100% 28px,
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), var(--color-line-soft) 100%) 0 0 / 28px 100%,
+    var(--color-bg);
+}
+
+::selection {
+  background: rgba(53, 208, 224, 0.3);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Clickable elements get the pointer cursor; disabled get not-allowed. Native <button> defaults
+   to `cursor: default`, so make every interactive element feel clickable in one place. */
+button:not(:disabled),
+[role="tab"]:not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+label[for],
+summary {
+  cursor: pointer;
+}
+button:disabled,
+[aria-disabled="true"],
+[disabled] {
+  cursor: not-allowed;
+}
+
+/* 28px terminal grid backdrop (from redesign-3) — applied to the app shell so it shows behind
+   content; opaque surfaces (bg-surface) sit on top of it. */
+.terminal-bg {
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(transparent 0, transparent calc(100% - 1px), var(--color-line-soft) 100%),
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px), var(--color-line-soft) 100%);
+  background-size:
+    100% 28px,
+    28px 100%;
+}

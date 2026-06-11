@@ -1,0 +1,285 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MarketStatus {
+  Unknown
+  PreMarket
+  Regular
+  PostMarket
+  Overnight
+  Closed
+}
+
+enum OracleSource {
+  Chainlink
+  Pyth
+  RedStone
+  DexTwap
+  PerpMark
+  LastClose
+}
+
+enum VaultType {
+  Basket
+  Managed
+  Committed
+  Rebalance
+}
+
+enum OracleSeverity {
+  Open
+  Degraded
+  Halted
+  Closed
+  Unknown
+}
+
+enum TargetChangeKind {
+  Scheduled
+  Activated
+}
+
+enum ForwardTicketKind {
+  Create
+  Redeem
+}
+
+enum ForwardTicketStatus {
+  Pending
+  Partial
+  Settled
+  Cancelled
+}
+
+enum ForwardEventKind {
+  CreateRequested
+  RedeemRequested
+  Cancelled
+  Settled
+  PartialFill
+}
+
+model Basket {
+  vaultAddress          String                 @id
+  basketToken           String?
+  cashToken             String?
+  unitSize              Decimal                @db.Decimal(78, 0)
+  name                  String
+  symbol                String
+  frozen                Boolean                @default(false)
+  vaultType             VaultType              @default(Basket)
+  manager               String?
+  managerFeeBps         Int?
+  keeperBps             Int?
+  keeperEscrow          String?
+  recipeCommitment      String?
+  createdAt             DateTime               @default(now())
+  constituents          Constituent[]
+  navSnapshots          NavSnapshot[]
+  queueEntries          QueueEntry[]
+  fairValueAttestations FairValueAttestation[]
+  rebalanceEvents       RebalanceEvent[]
+  targetChanges         TargetChange[]
+  keeperPayouts         KeeperPayout[]
+  forwardTickets        ForwardTicket[]
+  forwardEvents         ForwardEvent[]
+}
+
+model Constituent {
+  id           String @id @default(cuid())
+  basket       Basket @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  vaultAddress String
+  token        String
+  unitQty      Decimal @db.Decimal(78, 0)
+
+  @@unique([vaultAddress, token])
+}
+
+model NavSnapshot {
+  id              String       @id @default(cuid())
+  basket          Basket       @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  vaultAddress    String
+  nav             Decimal      @db.Decimal(78, 18)
+  confidenceLower Decimal      @db.Decimal(78, 18)
+  confidenceUpper Decimal      @db.Decimal(78, 18)
+  marketStatus    MarketStatus
+  source          OracleSource
+  estimated       Boolean
+  severity        OracleSeverity?
+  safe            Boolean?
+  timestamp       DateTime
+  createdAt       DateTime     @default(now())
+
+  @@index([vaultAddress, timestamp(sort: Desc)])
+}
+
+model PriceSnapshot {
+  id           String       @id @default(cuid())
+  token        String
+  price        Decimal      @db.Decimal(78, 18)
+  confidence   Decimal      @db.Decimal(78, 18)
+  marketStatus MarketStatus
+  source       OracleSource
+  timestamp    DateTime
+  createdAt    DateTime     @default(now())
+
+  @@index([token, timestamp(sort: Desc)])
+}
+
+model TokenMetadata {
+  token     String   @id   // lowercased address
+  symbol    String
+  name      String?
+  decimals  Int
+  updatedAt DateTime @updatedAt
+}
+
+model IndexerCheckpoint {
+  chainId            Int      @id
+  lastProcessedBlock BigInt
+  updatedAt          DateTime @updatedAt
+}
+
+enum QueueStatus {
+  Pending
+  Settled
+  Failed
+  Cancelled
+}
+
+/// v2 — mirrors the on-chain forward-redeem queue; settled by the keeper on reopen.
+model QueueEntry {
+  id                String      @id @default(cuid())
+  vaultAddress      String
+  basket            Basket      @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  owner             String
+  basketTokenAmount Decimal     @db.Decimal(78, 0)
+  nonce             BigInt
+  status            QueueStatus @default(Pending)
+  submittedAt       DateTime
+  settledTxHash     String?
+  settledAt         DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@unique([vaultAddress, nonce])
+  @@index([vaultAddress, status, submittedAt])
+}
+
+/// v2 — off-chain-fitted, signed closed-market fair value. estimated path only.
+model FairValueAttestation {
+  id           String    @id @default(cuid())
+  vaultAddress String
+  basket       Basket    @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  nav          Decimal   @db.Decimal(78, 18)
+  lower        Decimal   @db.Decimal(78, 18)
+  upper        Decimal   @db.Decimal(78, 18)
+  timestamp    DateTime
+  signer       String
+  signature    String
+  pushedTxHash String?
+  pushedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([vaultAddress, timestamp(sort: Desc)])
+}
+
+model RebalanceEvent {
+  id           String   @id @default(cuid())
+  basket       Basket   @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  vaultAddress String
+  txHash       String
+  logIndex     Int
+  blockNumber  BigInt
+  recipient    String
+  acquire      Json
+  acquireIn    Json
+  release      Json
+  releaseOut   Json
+  timestamp    DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([vaultAddress, timestamp(sort: Desc)])
+}
+
+model TargetChange {
+  id           String           @id @default(cuid())
+  basket       Basket           @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  vaultAddress String
+  kind         TargetChangeKind
+  tokens       Json
+  unitQty      Json
+  effectiveAt  DateTime?
+  txHash       String
+  logIndex     Int
+  blockNumber  BigInt
+  timestamp    DateTime
+  createdAt    DateTime         @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([vaultAddress, timestamp(sort: Desc)])
+}
+
+/// L5 — mirrors a ForwardCashQueue ticket; state reconstructed from queue events by the indexer.
+model ForwardTicket {
+  id           String              @id @default(cuid())
+  basket       Basket              @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  queueAddress String
+  vaultAddress String
+  ticketId     Int
+  owner        String
+  kind         ForwardTicketKind
+  amount       Decimal             @db.Decimal(78, 0)
+  remaining    Decimal             @db.Decimal(78, 0)
+  status       ForwardTicketStatus @default(Pending)
+  cutoff       DateTime
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([queueAddress, ticketId])
+  @@index([vaultAddress, status])
+  @@index([owner])
+}
+
+/// L5 — append-only forward-queue event log (idempotent on txHash+logIndex).
+model ForwardEvent {
+  id           String           @id @default(cuid())
+  basket       Basket           @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  txHash       String
+  logIndex     Int
+  queueAddress String
+  vaultAddress String
+  ticketId     Int
+  kind         ForwardEventKind
+  payload      Json
+  timestamp    DateTime
+  createdAt    DateTime         @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([vaultAddress, timestamp(sort: Desc)])
+}
+
+model KeeperPayout {
+  id           String   @id @default(cuid())
+  basket       Basket   @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  vaultAddress String
+  to           String
+  amount       Decimal  @db.Decimal(78, 0)
+  txHash       String
+  logIndex     Int
+  blockNumber  BigInt
+  timestamp    DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([vaultAddress, timestamp(sort: Desc)])
+}

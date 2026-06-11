@@ -10,3 +10,9 @@ dist/
 
 # keep Hardhat happy
 *.log
+lib/
+
+# Foundry (invariant/property fuzzing only; hardhat suite is canonical)
+out/
+cache_forge/
+broadcast/

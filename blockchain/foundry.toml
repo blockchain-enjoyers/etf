@@ -1,0 +1,16 @@
+[profile.default]
+src = "contracts"
+test = "test/foundry"
+out = "out"
+cache_path = "cache_forge"
+libs = ["node_modules", "lib"]
+solc = "0.8.35"
+optimizer = true
+optimizer_runs = 200          # match hardhat
+via_ir = false                # match hardhat (viaIR is OFF; never enable)
+evm_version = "osaka"         # match hardhat
+remappings = [
+  "@openzeppelin/=node_modules/@openzeppelin/",
+  "forge-std/=lib/forge-std/src/",
+]
+fs_permissions = [{ access = "read", path = "./" }]

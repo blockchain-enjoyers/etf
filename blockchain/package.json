@@ -7,6 +7,7 @@
     "build": "hardhat compile",
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "fuzz": "forge test",
     "clean": "hardhat clean",
     "export-abi": "hardhat export-abi",
     "node": "hardhat node",

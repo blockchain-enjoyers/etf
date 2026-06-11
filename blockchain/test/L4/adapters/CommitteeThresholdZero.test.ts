@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("SignedCommitteeBase — threshold==0 fail-open (H3)", () => {
+describe("SignedCommitteeBase — threshold==0 fail-closed (H3)", () => {
   // payload shape UniversalSignedSource.read expects: (feedId, price, depth, lastUpdate, r[], s[], v[])
   function emptySigPayload() {
     return ethers.AbiCoder.defaultAbiCoder().encode(

@@ -16,8 +16,14 @@ import { ethers, network } from "hardhat";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const CONFIG_PATH =
-  process.env.DEPLOY_CONFIG ?? join(__dirname, "..", "..", "config", "testnet.json");
+// Resolve the config path PER CALL (not at module load): `process.env.DEPLOY_CONFIG` may be set after this
+// module is first imported (e.g. an in-process deploy test sets it before dynamic-importing the deploy scripts).
+// A module-load constant would freeze to the default and let a `hardhat`-network run clobber the real testnet.json.
+export function configPath(): string {
+  return process.env.DEPLOY_CONFIG ?? join(__dirname, "..", "..", "config", "testnet.json");
+}
+/** @deprecated resolved at import; prefer loadConfig/saveConfig (which resolve per-call). Kept for back-compat. */
+export const CONFIG_PATH = configPath();
 export const EXPLORER = "https://explorer.testnet.chain.robinhood.com/address/";
 
 // Tunables (uint256/uint8 constructor params). Override per-deploy via config.params.
@@ -45,10 +51,18 @@ export type Config = {
 const jsonReplacer = (_k: string, v: unknown) => (typeof v === "bigint" ? v.toString() : v);
 
 export function loadConfig(): Config {
-  return JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+  return JSON.parse(readFileSync(configPath(), "utf8"));
 }
 export function saveConfig(config: Config): void {
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, jsonReplacer, 2) + "\n");
+  // Safety net: refuse to write the real default config from the in-process hardhat network without an explicit
+  // DEPLOY_CONFIG. This prevents a dry-run / test that forgot DEPLOY_CONFIG from clobbering config/testnet.json.
+  if (!process.env.DEPLOY_CONFIG && network.name === "hardhat") {
+    throw new Error(
+      "saveConfig: refusing to write config/testnet.json from the in-process 'hardhat' network. " +
+        "Set DEPLOY_CONFIG=/tmp/<file>.json in the shell before running a dry-run/test.",
+    );
+  }
+  writeFileSync(configPath(), JSON.stringify(config, jsonReplacer, 2) + "\n");
 }
 
 /// Resolve the deployer signer, print network/balance, and guard against a 0-balance account.

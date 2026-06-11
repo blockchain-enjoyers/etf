@@ -13,7 +13,10 @@
     "deploy:l1": "hardhat run scripts/deploy/deploy-l1.ts --network robinhoodTestnet",
     "deploy:l3": "hardhat run scripts/deploy/deploy-l3.ts --network robinhoodTestnet",
     "deploy:l4": "hardhat run scripts/deploy/deploy-l4.ts --network robinhoodTestnet",
-    "deploy:all": "hardhat run scripts/deploy/deploy-all.ts --network robinhoodTestnet"
+    "deploy:l5": "hardhat run scripts/deploy/deploy-l5.ts --network robinhoodTestnet",
+    "deploy:demo-stocks": "hardhat run scripts/deploy/deploy-demo-stocks.ts --network robinhoodTestnet",
+    "deploy:all": "hardhat run scripts/deploy/deploy-all.ts --network robinhoodTestnet",
+    "verify:l5": "hardhat run scripts/deploy/verify-l5.ts --network robinhoodTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

@@ -15,8 +15,10 @@ cache/yf/<TICKER>.json           per-ticker yfinance cache (gitignored; makes re
 build/0{1,2,3}_*.json            intermediate stage artifacts (gitignored)
 out/registry.json                FINAL registry (§5 schema)
 out/unclassified_review.csv      tokens that need manual classification
-src/registry/                    loader / enrich / classify / build / taxonomy / schema
+out/suggested_funds.json         pre-filled fund templates (built from the registry)
+src/registry/                    loader / enrich / classify / build / taxonomy / schema / funds
 src/run.py                       orchestrator (01 -> 04)
+src/build_funds.py               suggested-fund generator (reads out/registry.json)
 tests/                           unit tests for the pure logic
 ```
 
@@ -41,6 +43,18 @@ python3 -m venv .venv
 The first full enrichment hits yfinance once per unique ticker (~2000 calls, ~15-20 min,
 sequential with a small pause). Results are cached, so every later run is fast. Output is
 `out/registry.json`.
+
+## Suggested funds (pre-filled basket templates)
+
+```bash
+./.venv/bin/python src/build_funds.py   # reads out/registry.json -> out/suggested_funds.json
+```
+
+Generates "1-click create" fund templates: curated themes (Magnificent 7, AI & Semiconductors,
+Crypto & Blockchain, Mega-Cap 20, Equal-Weight Tech 20) + an auto "Top 15 <Sector>" per sector.
+Each fund carries its constituents + target weights + the recommended vault type. Methodology
+(weighting + vault choice) lives in `src/registry/funds.py`; the catalog in `src/build_funds.py`.
+Field reference: `../../docs/guides/suggested-funds-fields-ru.md`.
 
 ## Tests
 

@@ -1,0 +1,2056 @@
+{
+ "schema_version": "1.0",
+ "generated_at": "2026-06-11T06:33:22Z",
+ "source_registry": "out/registry.json",
+ "weighting_note": "cap = market-cap weighted with per-name cap + redistribution; equal = 1/N. Weights are the canonical pre-fill; on-chain unitQty is derived at create time from live prices.",
+ "fund_count": 15,
+ "funds": [
+  {
+   "id": "mag7",
+   "name": "Magnificent 7",
+   "description": "The seven mega-cap US tech leaders driving market returns.",
+   "theme": "mega-cap tech",
+   "weighting": "cap",
+   "max_weight_pct": 25.0,
+   "constituent_count": 7,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "AAPL",
+     "name": "Apple Inc.",
+     "sector": "Technology",
+     "weight_pct": 19.58,
+     "address": "0x012c768e5162d5Ed965D45935634EFCe705A57AC",
+     "market_cap_usd": 4282539048960
+    },
+    {
+     "ticker": "MSFT",
+     "name": "Microsoft Corporation",
+     "sector": "Technology",
+     "weight_pct": 13.49,
+     "address": "0x44F9BcE486090D3F3e26768E3Ece4c864616526F",
+     "market_cap_usd": 2951762673664
+    },
+    {
+     "ticker": "GOOGL",
+     "name": "Alphabet Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 19.87,
+     "address": "0x043C1841e915A2DC175e3278F96a5DEEbeb6911a",
+     "market_cap_usd": 4346030850048
+    },
+    {
+     "ticker": "AMZN",
+     "name": "Amazon.com, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 11.7,
+     "address": "0xC78D6A55457f075b429bCA8f50B961019E0888A3",
+     "market_cap_usd": 2560192151552
+    },
+    {
+     "ticker": "NVDA",
+     "name": "NVIDIA Corporation",
+     "sector": "Technology",
+     "weight_pct": 22.18,
+     "address": "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E",
+     "market_cap_usd": 4854372630528
+    },
+    {
+     "ticker": "META",
+     "name": "Meta Platforms, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 6.63,
+     "address": "0xC5f5608Dea75398F80906C49FcCFfBf402b699b1",
+     "market_cap_usd": 1449388933120
+    },
+    {
+     "ticker": "TSLA",
+     "name": "Tesla, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 6.55,
+     "address": "0x52ed905f3A5D624bdD95de9EFAb701d2860FBd62",
+     "market_cap_usd": 1433146621952
+    }
+   ]
+  },
+  {
+   "id": "ai-semis",
+   "name": "AI & Semiconductors",
+   "description": "Chipmakers and semiconductor-equipment names powering the AI buildout.",
+   "theme": "AI / chips",
+   "weighting": "cap",
+   "max_weight_pct": 25.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "NVDA",
+     "name": "NVIDIA Corporation",
+     "sector": "Technology",
+     "weight_pct": 24.99,
+     "address": "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E",
+     "market_cap_usd": 4854372630528
+    },
+    {
+     "ticker": "AVGO",
+     "name": "Broadcom Inc.",
+     "sector": "Technology",
+     "weight_pct": 21.9,
+     "address": "0x6432176F6C36Cfc311e339F068D7B6fd8F28D6Ef",
+     "market_cap_usd": 1770295656448
+    },
+    {
+     "ticker": "MU",
+     "name": "Micron Technology, Inc.",
+     "sector": "Technology",
+     "weight_pct": 12.44,
+     "address": "0x201929f36b3AA507001Ef7A390e23284966B7202",
+     "market_cap_usd": 1005803405312
+    },
+    {
+     "ticker": "AMD",
+     "name": "Advanced Micro Devices, Inc.",
+     "sector": "Technology",
+     "weight_pct": 9.13,
+     "address": "0x241d6f612ef5209c92A446e5CE05f680c4077c2b",
+     "market_cap_usd": 737683701760
+    },
+    {
+     "ticker": "INTC",
+     "name": "Intel Corporation",
+     "sector": "Technology",
+     "weight_pct": 6.66,
+     "address": "0x260bdD1030A3355002c7845932C613aceCF5E6E4",
+     "market_cap_usd": 537983025152
+    },
+    {
+     "ticker": "LRCX",
+     "name": "Lam Research Corporation",
+     "sector": "Technology",
+     "weight_pct": 4.98,
+     "address": "0x2dF35140CA8cE31085Cdc63D6F640B9f8AB0C70C",
+     "market_cap_usd": 402433736704
+    },
+    {
+     "ticker": "AMAT",
+     "name": "Applied Materials, Inc.",
+     "sector": "Technology",
+     "weight_pct": 4.88,
+     "address": "0x98a3ADb61B69Fd5845F7960697F1a0Eb5828d726",
+     "market_cap_usd": 394605789184
+    },
+    {
+     "ticker": "KLAC",
+     "name": "KLA Corporation",
+     "sector": "Technology",
+     "weight_pct": 3.45,
+     "address": "0x7F7d76A499027133C4A12615ad55DfdCd294C9e6",
+     "market_cap_usd": 278973349888
+    },
+    {
+     "ticker": "TXN",
+     "name": "Texas Instruments Incorporated",
+     "sector": "Technology",
+     "weight_pct": 3.18,
+     "address": "0x913239CD43E6bB8b0057ac8362DBD90aE4328EAc",
+     "market_cap_usd": 256655278080
+    },
+    {
+     "ticker": "MRVL",
+     "name": "Marvell Technology, Inc.",
+     "sector": "Technology",
+     "weight_pct": 2.74,
+     "address": "0xA94fC52c8C3C61376659c70Df8a8782d4168138d",
+     "market_cap_usd": 221155966976
+    },
+    {
+     "ticker": "QCOM",
+     "name": "QUALCOMM Incorporated",
+     "sector": "Technology",
+     "weight_pct": 2.49,
+     "address": "0x6A77d0d9916fD1cDA5Bf5E9DBCEEc0ae239Ff5d1",
+     "market_cap_usd": 201524789248
+    },
+    {
+     "ticker": "MPWR",
+     "name": "Monolithic Power Systems, Inc.",
+     "sector": "Technology",
+     "weight_pct": 0.9,
+     "address": "0xFA9527FcfeC04f939C6c67b635C443996E354be8",
+     "market_cap_usd": 72370454528
+    },
+    {
+     "ticker": "NXPI",
+     "name": "NXP Semiconductors N.V.",
+     "sector": "Technology",
+     "weight_pct": 0.89,
+     "address": "0x855CC942d5018c5f424aB60BA794860aE51B50A9",
+     "market_cap_usd": 72095637504
+    },
+    {
+     "ticker": "ALAB",
+     "name": "Astera Labs, Inc.",
+     "sector": "Technology",
+     "weight_pct": 0.7,
+     "address": "0xECa8f0cf7478FdC65DB60ffE54beB92c5827121e",
+     "market_cap_usd": 56712028160
+    },
+    {
+     "ticker": "TER",
+     "name": "Teradyne, Inc.",
+     "sector": "Technology",
+     "weight_pct": 0.67,
+     "address": "0xFaA11c6350785DF774E1f6e9EA746588fb2E5905",
+     "market_cap_usd": 54412488704
+    }
+   ]
+  },
+  {
+   "id": "crypto-blockchain",
+   "name": "Crypto & Blockchain Leaders",
+   "description": "Listed crypto exchanges, miners and bitcoin-treasury companies.",
+   "theme": "crypto equities",
+   "weighting": "cap",
+   "max_weight_pct": 25.0,
+   "constituent_count": 12,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "HOOD",
+     "name": "Robinhood Markets, Inc.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 24.98,
+     "address": "0x1141B205e7f89ef2d322476E17dD14b0286aE263",
+     "market_cap_usd": 77767622656
+    },
+    {
+     "ticker": "MSTR",
+     "name": "Strategy Inc",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 15.78,
+     "address": "0x949D5D5CA6a31215aa9bfa84383D6909fdA3855F",
+     "market_cap_usd": 40755589120
+    },
+    {
+     "ticker": "COIN",
+     "name": "Coinbase Global, Inc.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 15.71,
+     "address": "0x9B9C0B85e04E3500fB82278f88783D6c772258B4",
+     "market_cap_usd": 40565055488
+    },
+    {
+     "ticker": "CRCL",
+     "name": "Circle Internet Group",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 8.17,
+     "address": "0xF1c5B6d3622E8Fd1aED2d1EC4d1A46cF7edd65A8",
+     "market_cap_usd": 21097254912
+    },
+    {
+     "ticker": "IREN",
+     "name": "IREN Limited",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 7.13,
+     "address": "0x4A3e354AD8b1366FeFEC2a2c6e91372A75698640",
+     "market_cap_usd": 18412150784
+    },
+    {
+     "ticker": "HUT",
+     "name": "Hut 8 Corp.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 4.61,
+     "address": "0x10f255E0e852796a137C238428F0aD9ee0638E12",
+     "market_cap_usd": 11898945536
+    },
+    {
+     "ticker": "GLXY",
+     "name": "Galaxy Digital",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 4.55,
+     "address": "0xbf93be401eAD5F4058D1D0df4f3837285855093d",
+     "market_cap_usd": 11755488256
+    },
+    {
+     "ticker": "WULF",
+     "name": "TeraWulf Inc.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 4.45,
+     "address": "0x4bC7cdc8778C0c8E3f6026a59D41Bfc088b60b04",
+     "market_cap_usd": 11491401728
+    },
+    {
+     "ticker": "APLD",
+     "name": "Applied Digital Corporation",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 4.31,
+     "address": "0xBe4B4977045d4e77b8CF945BF9F1AD9B65A773b9",
+     "market_cap_usd": 11122149376
+    },
+    {
+     "ticker": "RIOT",
+     "name": "Riot Platforms, Inc.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 3.53,
+     "address": "0x54138B96669525B8cF562f5766ca51b767402eB8",
+     "market_cap_usd": 9105882112
+    },
+    {
+     "ticker": "BMNR",
+     "name": "Bitmine Immersion Technologies, Inc.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 3.45,
+     "address": "0x9c15B69731774ACbA30887f0e9B6B5F01A856C20",
+     "market_cap_usd": 8908181504
+    },
+    {
+     "ticker": "CIFR",
+     "name": "Cipher Digital Inc.",
+     "sector": "Crypto & Blockchain",
+     "weight_pct": 3.33,
+     "address": "0x47dA06aF8BF99D37f4a1C52fb517A649e4dB0c8c",
+     "market_cap_usd": 8598213632
+    }
+   ]
+  },
+  {
+   "id": "mega-cap-20",
+   "name": "Mega-Cap 20",
+   "description": "The 20 largest US companies by market capitalization, across sectors.",
+   "theme": "blue chips",
+   "weighting": "cap",
+   "max_weight_pct": 15.0,
+   "constituent_count": 20,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "NVDA",
+     "name": "NVIDIA Corporation",
+     "sector": "Technology",
+     "weight_pct": 13.13,
+     "address": "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E",
+     "market_cap_usd": 4854372630528
+    },
+    {
+     "ticker": "GOOGL",
+     "name": "Alphabet Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 11.75,
+     "address": "0x043C1841e915A2DC175e3278F96a5DEEbeb6911a",
+     "market_cap_usd": 4346030850048
+    },
+    {
+     "ticker": "GOOG",
+     "name": "Alphabet Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 11.65,
+     "address": "0x106d190967970B2d4003375456b4FE93DC856f26",
+     "market_cap_usd": 4308714389504
+    },
+    {
+     "ticker": "AAPL",
+     "name": "Apple Inc.",
+     "sector": "Technology",
+     "weight_pct": 11.58,
+     "address": "0x012c768e5162d5Ed965D45935634EFCe705A57AC",
+     "market_cap_usd": 4282539048960
+    },
+    {
+     "ticker": "MSFT",
+     "name": "Microsoft Corporation",
+     "sector": "Technology",
+     "weight_pct": 7.98,
+     "address": "0x44F9BcE486090D3F3e26768E3Ece4c864616526F",
+     "market_cap_usd": 2951762673664
+    },
+    {
+     "ticker": "AMZN",
+     "name": "Amazon.com, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 6.92,
+     "address": "0xC78D6A55457f075b429bCA8f50B961019E0888A3",
+     "market_cap_usd": 2560192151552
+    },
+    {
+     "ticker": "AVGO",
+     "name": "Broadcom Inc.",
+     "sector": "Technology",
+     "weight_pct": 4.79,
+     "address": "0x6432176F6C36Cfc311e339F068D7B6fd8F28D6Ef",
+     "market_cap_usd": 1770295656448
+    },
+    {
+     "ticker": "META",
+     "name": "Meta Platforms, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 3.92,
+     "address": "0xC5f5608Dea75398F80906C49FcCFfBf402b699b1",
+     "market_cap_usd": 1449388933120
+    },
+    {
+     "ticker": "TSLA",
+     "name": "Tesla, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 3.88,
+     "address": "0x52ed905f3A5D624bdD95de9EFAb701d2860FBd62",
+     "market_cap_usd": 1433146621952
+    },
+    {
+     "ticker": "BRK-A",
+     "name": "Berkshire Hathaway Inc.",
+     "sector": "Financials",
+     "weight_pct": 2.83,
+     "address": "0xB26341Aa7fb2C33d5eeECedf74A674e5F65cB2a9",
+     "market_cap_usd": 1045355495424
+    },
+    {
+     "ticker": "BRK-B",
+     "name": "Berkshire Hathaway Inc.",
+     "sector": "Financials",
+     "weight_pct": 2.82,
+     "address": "0x5FbEbd993C1e49394B815db59c75a27410018557",
+     "market_cap_usd": 1043227017216
+    },
+    {
+     "ticker": "LLY",
+     "name": "Eli Lilly and Company",
+     "sector": "Healthcare",
+     "weight_pct": 2.74,
+     "address": "0x55F732a31517864b707A958C7eF6024E334f5733",
+     "market_cap_usd": 1013348171776
+    },
+    {
+     "ticker": "MU",
+     "name": "Micron Technology, Inc.",
+     "sector": "Technology",
+     "weight_pct": 2.72,
+     "address": "0x201929f36b3AA507001Ef7A390e23284966B7202",
+     "market_cap_usd": 1005803405312
+    },
+    {
+     "ticker": "WMT",
+     "name": "Walmart Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 2.59,
+     "address": "0xB0bF53e66fE2602cf237e8688f63Ba9a021778F5",
+     "market_cap_usd": 959664685056
+    },
+    {
+     "ticker": "JPM",
+     "name": "JPMorgan Chase & Co.",
+     "sector": "Financials",
+     "weight_pct": 2.24,
+     "address": "0x7767bdeE1988F31996a255A8813BCd02b766F148",
+     "market_cap_usd": 828344172544
+    },
+    {
+     "ticker": "AMD",
+     "name": "Advanced Micro Devices, Inc.",
+     "sector": "Technology",
+     "weight_pct": 1.99,
+     "address": "0x241d6f612ef5209c92A446e5CE05f680c4077c2b",
+     "market_cap_usd": 737683701760
+    },
+    {
+     "ticker": "XOM",
+     "name": "Exxon Mobil Corporation",
+     "sector": "Energy",
+     "weight_pct": 1.69,
+     "address": "0xeccd8E7BF85E81379fE4336B7EfE4De3A3Df8D03",
+     "market_cap_usd": 624311926784
+    },
+    {
+     "ticker": "V",
+     "name": "Visa Inc.",
+     "sector": "Financials",
+     "weight_pct": 1.66,
+     "address": "0x09E63dc0c1573e1645af730bAa8219E0f2EE2F44",
+     "market_cap_usd": 614187139072
+    },
+    {
+     "ticker": "ORCL",
+     "name": "Oracle Corporation",
+     "sector": "Technology",
+     "weight_pct": 1.57,
+     "address": "0x60fC7F30D7f952366638D1096ED5Bba2b47Ea146",
+     "market_cap_usd": 578833022976
+    },
+    {
+     "ticker": "JNJ",
+     "name": "Johnson & Johnson",
+     "sector": "Healthcare",
+     "weight_pct": 1.55,
+     "address": "0x07FC5790484a8378C8B25B2861338aF6b69E4Ea4",
+     "market_cap_usd": 574097195008
+    }
+   ]
+  },
+  {
+   "id": "ew-tech-20",
+   "name": "Equal-Weight Tech 20",
+   "description": "Top 20 technology names held at equal weight (rebalanced to 1/N).",
+   "theme": "tech, equal weight",
+   "weighting": "equal",
+   "max_weight_pct": null,
+   "constituent_count": 20,
+   "vault": {
+    "type": "ManagedRebalanceVault",
+    "level": "L3",
+    "rationale": "Equal-weight must be held to 1/N, so it needs periodic reweight (RSP-like); the rebalance vault restores the target via an AP auction.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "NVDA",
+     "name": "NVIDIA Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E",
+     "market_cap_usd": 4854372630528
+    },
+    {
+     "ticker": "AAPL",
+     "name": "Apple Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x012c768e5162d5Ed965D45935634EFCe705A57AC",
+     "market_cap_usd": 4282539048960
+    },
+    {
+     "ticker": "MSFT",
+     "name": "Microsoft Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x44F9BcE486090D3F3e26768E3Ece4c864616526F",
+     "market_cap_usd": 2951762673664
+    },
+    {
+     "ticker": "AVGO",
+     "name": "Broadcom Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x6432176F6C36Cfc311e339F068D7B6fd8F28D6Ef",
+     "market_cap_usd": 1770295656448
+    },
+    {
+     "ticker": "MU",
+     "name": "Micron Technology, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x201929f36b3AA507001Ef7A390e23284966B7202",
+     "market_cap_usd": 1005803405312
+    },
+    {
+     "ticker": "AMD",
+     "name": "Advanced Micro Devices, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x241d6f612ef5209c92A446e5CE05f680c4077c2b",
+     "market_cap_usd": 737683701760
+    },
+    {
+     "ticker": "ORCL",
+     "name": "Oracle Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x60fC7F30D7f952366638D1096ED5Bba2b47Ea146",
+     "market_cap_usd": 578833022976
+    },
+    {
+     "ticker": "INTC",
+     "name": "Intel Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x260bdD1030A3355002c7845932C613aceCF5E6E4",
+     "market_cap_usd": 537983025152
+    },
+    {
+     "ticker": "CSCO",
+     "name": "Cisco Systems, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x3EA29FcD49db5a3fD92fE390C614beaeF69B395A",
+     "market_cap_usd": 468242432000
+    },
+    {
+     "ticker": "LRCX",
+     "name": "Lam Research Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x2dF35140CA8cE31085Cdc63D6F640B9f8AB0C70C",
+     "market_cap_usd": 402433736704
+    },
+    {
+     "ticker": "AMAT",
+     "name": "Applied Materials, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x98a3ADb61B69Fd5845F7960697F1a0Eb5828d726",
+     "market_cap_usd": 394605789184
+    },
+    {
+     "ticker": "PLTR",
+     "name": "Palantir Technologies Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x019db453C782acA45cA7Dd630C5A91ef45e8d753",
+     "market_cap_usd": 312153997312
+    },
+    {
+     "ticker": "KLAC",
+     "name": "KLA Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x7F7d76A499027133C4A12615ad55DfdCd294C9e6",
+     "market_cap_usd": 278973349888
+    },
+    {
+     "ticker": "TXN",
+     "name": "Texas Instruments Incorporated",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x913239CD43E6bB8b0057ac8362DBD90aE4328EAc",
+     "market_cap_usd": 256655278080
+    },
+    {
+     "ticker": "IBM",
+     "name": "International Business Machines Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x58beE50d727bE4E785315d19cF95a8a07bCB3Cb5",
+     "market_cap_usd": 255987154944
+    },
+    {
+     "ticker": "SNDK",
+     "name": "Sandisk Corporation",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x7fc3Dd412980F28F1d3e2718d0fC6821808C2137",
+     "market_cap_usd": 243345539072
+    },
+    {
+     "ticker": "DELL",
+     "name": "Dell Technologies Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x2c26783F426C9883466c59665B83b9Cc7de12b22",
+     "market_cap_usd": 240229826560
+    },
+    {
+     "ticker": "MRVL",
+     "name": "Marvell Technology, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0xA94fC52c8C3C61376659c70Df8a8782d4168138d",
+     "market_cap_usd": 221155966976
+    },
+    {
+     "ticker": "PANW",
+     "name": "Palo Alto Networks, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0xB017E15951f6b7Ef7BC9334904f1e9127D713B5E",
+     "market_cap_usd": 214524297216
+    },
+    {
+     "ticker": "QCOM",
+     "name": "QUALCOMM Incorporated",
+     "sector": "Technology",
+     "weight_pct": 5.0,
+     "address": "0x6A77d0d9916fD1cDA5Bf5E9DBCEEc0ae239Ff5d1",
+     "market_cap_usd": 201524789248
+    }
+   ]
+  },
+  {
+   "id": "sector-technology",
+   "name": "Top 15 Technology",
+   "description": "The 15 largest Technology names by market cap, cap-weighted.",
+   "theme": "sector: Technology",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "NVDA",
+     "name": "NVIDIA Corporation",
+     "sector": "Technology",
+     "weight_pct": 25.44,
+     "address": "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E",
+     "market_cap_usd": 4854372630528
+    },
+    {
+     "ticker": "AAPL",
+     "name": "Apple Inc.",
+     "sector": "Technology",
+     "weight_pct": 22.44,
+     "address": "0x012c768e5162d5Ed965D45935634EFCe705A57AC",
+     "market_cap_usd": 4282539048960
+    },
+    {
+     "ticker": "MSFT",
+     "name": "Microsoft Corporation",
+     "sector": "Technology",
+     "weight_pct": 15.46,
+     "address": "0x44F9BcE486090D3F3e26768E3Ece4c864616526F",
+     "market_cap_usd": 2951762673664
+    },
+    {
+     "ticker": "AVGO",
+     "name": "Broadcom Inc.",
+     "sector": "Technology",
+     "weight_pct": 9.27,
+     "address": "0x6432176F6C36Cfc311e339F068D7B6fd8F28D6Ef",
+     "market_cap_usd": 1770295656448
+    },
+    {
+     "ticker": "MU",
+     "name": "Micron Technology, Inc.",
+     "sector": "Technology",
+     "weight_pct": 5.27,
+     "address": "0x201929f36b3AA507001Ef7A390e23284966B7202",
+     "market_cap_usd": 1005803405312
+    },
+    {
+     "ticker": "AMD",
+     "name": "Advanced Micro Devices, Inc.",
+     "sector": "Technology",
+     "weight_pct": 3.86,
+     "address": "0x241d6f612ef5209c92A446e5CE05f680c4077c2b",
+     "market_cap_usd": 737683701760
+    },
+    {
+     "ticker": "ORCL",
+     "name": "Oracle Corporation",
+     "sector": "Technology",
+     "weight_pct": 3.03,
+     "address": "0x60fC7F30D7f952366638D1096ED5Bba2b47Ea146",
+     "market_cap_usd": 578833022976
+    },
+    {
+     "ticker": "INTC",
+     "name": "Intel Corporation",
+     "sector": "Technology",
+     "weight_pct": 2.82,
+     "address": "0x260bdD1030A3355002c7845932C613aceCF5E6E4",
+     "market_cap_usd": 537983025152
+    },
+    {
+     "ticker": "CSCO",
+     "name": "Cisco Systems, Inc.",
+     "sector": "Technology",
+     "weight_pct": 2.45,
+     "address": "0x3EA29FcD49db5a3fD92fE390C614beaeF69B395A",
+     "market_cap_usd": 468242432000
+    },
+    {
+     "ticker": "LRCX",
+     "name": "Lam Research Corporation",
+     "sector": "Technology",
+     "weight_pct": 2.11,
+     "address": "0x2dF35140CA8cE31085Cdc63D6F640B9f8AB0C70C",
+     "market_cap_usd": 402433736704
+    },
+    {
+     "ticker": "AMAT",
+     "name": "Applied Materials, Inc.",
+     "sector": "Technology",
+     "weight_pct": 2.07,
+     "address": "0x98a3ADb61B69Fd5845F7960697F1a0Eb5828d726",
+     "market_cap_usd": 394605789184
+    },
+    {
+     "ticker": "PLTR",
+     "name": "Palantir Technologies Inc.",
+     "sector": "Technology",
+     "weight_pct": 1.64,
+     "address": "0x019db453C782acA45cA7Dd630C5A91ef45e8d753",
+     "market_cap_usd": 312153997312
+    },
+    {
+     "ticker": "KLAC",
+     "name": "KLA Corporation",
+     "sector": "Technology",
+     "weight_pct": 1.46,
+     "address": "0x7F7d76A499027133C4A12615ad55DfdCd294C9e6",
+     "market_cap_usd": 278973349888
+    },
+    {
+     "ticker": "TXN",
+     "name": "Texas Instruments Incorporated",
+     "sector": "Technology",
+     "weight_pct": 1.34,
+     "address": "0x913239CD43E6bB8b0057ac8362DBD90aE4328EAc",
+     "market_cap_usd": 256655278080
+    },
+    {
+     "ticker": "IBM",
+     "name": "International Business Machines Corporation",
+     "sector": "Technology",
+     "weight_pct": 1.34,
+     "address": "0x58beE50d727bE4E785315d19cF95a8a07bCB3Cb5",
+     "market_cap_usd": 255987154944
+    }
+   ]
+  },
+  {
+   "id": "sector-healthcare",
+   "name": "Top 15 Healthcare",
+   "description": "The 15 largest Healthcare names by market cap, cap-weighted.",
+   "theme": "sector: Healthcare",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "LLY",
+     "name": "Eli Lilly and Company",
+     "sector": "Healthcare",
+     "weight_pct": 25.03,
+     "address": "0x55F732a31517864b707A958C7eF6024E334f5733",
+     "market_cap_usd": 1013348171776
+    },
+    {
+     "ticker": "JNJ",
+     "name": "Johnson & Johnson",
+     "sector": "Healthcare",
+     "weight_pct": 14.17,
+     "address": "0x07FC5790484a8378C8B25B2861338aF6b69E4Ea4",
+     "market_cap_usd": 574097195008
+    },
+    {
+     "ticker": "ABBV",
+     "name": "AbbVie Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 9.81,
+     "address": "0x1c5C1a4297B7Dde18F4E2a890b7C364900c95870",
+     "market_cap_usd": 397440057344
+    },
+    {
+     "ticker": "UNH",
+     "name": "UnitedHealth Group Incorporated",
+     "sector": "Healthcare",
+     "weight_pct": 9.14,
+     "address": "0x896ba1A79F5592973326a41A6ba0aB145Df7E81B",
+     "market_cap_usd": 370032508928
+    },
+    {
+     "ticker": "MRK",
+     "name": "Merck & Co., Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 7.26,
+     "address": "0xb532e436744A157968DdcD240d510771d0E6A106",
+     "market_cap_usd": 294131400704
+    },
+    {
+     "ticker": "AMGN",
+     "name": "Amgen Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 4.5,
+     "address": "0x0224a7cdF8d6F64b46DF61d13ed83353e7F97414",
+     "market_cap_usd": 182275686400
+    },
+    {
+     "ticker": "TMO",
+     "name": "Thermo Fisher Scientific Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 4.42,
+     "address": "0x88D053D90d4f81467E586a881f9C9b8d0EcD3A69",
+     "market_cap_usd": 179136413696
+    },
+    {
+     "ticker": "GILD",
+     "name": "Gilead Sciences, Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 3.72,
+     "address": "0xc835c132405a5b28BFAEE8CcF21FB9230D23F739",
+     "market_cap_usd": 150825910272
+    },
+    {
+     "ticker": "ISRG",
+     "name": "Intuitive Surgical, Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 3.6,
+     "address": "0xe470e1beAD3383B276cf7B05a520B1c8BdCc240E",
+     "market_cap_usd": 145922179072
+    },
+    {
+     "ticker": "PFE",
+     "name": "Pfizer Inc.",
+     "sector": "Healthcare",
+     "weight_pct": 3.6,
+     "address": "0x2bAA39d0207BDF76Ca2F5c38695480fB732F3062",
+     "market_cap_usd": 145905778688
+    },
+    {
+     "ticker": "DHR",
+     "name": "Danaher Corporation",
+     "sector": "Healthcare",
+     "weight_pct": 3.21,
+     "address": "0x9F71EF54bCC1bBBb88CCA84b2BBb768E049CBD9E",
+     "market_cap_usd": 129967923200
+    },
+    {
+     "ticker": "CVS",
+     "name": "CVS Health Corporation",
+     "sector": "Healthcare",
+     "weight_pct": 3.09,
+     "address": "0xC2B28b5427eeb305ce3Cc8460Bea751F832f2fcB",
+     "market_cap_usd": 125066387456
+    },
+    {
+     "ticker": "SYK",
+     "name": "Stryker Corporation",
+     "sector": "Healthcare",
+     "weight_pct": 2.92,
+     "address": "0x4bb780aA728808328713F86c76F46d7FcB946A39",
+     "market_cap_usd": 118397140992
+    },
+    {
+     "ticker": "BMY",
+     "name": "Bristol-Myers Squibb Company",
+     "sector": "Healthcare",
+     "weight_pct": 2.8,
+     "address": "0xBE52ad52d000f2702d50F3726dddbE7926aD47B5",
+     "market_cap_usd": 113539162112
+    },
+    {
+     "ticker": "VRTX",
+     "name": "Vertex Pharmaceuticals Incorporated",
+     "sector": "Healthcare",
+     "weight_pct": 2.73,
+     "address": "0x298f4EC26316ACBdA146Eab028e30e8e72a93890",
+     "market_cap_usd": 110585561088
+    }
+   ]
+  },
+  {
+   "id": "sector-financials",
+   "name": "Top 15 Financials",
+   "description": "The 15 largest Financials names by market cap, cap-weighted.",
+   "theme": "sector: Financials",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "BRK-A",
+     "name": "Berkshire Hathaway Inc.",
+     "sector": "Financials",
+     "weight_pct": 16.21,
+     "address": "0xB26341Aa7fb2C33d5eeECedf74A674e5F65cB2a9",
+     "market_cap_usd": 1045355495424
+    },
+    {
+     "ticker": "BRK-B",
+     "name": "Berkshire Hathaway Inc.",
+     "sector": "Financials",
+     "weight_pct": 16.18,
+     "address": "0x5FbEbd993C1e49394B815db59c75a27410018557",
+     "market_cap_usd": 1043227017216
+    },
+    {
+     "ticker": "JPM",
+     "name": "JPMorgan Chase & Co.",
+     "sector": "Financials",
+     "weight_pct": 12.85,
+     "address": "0x7767bdeE1988F31996a255A8813BCd02b766F148",
+     "market_cap_usd": 828344172544
+    },
+    {
+     "ticker": "V",
+     "name": "Visa Inc.",
+     "sector": "Financials",
+     "weight_pct": 9.53,
+     "address": "0x09E63dc0c1573e1645af730bAa8219E0f2EE2F44",
+     "market_cap_usd": 614187139072
+    },
+    {
+     "ticker": "MA",
+     "name": "Mastercard Incorporated",
+     "sector": "Financials",
+     "weight_pct": 6.7,
+     "address": "0x58A7Aa83149874579D7255803fae55F00BE01BB3",
+     "market_cap_usd": 432143204352
+    },
+    {
+     "ticker": "BAC",
+     "name": "Bank of America Corporation",
+     "sector": "Financials",
+     "weight_pct": 6.0,
+     "address": "0x24cA98Cc46a9BF6F727E54B00eFB26Ed8F0a2065",
+     "market_cap_usd": 387048079360
+    },
+    {
+     "ticker": "MS",
+     "name": "Morgan Stanley",
+     "sector": "Financials",
+     "weight_pct": 5.06,
+     "address": "0x3e3B517D8556D52dA57d75CAa94677406Ef6207E",
+     "market_cap_usd": 325961711616
+    },
+    {
+     "ticker": "GS",
+     "name": "The Goldman Sachs Group, Inc.",
+     "sector": "Financials",
+     "weight_pct": 4.58,
+     "address": "0x6b9C1b33e52eB519E0285B9181676D9BEBF2FdEA",
+     "market_cap_usd": 295387987968
+    },
+    {
+     "ticker": "RY",
+     "name": "Royal Bank of Canada",
+     "sector": "Financials",
+     "weight_pct": 4.26,
+     "address": "0x5Cf6eD05A891C72c19E7F164d62d4686FDD29dac",
+     "market_cap_usd": 274618761216
+    },
+    {
+     "ticker": "WFC",
+     "name": "Wells Fargo & Company",
+     "sector": "Financials",
+     "weight_pct": 3.89,
+     "address": "0x49A288184a7C5074ebB94D5a78F227503404a5E0",
+     "market_cap_usd": 250843725824
+    },
+    {
+     "ticker": "C",
+     "name": "Citigroup Inc.",
+     "sector": "Financials",
+     "weight_pct": 3.53,
+     "address": "0x13978C266E137D86137D01928b56212314d4a777",
+     "market_cap_usd": 227489857536
+    },
+    {
+     "ticker": "AXP",
+     "name": "American Express Company",
+     "sector": "Financials",
+     "weight_pct": 3.32,
+     "address": "0xd0D8E6E76c4520995C7e8c41f2F0Dd46127B0819",
+     "market_cap_usd": 213800173568
+    },
+    {
+     "ticker": "TD",
+     "name": "The Toronto-Dominion Bank",
+     "sector": "Financials",
+     "weight_pct": 2.93,
+     "address": "0xf3cFde192806eDC3b4e1e5F5f50e6FB593cdb7dD",
+     "market_cap_usd": 189159833600
+    },
+    {
+     "ticker": "BLK",
+     "name": "BlackRock, Inc.",
+     "sector": "Financials",
+     "weight_pct": 2.55,
+     "address": "0x0faeB2fc9b31029bC7A017421cb06d31a7Eb903B",
+     "market_cap_usd": 164587732992
+    },
+    {
+     "ticker": "SCHW",
+     "name": "The Charles Schwab Corporation",
+     "sector": "Financials",
+     "weight_pct": 2.41,
+     "address": "0x8aD1F0688224C64820C3Ca8E3DdFbA82aB9bB81D",
+     "market_cap_usd": 155252621312
+    }
+   ]
+  },
+  {
+   "id": "sector-consumer-staples",
+   "name": "Top 15 Consumer Staples",
+   "description": "The 15 largest Consumer Staples names by market cap, cap-weighted.",
+   "theme": "sector: Consumer Staples",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "WMT",
+     "name": "Walmart Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 30.0,
+     "address": "0xB0bF53e66fE2602cf237e8688f63Ba9a021778F5",
+     "market_cap_usd": 959664685056
+    },
+    {
+     "ticker": "COST",
+     "name": "Costco Wholesale Corporation",
+     "sector": "Consumer Staples",
+     "weight_pct": 13.82,
+     "address": "0xd2ca741550ADDc381a21076919b53cfeD244580d",
+     "market_cap_usd": 436103774208
+    },
+    {
+     "ticker": "KO",
+     "name": "The Coca-Cola Company",
+     "sector": "Consumer Staples",
+     "weight_pct": 11.4,
+     "address": "0x5d646D154bd66bB7F55e609371b5f8397F31345A",
+     "market_cap_usd": 359644495872
+    },
+    {
+     "ticker": "PG",
+     "name": "The Procter & Gamble Company",
+     "sector": "Consumer Staples",
+     "weight_pct": 11.0,
+     "address": "0xFa6c5E90A86e5Ee4141c7783854800c7E59394Cf",
+     "market_cap_usd": 347077705728
+    },
+    {
+     "ticker": "PM",
+     "name": "Philip Morris International Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 9.04,
+     "address": "0x43978f65270dD31d4C5c099709E8267509273038",
+     "market_cap_usd": 285138321408
+    },
+    {
+     "ticker": "PEP",
+     "name": "PepsiCo, Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 6.25,
+     "address": "0x327dF08935aA2D6D2764253B9d0b4EC8e585f290",
+     "market_cap_usd": 197276925952
+    },
+    {
+     "ticker": "MO",
+     "name": "Altria Group, Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 3.87,
+     "address": "0x2D82D1E7F963D4E4A979D30016f1617704f64Bd4",
+     "market_cap_usd": 122119135232
+    },
+    {
+     "ticker": "MNST",
+     "name": "Monster Beverage Corporation",
+     "sector": "Consumer Staples",
+     "weight_pct": 2.83,
+     "address": "0xb5d83396EfF47D56E401a59775e47Ef8CA584f36",
+     "market_cap_usd": 89204121600
+    },
+    {
+     "ticker": "MDLZ",
+     "name": "Mondelez International, Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 2.61,
+     "address": "0x06f5bD42459F2D1728a7B2479465505DA88Eb8Ce",
+     "market_cap_usd": 82384642048
+    },
+    {
+     "ticker": "CL",
+     "name": "Colgate-Palmolive Company",
+     "sector": "Consumer Staples",
+     "weight_pct": 2.28,
+     "address": "0x65b6b494a56dAF2BA89ecdf17C0c85b552DFb078",
+     "market_cap_usd": 71977025536
+    },
+    {
+     "ticker": "TGT",
+     "name": "Target Corporation",
+     "sector": "Consumer Staples",
+     "weight_pct": 1.84,
+     "address": "0xa59f95CbeB5250Ef424E9b34bB2338306BdE2218",
+     "market_cap_usd": 58127380480
+    },
+    {
+     "ticker": "KDP",
+     "name": "Keurig Dr Pepper Inc.",
+     "sector": "Consumer Staples",
+     "weight_pct": 1.37,
+     "address": "0xC728418aC7dEBD005040fd57Dfb8F8e1e888fB73",
+     "market_cap_usd": 43129737216
+    },
+    {
+     "ticker": "KR",
+     "name": "The Kroger Co.",
+     "sector": "Consumer Staples",
+     "weight_pct": 1.26,
+     "address": "0x347447CD1f2B7ee103EE38e52e1f56eE055bc157",
+     "market_cap_usd": 39743504384
+    },
+    {
+     "ticker": "ADM",
+     "name": "Archer-Daniels-Midland Company",
+     "sector": "Consumer Staples",
+     "weight_pct": 1.24,
+     "address": "0x07de39C80D2F76Be18e6eD00Ff482fccE7eF4baD",
+     "market_cap_usd": 39173423104
+    },
+    {
+     "ticker": "SYY",
+     "name": "Sysco Corporation",
+     "sector": "Consumer Staples",
+     "weight_pct": 1.19,
+     "address": "0x6AA4110C61d42A1dEC2CD68e6fc301AE2861cd4a",
+     "market_cap_usd": 37556461568
+    }
+   ]
+  },
+  {
+   "id": "sector-consumer-discretionary",
+   "name": "Top 15 Consumer Discretionary",
+   "description": "The 15 largest Consumer Discretionary names by market cap, cap-weighted.",
+   "theme": "sector: Consumer Discretionary",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "AMZN",
+     "name": "Amazon.com, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 29.99,
+     "address": "0xC78D6A55457f075b429bCA8f50B961019E0888A3",
+     "market_cap_usd": 2560192151552
+    },
+    {
+     "ticker": "TSLA",
+     "name": "Tesla, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 30.0,
+     "address": "0x52ed905f3A5D624bdD95de9EFAb701d2860FBd62",
+     "market_cap_usd": 1433146621952
+    },
+    {
+     "ticker": "HD",
+     "name": "The Home Depot, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 7.85,
+     "address": "0xB46A361295D18dbD7c20a8546C325426111c4B6a",
+     "market_cap_usd": 318000463872
+    },
+    {
+     "ticker": "MCD",
+     "name": "McDonald's Corporation",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 4.95,
+     "address": "0xe9815B0Ff0c89c2986cbC6CD156ab5955D0a1860",
+     "market_cap_usd": 200732098560
+    },
+    {
+     "ticker": "TJX",
+     "name": "The TJX Companies, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 4.57,
+     "address": "0x0304b41ebBb4e73D99a5B292e8e97E6189412555",
+     "market_cap_usd": 185214746624
+    },
+    {
+     "ticker": "BKNG",
+     "name": "Booking Holdings Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 3.07,
+     "address": "0x480Fa91FfC5428C740dCa04Df0Ca7697369c6568",
+     "market_cap_usd": 124476473344
+    },
+    {
+     "ticker": "LOW",
+     "name": "Lowe's Companies, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 2.99,
+     "address": "0xe7506AbD94fF40eF7245433dbFD86dB3F1a97f0C",
+     "market_cap_usd": 121282592768
+    },
+    {
+     "ticker": "SBUX",
+     "name": "Starbucks Corporation",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 2.78,
+     "address": "0x9c739D6596F9ca9eDA3D9c5d19385a3e865D1C46",
+     "market_cap_usd": 112556769280
+    },
+    {
+     "ticker": "MAR",
+     "name": "Marriott International, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 2.51,
+     "address": "0xB295430Dd1F780312F5A4FaE9EDad6e5524f2Acd",
+     "market_cap_usd": 101844459520
+    },
+    {
+     "ticker": "MELI",
+     "name": "MercadoLibre, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 1.99,
+     "address": "0x29241281c077476151917174A8d718308a4f5989",
+     "market_cap_usd": 80521830400
+    },
+    {
+     "ticker": "HLT",
+     "name": "Hilton Worldwide Holdings Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 1.9,
+     "address": "0x1380239d5eE24E8BD68F4576566dD91724a1c2DF",
+     "market_cap_usd": 76995231744
+    },
+    {
+     "ticker": "ABNB",
+     "name": "Airbnb, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 1.89,
+     "address": "0x51e0472D993A8A416Fb3c051213365269664e473",
+     "market_cap_usd": 76621488128
+    },
+    {
+     "ticker": "ORLY",
+     "name": "O'Reilly Automotive, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 1.85,
+     "address": "0x26FAf8254A01170F2Fd2b0008df321Cc3533EdEf",
+     "market_cap_usd": 74965565440
+    },
+    {
+     "ticker": "ROST",
+     "name": "Ross Stores, Inc.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 1.84,
+     "address": "0x905e0Bd10fAfD0E479ae6B074237FA6E8723e1a5",
+     "market_cap_usd": 74395549696
+    },
+    {
+     "ticker": "CVNA",
+     "name": "Carvana Co.",
+     "sector": "Consumer Discretionary",
+     "weight_pct": 1.82,
+     "address": "0x5349D17bb6Bdabe9fFC791540c0dC2b6D6840651",
+     "market_cap_usd": 73762201600
+    }
+   ]
+  },
+  {
+   "id": "sector-industrials",
+   "name": "Top 15 Industrials",
+   "description": "The 15 largest Industrials names by market cap, cap-weighted.",
+   "theme": "sector: Industrials",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "GE",
+     "name": "GE Aerospace",
+     "sector": "Industrials",
+     "weight_pct": 15.07,
+     "address": "0x35b56005423De939391D6A7596AC2Baa51E2F795",
+     "market_cap_usd": 332997656576
+    },
+    {
+     "ticker": "RTX",
+     "name": "RTX Corporation",
+     "sector": "Industrials",
+     "weight_pct": 10.8,
+     "address": "0xcF82F5770A4669c856Bdae5f4972dbFb9C1f6B62",
+     "market_cap_usd": 238915108864
+    },
+    {
+     "ticker": "GEV",
+     "name": "GE Vernova Inc.",
+     "sector": "Industrials",
+     "weight_pct": 10.54,
+     "address": "0x941d7bcc7aBA1a6906128066E02bFB3F352afbFB",
+     "market_cap_usd": 233004433408
+    },
+    {
+     "ticker": "BA",
+     "name": "The Boeing Company",
+     "sector": "Industrials",
+     "weight_pct": 7.45,
+     "address": "0x7639de4F3D46A577963865956e901c81B4a5a3f3",
+     "market_cap_usd": 164755193856
+    },
+    {
+     "ticker": "UNP",
+     "name": "Union Pacific Corporation",
+     "sector": "Industrials",
+     "weight_pct": 7.17,
+     "address": "0x9A88f2C84A5727B1396dA8Cff3127e7CF309D567",
+     "market_cap_usd": 158539235328
+    },
+    {
+     "ticker": "ETN",
+     "name": "Eaton Corporation plc",
+     "sector": "Industrials",
+     "weight_pct": 6.59,
+     "address": "0x2254732c2D175737665F8D568FE2570cF2d2E5Dd",
+     "market_cap_usd": 145791107072
+    },
+    {
+     "ticker": "HON",
+     "name": "Honeywell International Inc.",
+     "sector": "Industrials",
+     "weight_pct": 5.9,
+     "address": "0x07165AA6e668a0D66BBa54f56313c5ea7C12eF3A",
+     "market_cap_usd": 130456510464
+    },
+    {
+     "ticker": "LMT",
+     "name": "Lockheed Martin Corporation",
+     "sector": "Industrials",
+     "weight_pct": 5.47,
+     "address": "0x9a57fFd6fB91bCe9033f21D6b736cCa8b82Ea071",
+     "market_cap_usd": 121050513408
+    },
+    {
+     "ticker": "PH",
+     "name": "Parker-Hannifin Corporation",
+     "sector": "Industrials",
+     "weight_pct": 4.99,
+     "address": "0xA103a9342D86f4e18AEB30285B06b42a0ecD56cf",
+     "market_cap_usd": 110401241088
+    },
+    {
+     "ticker": "VRT",
+     "name": "Vertiv Holdings Co",
+     "sector": "Industrials",
+     "weight_pct": 4.88,
+     "address": "0x6D2C9ED4d396c841799140DC06ec07F730D64d91",
+     "market_cap_usd": 107926896640
+    },
+    {
+     "ticker": "HWM",
+     "name": "Howmet Aerospace Inc.",
+     "sector": "Industrials",
+     "weight_pct": 4.51,
+     "address": "0xf057e89cB06572ca6a1E8aC5af7f0FC8e24a54Cf",
+     "market_cap_usd": 99822821376
+    },
+    {
+     "ticker": "PWR",
+     "name": "Quanta Services, Inc.",
+     "sector": "Industrials",
+     "weight_pct": 4.42,
+     "address": "0x1C04E4e2cC0EB1D829B70c3d52F64eE6a006B4AE",
+     "market_cap_usd": 97677148160
+    },
+    {
+     "ticker": "GD",
+     "name": "General Dynamics Corporation",
+     "sector": "Industrials",
+     "weight_pct": 4.17,
+     "address": "0x4484d610AD49C5521fb86cC5E154D9FD9A39759b",
+     "market_cap_usd": 92235620352
+    },
+    {
+     "ticker": "WM",
+     "name": "Waste Management, Inc.",
+     "sector": "Industrials",
+     "weight_pct": 4.07,
+     "address": "0xc73b860bE29408B3732a38905f5c6759CaB91D80",
+     "market_cap_usd": 90065403904
+    },
+    {
+     "ticker": "UPS",
+     "name": "United Parcel Service, Inc.",
+     "sector": "Industrials",
+     "weight_pct": 3.97,
+     "address": "0xD13c7aEB7B13105A59C8DaC6e07d3F0B60b0Fbb0",
+     "market_cap_usd": 87771652096
+    }
+   ]
+  },
+  {
+   "id": "sector-energy",
+   "name": "Top 15 Energy",
+   "description": "The 15 largest Energy names by market cap, cap-weighted.",
+   "theme": "sector: Energy",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "XOM",
+     "name": "Exxon Mobil Corporation",
+     "sector": "Energy",
+     "weight_pct": 29.69,
+     "address": "0xeccd8E7BF85E81379fE4336B7EfE4De3A3Df8D03",
+     "market_cap_usd": 624311926784
+    },
+    {
+     "ticker": "CVX",
+     "name": "Chevron Corporation",
+     "sector": "Energy",
+     "weight_pct": 17.96,
+     "address": "0xD296CBFC8fB7a9846c197c8B052962cd03077b5B",
+     "market_cap_usd": 378005258240
+    },
+    {
+     "ticker": "COP",
+     "name": "ConocoPhillips",
+     "sector": "Energy",
+     "weight_pct": 6.94,
+     "address": "0xbFDEd98BaCD03B5D4F638edF14d6c662662691b7",
+     "market_cap_usd": 146097815552
+    },
+    {
+     "ticker": "ENB",
+     "name": "Enbridge Inc.",
+     "sector": "Energy",
+     "weight_pct": 5.86,
+     "address": "0x450CA76d5aDB1A78b7f1Aa791317167701027a1C",
+     "market_cap_usd": 123247820800
+    },
+    {
+     "ticker": "CNQ",
+     "name": "Canadian Natural Resources Limited",
+     "sector": "Energy",
+     "weight_pct": 4.51,
+     "address": "0x25EB558a349DE357367f600Adb2c46fAcCFdcc88",
+     "market_cap_usd": 94941519872
+    },
+    {
+     "ticker": "WMB",
+     "name": "The Williams Companies, Inc.",
+     "sector": "Energy",
+     "weight_pct": 4.2,
+     "address": "0xdE10a42d1Ab2f431811F84658E0af80ecF6DEa9c",
+     "market_cap_usd": 88373854208
+    },
+    {
+     "ticker": "SLB",
+     "name": "SLB N.V.",
+     "sector": "Energy",
+     "weight_pct": 3.94,
+     "address": "0x04a8e2772F6bB32169ca85C6faC5972E3395A36b",
+     "market_cap_usd": 82990645248
+    },
+    {
+     "ticker": "MPC",
+     "name": "Marathon Petroleum Corporation",
+     "sector": "Energy",
+     "weight_pct": 3.65,
+     "address": "0x5d69057b4c04f402fbA65Ea685E971f1619cDD68",
+     "market_cap_usd": 76861079552
+    },
+    {
+     "ticker": "VLO",
+     "name": "Valero Energy Corporation",
+     "sector": "Energy",
+     "weight_pct": 3.64,
+     "address": "0x12ad4ba3dBBFacA3252AeCe17B7b8c68B09C8F0B",
+     "market_cap_usd": 76605685760
+    },
+    {
+     "ticker": "EOG",
+     "name": "EOG Resources, Inc.",
+     "sector": "Energy",
+     "weight_pct": 3.55,
+     "address": "0xb7a353fbBa54e39967f1A0a0398f5c71838bC68d",
+     "market_cap_usd": 74717134848
+    },
+    {
+     "ticker": "SU",
+     "name": "Suncor Energy Inc.",
+     "sector": "Energy",
+     "weight_pct": 3.48,
+     "address": "0x3021839492Eb36aA47a875bc4E0E8bcBf6960272",
+     "market_cap_usd": 73312468992
+    },
+    {
+     "ticker": "PSX",
+     "name": "Phillips 66",
+     "sector": "Energy",
+     "weight_pct": 3.46,
+     "address": "0x287a21569eBf6a34da6169eCCBfbBd31801f56b8",
+     "market_cap_usd": 72857911296
+    },
+    {
+     "ticker": "KMI",
+     "name": "Kinder Morgan, Inc.",
+     "sector": "Energy",
+     "weight_pct": 3.37,
+     "address": "0xE49CC22c5224Ad714e163b7061549CBC08352232",
+     "market_cap_usd": 70838452224
+    },
+    {
+     "ticker": "BKR",
+     "name": "Baker Hughes Company",
+     "sector": "Energy",
+     "weight_pct": 2.97,
+     "address": "0xbe317bE6F58aC695B61a122B2Cda40743F98dD32",
+     "market_cap_usd": 62520168448
+    },
+    {
+     "ticker": "TRGP",
+     "name": "Targa Resources Corp.",
+     "sector": "Energy",
+     "weight_pct": 2.78,
+     "address": "0xac8342E358b906dF9eE048bAafE46a82892597Ad",
+     "market_cap_usd": 58499051520
+    }
+   ]
+  },
+  {
+   "id": "sector-materials",
+   "name": "Top 15 Materials",
+   "description": "The 15 largest Materials names by market cap, cap-weighted.",
+   "theme": "sector: Materials",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "LIN",
+     "name": "Linde plc",
+     "sector": "Materials",
+     "weight_pct": 19.42,
+     "address": "0xf778B8dB3FaC9eEB20A444261b743318e193fF34",
+     "market_cap_usd": 235408752640
+    },
+    {
+     "ticker": "SCCO",
+     "name": "Southern Copper Corporation",
+     "sector": "Materials",
+     "weight_pct": 11.53,
+     "address": "0x98fDDc175b04cB7907511F15BBf2B7F32a41A5BE",
+     "market_cap_usd": 139966480384
+    },
+    {
+     "ticker": "NEM",
+     "name": "Newmont Corporation",
+     "sector": "Materials",
+     "weight_pct": 8.16,
+     "address": "0x6431450b3De5F27151Aa5027e30c8c68857e4d15",
+     "market_cap_usd": 99036864512
+    },
+    {
+     "ticker": "FCX",
+     "name": "Freeport-McMoRan Inc.",
+     "sector": "Materials",
+     "weight_pct": 7.35,
+     "address": "0x569cfD9094fbD2D2b59287A738EBDfbEb357495f",
+     "market_cap_usd": 89243713536
+    },
+    {
+     "ticker": "AEM",
+     "name": "Agnico Eagle Mines Limited",
+     "sector": "Materials",
+     "weight_pct": 6.28,
+     "address": "0xFdD2d27DD6f981DE106a91a41E32bBC4fa6f54fF",
+     "market_cap_usd": 76245524480
+    },
+    {
+     "ticker": "SHW",
+     "name": "The Sherwin-Williams Company",
+     "sector": "Materials",
+     "weight_pct": 6.18,
+     "address": "0x4A10174c01Fa619f54A01dC137E4cabbF38023AD",
+     "market_cap_usd": 74955030528
+    },
+    {
+     "ticker": "ECL",
+     "name": "Ecolab Inc.",
+     "sector": "Materials",
+     "weight_pct": 5.96,
+     "address": "0x5fd84f29B30440a386494B39E0a02D422a83c701",
+     "market_cap_usd": 72326619136
+    },
+    {
+     "ticker": "CRH",
+     "name": "CRH plc",
+     "sector": "Materials",
+     "weight_pct": 5.5,
+     "address": "0xdD1f387E88AE98B4E979A9067e780394B5b77a2E",
+     "market_cap_usd": 66806657024
+    },
+    {
+     "ticker": "B",
+     "name": "Barrick Mining Corporation",
+     "sector": "Materials",
+     "weight_pct": 5.15,
+     "address": "0xEFA9deB68617766B9Bb671CcbF90173CA3bDd207",
+     "market_cap_usd": 62462033920
+    },
+    {
+     "ticker": "APD",
+     "name": "Air Products and Chemicals, Inc.",
+     "sector": "Materials",
+     "weight_pct": 5.07,
+     "address": "0x270026A4ac8e8bF0AA6d28460636638662C78cfC",
+     "market_cap_usd": 61573439488
+    },
+    {
+     "ticker": "NUE",
+     "name": "Nucor Corporation",
+     "sector": "Materials",
+     "weight_pct": 4.7,
+     "address": "0x080b49D75449710c95E1F34C9A64cb2e867d1c00",
+     "market_cap_usd": 57046831104
+    },
+    {
+     "ticker": "CTVA",
+     "name": "Corteva, Inc.",
+     "sector": "Materials",
+     "weight_pct": 4.1,
+     "address": "0x2337087975F54e63E442285cb61F3D504A1c6a34",
+     "market_cap_usd": 49800335360
+    },
+    {
+     "ticker": "WPM",
+     "name": "Wheaton Precious Metals Corp.",
+     "sector": "Materials",
+     "weight_pct": 4.02,
+     "address": "0xF6454553bdC58A47108Adb891D82270d03639a57",
+     "market_cap_usd": 48827527168
+    },
+    {
+     "ticker": "FNV",
+     "name": "Franco-Nevada Corporation",
+     "sector": "Materials",
+     "weight_pct": 3.31,
+     "address": "0x6EDb3Ee4a3215e11ba487FDf59477e4523A7e321",
+     "market_cap_usd": 40202665984
+    },
+    {
+     "ticker": "AU",
+     "name": "AngloGold Ashanti plc",
+     "sector": "Materials",
+     "weight_pct": 3.27,
+     "address": "0x39fF3F039b6941B1B827f7Ad98C409C3972F5548",
+     "market_cap_usd": 39676325888
+    }
+   ]
+  },
+  {
+   "id": "sector-communication-services",
+   "name": "Top 15 Communication Services",
+   "description": "The 15 largest Communication Services names by market cap, cap-weighted.",
+   "theme": "sector: Communication Services",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "GOOGL",
+     "name": "Alphabet Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 29.99,
+     "address": "0x043C1841e915A2DC175e3278F96a5DEEbeb6911a",
+     "market_cap_usd": 4346030850048
+    },
+    {
+     "ticker": "GOOG",
+     "name": "Alphabet Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 30.0,
+     "address": "0x106d190967970B2d4003375456b4FE93DC856f26",
+     "market_cap_usd": 4308714389504
+    },
+    {
+     "ticker": "META",
+     "name": "Meta Platforms, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 18.77,
+     "address": "0xC5f5608Dea75398F80906C49FcCFfBf402b699b1",
+     "market_cap_usd": 1449388933120
+    },
+    {
+     "ticker": "NFLX",
+     "name": "Netflix, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 4.47,
+     "address": "0xe5af9038f6aA63dE88633e158a23eA8Cd93a3783",
+     "market_cap_usd": 345285492736
+    },
+    {
+     "ticker": "TMUS",
+     "name": "T-Mobile US, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 2.6,
+     "address": "0xe73E3074227F4Bd8dE2Fc97AFCD583783f219a60",
+     "market_cap_usd": 200803074048
+    },
+    {
+     "ticker": "VZ",
+     "name": "Verizon Communications Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 2.54,
+     "address": "0xc5D3837003014482b1BbfDBE00bA9d95710da5C4",
+     "market_cap_usd": 196042489856
+    },
+    {
+     "ticker": "DIS",
+     "name": "The Walt Disney Company",
+     "sector": "Communication Services",
+     "weight_pct": 2.22,
+     "address": "0x7e2631a63Da9b72A903a2913dAfd3705F2862702",
+     "market_cap_usd": 171237392384
+    },
+    {
+     "ticker": "APP",
+     "name": "AppLovin Corporation",
+     "sector": "Communication Services",
+     "weight_pct": 2.15,
+     "address": "0xEf3A50B8C6FE69E00B03652EFf5EFC740e51EdE4",
+     "market_cap_usd": 165611470848
+    },
+    {
+     "ticker": "T",
+     "name": "AT&T Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 2.09,
+     "address": "0xCf983c00B3ef7ec43D9ad2588254BD807d521bd0",
+     "market_cap_usd": 161270939648
+    },
+    {
+     "ticker": "SPOT",
+     "name": "Spotify Technology S.A.",
+     "sector": "Communication Services",
+     "weight_pct": 1.34,
+     "address": "0xC1c5d03A6C3458D71C20d008241bBc46D7Ead7eA",
+     "market_cap_usd": 103447453696
+    },
+    {
+     "ticker": "CMCSA",
+     "name": "Comcast Corporation",
+     "sector": "Communication Services",
+     "weight_pct": 1.11,
+     "address": "0x3EFa1164221CE0476319D4cFeb875aF2114C3977",
+     "market_cap_usd": 85626314752
+    },
+    {
+     "ticker": "WBD",
+     "name": "Warner Bros. Discovery, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 0.85,
+     "address": "0xBE36A2901Ad5BbAf2BF8d0027C681560896fB4E9",
+     "market_cap_usd": 65762197504
+    },
+    {
+     "ticker": "NBIS",
+     "name": "Nebius Group N.V.",
+     "sector": "Communication Services",
+     "weight_pct": 0.7,
+     "address": "0x5f92c171F5075fa2a02D56607d2dfFb0451026a8",
+     "market_cap_usd": 53747707904
+    },
+    {
+     "ticker": "EA",
+     "name": "Electronic Arts Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 0.66,
+     "address": "0x15B617DdB511049FC058175E922e589195eA7b5A",
+     "market_cap_usd": 50952699904
+    },
+    {
+     "ticker": "TTWO",
+     "name": "Take-Two Interactive Software, Inc.",
+     "sector": "Communication Services",
+     "weight_pct": 0.51,
+     "address": "0x8Bf8A2aa715c7d3BE214be0CbCC7DC484082260c",
+     "market_cap_usd": 39075405824
+    }
+   ]
+  },
+  {
+   "id": "sector-utilities",
+   "name": "Top 15 Utilities",
+   "description": "The 15 largest Utilities names by market cap, cap-weighted.",
+   "theme": "sector: Utilities",
+   "weighting": "cap",
+   "max_weight_pct": 30.0,
+   "constituent_count": 15,
+   "vault": {
+    "type": "BasketVault",
+    "level": "L1",
+    "rationale": "Static cap-weighted basket: weights drift naturally like a cap-weighted index, so no rebalance is needed (UIT). Recipe held on-chain.",
+    "cash_entry": "Wrap with ForwardCashQueue (L5) for forward-priced cash create/redeem; in-kind create/redeem works without it."
+   },
+   "constituents": [
+    {
+     "ticker": "NEE",
+     "name": "NextEra Energy, Inc.",
+     "sector": "Utilities",
+     "weight_pct": 18.25,
+     "address": "0x261e5F42964a61394C1057F4a069CEF71829e589",
+     "market_cap_usd": 177526734848
+    },
+    {
+     "ticker": "SO",
+     "name": "The Southern Company",
+     "sector": "Utilities",
+     "weight_pct": 10.89,
+     "address": "0x707368F9d236abC8437bbF32FdDACC9aE9B2A7A2",
+     "market_cap_usd": 105988849664
+    },
+    {
+     "ticker": "DUK",
+     "name": "Duke Energy Corporation",
+     "sector": "Utilities",
+     "weight_pct": 10.02,
+     "address": "0xaE26595DB9dF22e21E4794bB6bc1567D6a0A78AD",
+     "market_cap_usd": 97480712192
+    },
+    {
+     "ticker": "CEG",
+     "name": "Constellation Energy Corporation",
+     "sector": "Utilities",
+     "weight_pct": 8.89,
+     "address": "0x2ae339A9447DCC4b4eDf8BcfcB66B5E72B31C27F",
+     "market_cap_usd": 86525820928
+    },
+    {
+     "ticker": "AEP",
+     "name": "American Electric Power Company, Inc.",
+     "sector": "Utilities",
+     "weight_pct": 7.19,
+     "address": "0x1C5aB82767aF806D3E86C59614ccE8f94Cf5eCfd",
+     "market_cap_usd": 69933817856
+    },
+    {
+     "ticker": "SRE",
+     "name": "Sempra",
+     "sector": "Utilities",
+     "weight_pct": 6.12,
+     "address": "0x286766e26D6f035F6C21Dc63A4f3def17D47B113",
+     "market_cap_usd": 59506982912
+    },
+    {
+     "ticker": "ETR",
+     "name": "Entergy Corporation",
+     "sector": "Utilities",
+     "weight_pct": 5.2,
+     "address": "0x88F394F0C0bDD457bbD4349415DdE48518035e15",
+     "market_cap_usd": 50587340800
+    },
+    {
+     "ticker": "XEL",
+     "name": "Xcel Energy Inc.",
+     "sector": "Utilities",
+     "weight_pct": 5.01,
+     "address": "0x51C226C098Ad8D03537ED20ce2bD136E074478F2",
+     "market_cap_usd": 48755453952
+    },
+    {
+     "ticker": "VST",
+     "name": "Vistra Corp.",
+     "sector": "Utilities",
+     "weight_pct": 4.8,
+     "address": "0xdDDABa31f9301315eE6D122B9907E2A5A69C4d84",
+     "market_cap_usd": 46713257984
+    },
+    {
+     "ticker": "EXC",
+     "name": "Exelon Corporation",
+     "sector": "Utilities",
+     "weight_pct": 4.8,
+     "address": "0x4762E1E30B6Aac337A24498E0640fE70bFa63a5E",
+     "market_cap_usd": 46668521472
+    },
+    {
+     "ticker": "ED",
+     "name": "Consolidated Edison, Inc.",
+     "sector": "Utilities",
+     "weight_pct": 4.08,
+     "address": "0xCA133BD5a06FaeD4E1bBA76A6A9B1740e850A8AD",
+     "market_cap_usd": 39653793792
+    },
+    {
+     "ticker": "PEG",
+     "name": "Public Service Enterprise Group Incorporated",
+     "sector": "Utilities",
+     "weight_pct": 4.03,
+     "address": "0xDFC148FA11acAAc9191E0c87eEd956AbEC74c869",
+     "market_cap_usd": 39163076608
+    },
+    {
+     "ticker": "WEC",
+     "name": "WEC Energy Group, Inc.",
+     "sector": "Utilities",
+     "weight_pct": 3.82,
+     "address": "0xBbEb66255fd78AEDD258f4f975B3f910a2B52767",
+     "market_cap_usd": 37135982592
+    },
+    {
+     "ticker": "PCG",
+     "name": "PG&E Corporation",
+     "sector": "Utilities",
+     "weight_pct": 3.78,
+     "address": "0x1c2c8fC1ee0A371810B744b5caa5144B149816C0",
+     "market_cap_usd": 36821192704
+    },
+    {
+     "ticker": "DTE",
+     "name": "DTE Energy Company",
+     "sector": "Utilities",
+     "weight_pct": 3.12,
+     "address": "0x87D54d79f3c25973963F77B599b3e7295530712F",
+     "market_cap_usd": 30386698240
+    }
+   ]
+  }
+ ]
+}

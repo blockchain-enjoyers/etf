@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "generated_at": "2026-06-10T21:04:52Z",
+ "generated_at": "2026-06-11T06:33:22Z",
  "source": {
   "chain": "arbitrum-one",
   "chain_id": 42161,
@@ -11168,12 +11168,11 @@
    "name": "Northern Dynasty Minerals Ltd.",
    "description": "Northern Dynasty Minerals Ltd. engages in the acquisition, exploration, and development of mineral properties in the United States. It primarily explores copper, gold, molybdenum, silver, and rhenium deposits.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Other Industrial Metals & Mining",
    "etf_category": null,
    "tags": [
-    "other industrial metals & mining",
-    "crypto"
+    "other industrial metals & mining"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -14808,12 +14807,11 @@
    "name": "Frontier Nuclear and Minerals Inc.",
    "description": "Frontier Nuclear and Minerals Inc., a nuclear fuel cycle company, engages in the exploration and development of mineral resources in America, Canada, and Namibia. It explores uranium, tantalum, cesium, and lithium mineral resources.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Other Industrial Metals & Mining",
    "etf_category": null,
    "tags": [
-    "other industrial metals & mining",
-    "crypto"
+    "other industrial metals & mining"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -16070,12 +16068,11 @@
    "name": "Fortuna Mining Corp.",
    "description": "Fortuna Mining Corp. engages in the precious and base metal mining and related activities in Argentina, Côte d'Ivoire, Mexico, Peru, and Senegal. The company operates through Mansfield, Sango, and Bateas segments.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Gold",
    "etf_category": null,
    "tags": [
-    "gold",
-    "crypto"
+    "gold"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -20608,12 +20605,11 @@
    "name": "Hecla Mining Company",
    "description": "Hecla Mining Company, together with its subsidiaries, provides precious and base metals in the United States, Canada, Japan, Korea, China, and internationally.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Other Precious Metals & Mining",
    "etf_category": null,
    "tags": [
-    "other precious metals & mining",
-    "crypto"
+    "other precious metals & mining"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -20645,12 +20641,11 @@
    "name": "Barrick Mining Corporation",
    "description": "Barrick Mining Corporation engages in the exploration, development, production, and sale of mineral properties. It explores for gold, copper, silver, and energy materials.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Gold",
    "etf_category": null,
    "tags": [
-    "gold",
-    "crypto"
+    "gold"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -20898,12 +20893,11 @@
    "name": "Hudbay Minerals Inc.",
    "description": "Hudbay Minerals Inc., a diversified mining company, focuses on the exploration, development, operation, and optimization of properties in North and South America.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Copper",
    "etf_category": null,
    "tags": [
-    "copper",
-    "crypto"
+    "copper"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -22052,12 +22046,11 @@
    "name": "Coeur Mining, Inc.",
    "description": "Coeur Mining, Inc. operates as a gold and silver producer in the United States, Canada, and Mexico. The company operates through Palmarejo, Rochester, Kensington, Wharf, Silvertip, and Las Chispas segments.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Gold",
    "etf_category": null,
    "tags": [
-    "gold",
-    "crypto"
+    "gold"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -30115,12 +30108,11 @@
    "name": "Orla Mining Ltd.",
    "description": "Orla Mining Ltd. acquires, explores, develops, and exploits mineral properties. It explores gold, silver, zinc, lead, and copper deposits.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Gold",
    "etf_category": null,
    "tags": [
-    "gold",
-    "crypto"
+    "gold"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -34256,12 +34248,11 @@
    "name": "SSR Mining Inc.",
    "description": "SSR Mining Inc., together with its subsidiaries, engages in the acquisition, exploration, and development of precious metal resource properties in the United States, Türkiye, Canada, and Argentina.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Gold",
    "etf_category": null,
    "tags": [
-    "gold",
-    "crypto"
+    "gold"
    ],
    "classified_by": "auto",
    "deployments": [
@@ -45777,12 +45768,11 @@
    "name": "Aris Mining Corporation",
    "description": "Aris Mining Corporation, together with its subsidiaries, engages in the acquisition, exploration, development, and operation of gold properties in Canada, Colombia, and Guyana. It also explores for silver and copper deposits.",
    "asset_class": "stock",
-   "sector": "Crypto & Blockchain",
+   "sector": "Materials",
    "industry": "Gold",
    "etf_category": null,
    "tags": [
-    "gold",
-    "crypto"
+    "gold"
    ],
    "classified_by": "auto",
    "deployments": [

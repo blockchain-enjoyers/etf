@@ -30,9 +30,10 @@ CRYPTO_TICKERS = {
     "BTDR", "HIVE", "IREN", "CORZ", "BMNR", "GLXY", "HOOD", "BLSH", "CRCL",
     "SBET", "BTBT", "CAN", "GREE", "DGHI", "APLD",
 }
-# name keywords that imply a crypto/blockchain equity (miners, BTC-treasury cos)
-CRYPTO_NAME_WORDS = ("bitcoin", "ethereum", "blockchain", "crypto", "digital asset",
-                     "miner", "mining")
+# name keywords that imply a crypto/blockchain equity. Intentionally NOT "miner"/
+# "mining" — those over-capture metal miners (Barrick, Coeur, Hudbay...). Genuine
+# bitcoin miners are covered by the explicit CRYPTO_TICKERS list above.
+CRYPTO_NAME_WORDS = ("bitcoin", "ethereum", "blockchain", "crypto", "digital asset")
 
 # ETF category detection — ordered, first match wins (most specific first).
 # Each entry: (category, tuple of lowercase substrings to look for in the name).

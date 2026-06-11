@@ -29,10 +29,14 @@ def test_map_gics():
 
 
 def test_is_crypto():
-    assert is_crypto("MSTR", "Strategy Inc") is True
+    assert is_crypto("MSTR", "Strategy Inc") is True           # explicit ticker
     assert is_crypto("COIN", "Coinbase Global") is True
-    assert is_crypto("BMNR", "BitMine Immersion Technologies") is True  # name keyword
+    assert is_crypto("AIB", "BlockchAIn Digital Infrastructure") is True  # 'blockchain'
     assert is_crypto("AAPL", "Apple Inc.") is False
+    # regressions: metal miners must NOT be flagged crypto
+    assert is_crypto("B", "Barrick Mining Corporation") is False
+    assert is_crypto("CDE", "Coeur Mining, Inc.") is False
+    assert is_crypto("HBM", "Hudbay Minerals Inc.") is False
 
 
 def test_etf_category():

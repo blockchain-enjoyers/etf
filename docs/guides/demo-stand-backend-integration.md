@@ -23,7 +23,7 @@ backend / frontend  --payloads-->  PriceAggregator.priceOf / FairValueNAV.navOf 
 ```
 
 Three things must be true for a constituent to value `safe=true`:
-1. It has **>= 2 registered price sources** (`PriceAggregator.sourceCount(asset) >= 2`). Done on-chain for all 100 demo stocks (weekday + weekend `UniversalSignedSource`).
+1. It has **>= 2 registered price sources** (`PriceAggregator.sourceCount(asset) >= 2`). Done on-chain for all 200 demo stocks (weekday + weekend `UniversalSignedSource`).
 2. The caller passes **fresh keeper-signed payloads** for those sources into the read/settle call.
 3. The committee that signed is the one registered on the source (`setCommittee`). Done.
 
@@ -39,25 +39,25 @@ If a constituent has < 2 sources, or stale/missing payloads, `navOf.safe == fals
 | AccessControlsRegistry | `0xC2c43ea6789048C74ea88e086819796c352326f2` | role registry for our Stock clones (MINTER_ROLE etc.) |
 | Stock_impl | `0x7b8F92e75F5Ef7E80B34aFEbc766492740fFd593` | shared Stock implementation behind every clone |
 | StockCloneFactory | `0x536ecff29A204d8177E7aBF4bc28b2D1B1589007` | EIP-1167 clone factory |
-| 100 stock clones | see `config.params.demo.stocks` | the demo constituents (object map `{ ticker: { address, priceUsd } }`) |
+| 200 stock clones | see `config.params.demo.stocks` | the demo constituents (object map `{ ticker: { address, priceUsd } }`) |
 
 **Colleague's stand (reused, do not redeploy):**
 | Name | Address | Role |
 |---|---|---|
-| PriceAggregator | `0x77b009D07BDdC08a6b83c9859fEF77C714f37f00` | multi-source median NAV referee |
-| FairValueNAV | `0xAdec095EBB432239C19ba915aC167B9A3b3E0DD5` | NAV engine (`navOf` / `navOfHoldings`) |
+| PriceAggregator | `0x25f04d55C0b3608C258c21CB603aCEe197Ca5301` | multi-source median NAV referee |
+| FairValueNAV | `0xcfaA21689D7273fADBD7576eDA0991576900aD96` | NAV engine (`navOf` / `navOfHoldings`) |
 | UniversalSignedSource (weekday) | `0x41BE2284c8bBc5C89B5e2Bd4784a10B2646691aA` | committee-signed source; `weekendAware=false` |
 | UniversalSignedSource (weekend) | `0x32207892289a101d8546A430AbBdf62DD2049fFd` | committee-signed source; `weekendAware=true` |
-| ForwardCashQueue | `0x29d7dF7bC257180d56d9340C85Af67fA96fF88a2` | USDG cash-in entry queue (`requestCreate` / `settle`) |
+| ForwardCashQueue | `0xf109Cf55511d15E7906FbE421a39dB9f42121994` | USDG cash-in entry queue (`requestCreate` / `settle`) |
 | RegistryIndex | `0x3F78db0F384e4bf325809F0f417ef4Afa76B2E4F` | the registry index vault (the fund) |
 | MockAPFiller | `0x11B223e71BdB272695F489e5ecE2994694CFA512` | authorized participant (sources the basket) |
 | USDG | `0x5F28D5E0939FDb94943d5C65241cBf850c3d98d1` | the cash-in stablecoin |
 | CloneFactory | `0x453B28529273E240120D6475F2369e002deb13F5` | vault/constituent factory (constituent allowlist) |
-| BasketNavObserver | `0xe4f4ABefe290af163142A09dC9C41852DDe09Ca5` | TWAP observer (settle gate g7) |
+| BasketNavObserver | `0x16221e4FA1842B36587B496f81Ad3B51cc78E0B7` | TWAP observer (settle gate g7) |
 
 **Demo price committee signer (sandbox):** `0x1bCC28037Ee100818857F7da936EF1bD39E84639` (private key in `blockchain/.env` `KEEPER_KEYS`, gitignored — burner, rotate after the buildathon).
 
-The 3 original colleague stocks (`MSTRx`/`TSLAx`/`NVDAx`, public-mint MockERC20) are the controlled-scene subset — see `config.params.demo.scene`. They are NOT part of the 100-name fund's price wiring.
+The 3 original colleague stocks (`MSTRx`/`TSLAx`/`NVDAx`, public-mint MockERC20) are the controlled-scene subset — see `config.params.demo.scene`. They are NOT part of the 200-name fund's price wiring.
 
 ---
 
@@ -74,7 +74,7 @@ KEEPER_KEYS=$(grep '^KEEPER_KEYS=' .env | cut -d= -f2) KEEPER_PORT=8787 \
   node --import tsx/esm keeper/server.ts        # or: npx ts-node keeper/server.ts
 ```
 
-**Endpoint:** `GET /reports?assets=NVDA,AAPL` (omit `assets` for all 100). Response:
+**Endpoint:** `GET /reports?assets=NVDA,AAPL` (omit `assets` for all 200). Response:
 ```json
 {
   "0x0c779f3d751a146991E52EB3a7306830F8e7E59E": {
@@ -108,7 +108,7 @@ Order matters: `payloads[i]` goes to the i-th registered source. Weekday source 
 
 ## 5. Getting demo tokens (faucet)
 
-Each of the 100 stock clones has a built-in open faucet on the token itself — no separate faucet contract:
+Each of the 200 stock clones has a built-in open faucet on the token itself — no separate faucet contract:
 ```solidity
 Stock(stockAddr).faucetMint();   // mints a fixed 100e18 to msg.sender; per-address cap 100e18
 ```
@@ -128,7 +128,7 @@ The fund is created via the frontend (it bootstraps the `RegistryIndex`). Once a
    - `ap` = `MockAPFiller`.
    Settle runs gates g0–g8 (bootstrapped, sources registered per held token, market open, safe band, TWAP band, peg band) and mints shares to the ticket owner at the open NAV.
 
-For settle to pass, every `heldToken` must have its 2 sources registered (done for the 100) and fresh payloads supplied. Keep the keeper running and the settler feeding `/reports`.
+For settle to pass, every `heldToken` must have its 2 sources registered (done for the 200) and fresh payloads supplied. Keep the keeper running and the settler feeding `/reports`.
 
 **One-time gate-param check (ops):** `ForwardCashQueue` is global; verify `setG1Refs(aggregator, l2RouterSource)` points at PriceAggregator `0x77b0…` and the bands (`setGateParams`) are sane before the live demo. Read current values first; do not clobber working config.
 

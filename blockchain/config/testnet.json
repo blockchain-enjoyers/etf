@@ -93,6 +93,15 @@
     },
     "RegistryIndex": {
       "address": "0x3F78db0F384e4bf325809F0f417ef4Afa76B2E4F"
+    },
+    "AccessControlsRegistry": {
+      "address": "0xC2c43ea6789048C74ea88e086819796c352326f2"
+    },
+    "Stock_impl": {
+      "address": "0x7b8F92e75F5Ef7E80B34aFEbc766492740fFd593"
+    },
+    "StockCloneFactory": {
+      "address": "0x536ecff29A204d8177E7aBF4bc28b2D1B1589007"
     }
   },
   "params": {
@@ -100,11 +109,408 @@
     "depthTier": "5000000000000000000000000",
     "realVerifierProxy": "0x72790f9eB82db492a7DDb6d2af22A270Dcc3Db64",
     "demo": {
-      "stocks": [
-        "0x89eC78b779E00bc99044656b04a8DB059c9b7270",
-        "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3",
-        "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1"
-      ],
+      "stocks": {
+        "NVDA": {
+          "address": "0x0c779f3d751a146991E52EB3a7306830F8e7E59E",
+          "priceUsd": 208.190002
+        },
+        "GOOGL": {
+          "address": "0x0c56701C39946460A563b44a11aA548DcE5ad80C",
+          "priceUsd": 364.26001
+        },
+        "GOOG": {
+          "address": "0x479EE6cc380f0777fCc8AfbEC5E2a1f7a16bdcAa",
+          "priceUsd": 362.290009
+        },
+        "AAPL": {
+          "address": "0x60527A2ef132433E378d89De8bE8595c578f4241",
+          "priceUsd": 290.549988
+        },
+        "MSFT": {
+          "address": "0xE83429D1051f50D21992825A77abc2EC5E85Ceb3",
+          "priceUsd": 403.410004
+        },
+        "AMZN": {
+          "address": "0x0674A361A6ab8CD11c2Bdc2717174692665b7e69",
+          "priceUsd": 244.190002
+        },
+        "AVGO": {
+          "address": "0xCC15dB2288BD637f7f259A1D7d2fc274d039C12E",
+          "priceUsd": 392.160004
+        },
+        "META": {
+          "address": "0x6da4Ab90c63cc6F60afdE327dFFCf683277Bbca7",
+          "priceUsd": 584.590027
+        },
+        "TSLA": {
+          "address": "0xFB34AB8B3B586b2dFbf1ea1B5AfE942998e4Ae92",
+          "priceUsd": 396.679993
+        },
+        "BRK-A": {
+          "address": "0x41465FB86F3E609b119495333ba66c06458e64e7",
+          "priceUsd": 729862
+        },
+        "BRK-B": {
+          "address": "0xa74DA3E26751B979b8520Fd0FaD24335Cb6EeB0D",
+          "priceUsd": 487.769989
+        },
+        "LLY": {
+          "address": "0x228109E2C4517c64eA14889c669aA664198671f8",
+          "priceUsd": 1144.680054
+        },
+        "MU": {
+          "address": "0x10CB6BD7FfFB5123f5Ee0068aBb8773AF946F20f",
+          "priceUsd": 935.890015
+        },
+        "WMT": {
+          "address": "0x025817A0659f384fDDFEf8124eDF1F3696Cb0250",
+          "priceUsd": 118.879997
+        },
+        "JPM": {
+          "address": "0xabbBFE02DE0AAf17B0b598758d07c57AF252234E",
+          "priceUsd": 312.700012
+        },
+        "AMD": {
+          "address": "0x51b3F2CE6d4e4F5256d3e7123DdBbe9E5d971dDa",
+          "priceUsd": 475.505005
+        },
+        "XOM": {
+          "address": "0x8c5C463ca48EFE819dC51DA3347F7697BF7a3f21",
+          "priceUsd": 148.910004
+        },
+        "V": {
+          "address": "0x1059D95Bd2D30E1d814dA42A0D14D32EA86A3622",
+          "priceUsd": 325.049988
+        },
+        "ORCL": {
+          "address": "0x9ECf4b9a156E213E10a5190AaB8e87a49c89b9C2",
+          "priceUsd": 205.809998
+        },
+        "JNJ": {
+          "address": "0x5eedD4eE8CB086E20A7539E24cdC493fF5EA08a2",
+          "priceUsd": 237
+        },
+        "INTC": {
+          "address": "0xa02CA97A29F9f7f13F5Dc1988E746E44918cF62D",
+          "priceUsd": 107.919998
+        },
+        "CSCO": {
+          "address": "0x24B47BC5Ef04Fe6F62B5f08B7d6a6F9b23f2548F",
+          "priceUsd": 120.360001
+        },
+        "COST": {
+          "address": "0xCE9A8f1cf5436fF8CaDb966FA21f929F430463AC",
+          "priceUsd": 968.590027
+        },
+        "MA": {
+          "address": "0x1F2AADd743515Ff132b7953AC8afCDa36979fa6F",
+          "priceUsd": 495.23999
+        },
+        "LRCX": {
+          "address": "0xbafb956f66836946acbA755A4A6e5e8FE08343dE",
+          "priceUsd": 327.160004
+        },
+        "ABBV": {
+          "address": "0x8208030b981310BBC8945Df8EF0229f45b68cfE6",
+          "priceUsd": 225.419998
+        },
+        "AMAT": {
+          "address": "0xC8e27E23Abcd9c70346269D2C0E16cbbaaF430E7",
+          "priceUsd": 499.209991
+        },
+        "BAC": {
+          "address": "0x9f83CcA19F1Ec80AcAcB3636bab0EF6f77A78C8d",
+          "priceUsd": 54.419998
+        },
+        "CVX": {
+          "address": "0xC7B650B8766829e4E80fC0266D1b240D89979e83",
+          "priceUsd": 186.759995
+        },
+        "UNH": {
+          "address": "0x2bC4EB2547aaAFd63d80c90af9aF4ea7E1b869fe",
+          "priceUsd": 413
+        },
+        "KO": {
+          "address": "0x3f2f027B1519a10550E1Ae21779aC19EE4cb2Ebd",
+          "priceUsd": 81.339996
+        },
+        "PG": {
+          "address": "0x389A0f6FF11d5C8a716DB18DC982f29316D6E4FE",
+          "priceUsd": 148.669998
+        },
+        "NFLX": {
+          "address": "0x0F6ad601dBFed0bF0Fba86CA4EE486a90E2FfBD8",
+          "priceUsd": 81.410004
+        },
+        "GE": {
+          "address": "0xf9A897E8e7f0dcf0B09755E314aEC8341789e74b",
+          "priceUsd": 330.440002
+        },
+        "MS": {
+          "address": "0x99C2f1E831460f93FB1fB1169c29fd35A27EF710",
+          "priceUsd": 210.25
+        },
+        "HD": {
+          "address": "0x391463a14533c69eeEf15F4AE459Eed649b04C31",
+          "priceUsd": 321.329987
+        },
+        "PLTR": {
+          "address": "0xAc7CC46154b0a35cb8A9ee6DFd4BB8832b91c625",
+          "priceUsd": 132.070007
+        },
+        "GS": {
+          "address": "0x658c56D58135Be94f5D67292cfb3EC7A96AA1B8E",
+          "priceUsd": 1032.01001
+        },
+        "MRK": {
+          "address": "0xD30419033ffc9f08c6f1058e7C77aDD564fc3151",
+          "priceUsd": 119.599998
+        },
+        "PM": {
+          "address": "0xC81a2E9b73323ba512E8Db9DB3BB9D1684836d21",
+          "priceUsd": 178.490005
+        },
+        "KLAC": {
+          "address": "0x8cC63a6BAa2E92081604655A46303c3FcF63A7b5",
+          "priceUsd": 2139.370117
+        },
+        "RY": {
+          "address": "0x4164706af1B83B51378D0AECBECA22DCC07C6f14",
+          "priceUsd": 197.889999
+        },
+        "TXN": {
+          "address": "0x14Ad33863E26FFc9bA559Ae68f6De5A0395dEee6",
+          "priceUsd": 288.630005
+        },
+        "IBM": {
+          "address": "0x8C06E70FA6B4bb109972fd896BcE418c546CA6AA",
+          "priceUsd": 277.48999
+        },
+        "WFC": {
+          "address": "0xb0089b52505417f0FebDd96C618c9206b27D06B6",
+          "priceUsd": 82
+        },
+        "SNDK": {
+          "address": "0x850bC38D0dace6AEb9Da7327Ce01A0Df23B00eF5",
+          "priceUsd": 1646.540039
+        },
+        "DELL": {
+          "address": "0x1aE31EB93b02C93806334FBC5ab6D2BaAc3B74dA",
+          "priceUsd": 381.779999
+        },
+        "RTX": {
+          "address": "0xD2c3cFC85C08572136103F90D59772DFd364221A",
+          "priceUsd": 181.559998
+        },
+        "LIN": {
+          "address": "0xd6476Dc760Fe9E9EeE3010596cEec3885F8C9956",
+          "priceUsd": 515.590027
+        },
+        "GEV": {
+          "address": "0x9c50061f0fB277272135b68C7D0E3D13Abb20281",
+          "priceUsd": 920.150024
+        },
+        "C": {
+          "address": "0x318d80BD8FF798937Ec2C949c8Dc8b37404A9037",
+          "priceUsd": 134.729996
+        },
+        "MRVL": {
+          "address": "0x865d1C01Fc1dD56A67923EF32Db8Aa109Eb7Fb85",
+          "priceUsd": 266.880005
+        },
+        "PANW": {
+          "address": "0xA6B8294b65dE6B79eDA3Fcd96d255954F0C1E5b3",
+          "priceUsd": 260.519989
+        },
+        "AXP": {
+          "address": "0x120AC58a50Ef9b59fE0FEF2dE991357e01760121",
+          "priceUsd": 318.380005
+        },
+        "QCOM": {
+          "address": "0x11db093924cA6617669d23c94C2cE39bc84dB7B5",
+          "priceUsd": 205.419998
+        },
+        "TMUS": {
+          "address": "0xE14AC0ce8E6449dBdd7Ce5be0e3F3dceD6d7E809",
+          "priceUsd": 179.460007
+        },
+        "MCD": {
+          "address": "0x514E346BEa9c069fA5f551Fb2D5a0b4Ac2E2CE2D",
+          "priceUsd": 282.25
+        },
+        "PEP": {
+          "address": "0x07B558B9F42A1853701125068C50247D9bBedCA7",
+          "priceUsd": 142.779999
+        },
+        "VZ": {
+          "address": "0x09765FE510515D2F674c9C02871D1e294fe6ABE3",
+          "priceUsd": 45.779999
+        },
+        "ANET": {
+          "address": "0x8a20eA4e2985d1d300ce058dbFf1379C4D29F96d",
+          "priceUsd": 152.160004
+        },
+        "TD": {
+          "address": "0x5A4D1CEB1694651615433FD6b5CBB211E8fA6823",
+          "priceUsd": 114.639999
+        },
+        "TJX": {
+          "address": "0xc9820C9c834C28F6CfD15aeACD6174Ff01F08388",
+          "priceUsd": 164.869995
+        },
+        "APH": {
+          "address": "0x0984b0E0ac01454593CFf3E127A8cDF11fccEd90",
+          "priceUsd": 154.070007
+        },
+        "AMGN": {
+          "address": "0x2E1c585b4091dD593a682bc07ab9df6B0125e892",
+          "priceUsd": 344.565002
+        },
+        "TMO": {
+          "address": "0xf98dD26068C617833ac01b8B20678971b0aC38B7",
+          "priceUsd": 494.070007
+        },
+        "NEE": {
+          "address": "0xB7F32eABAc96B3E3B20Ba355f0697F74c1DD9f06",
+          "priceUsd": 84.830002
+        },
+        "DIS": {
+          "address": "0x1D922ff2012d6927eAb33D79889Bcf91Af0613D1",
+          "priceUsd": 99.330002
+        },
+        "WDC": {
+          "address": "0xeeE2742b68522402b1740837C9E6dEb88Ea0Ec17",
+          "priceUsd": 517.719971
+        },
+        "APP": {
+          "address": "0x74e6FCaEAB8B5B0e2388d2bDb639Ed7032062964",
+          "priceUsd": 520.840027
+        },
+        "CRWD": {
+          "address": "0x094afb9339ad307ACFa4a15Eb960aA5C6252D675",
+          "priceUsd": 644.929993
+        },
+        "BA": {
+          "address": "0x65Ddc03B94F18fa7b7b22349D463aD12BB7bBA7D",
+          "priceUsd": 214.509995
+        },
+        "BLK": {
+          "address": "0xe2Bbde9891696816341E2a7DCaD2bAE254cAF596",
+          "priceUsd": 1011.960022
+        },
+        "T": {
+          "address": "0x51eA10F64493fD1c6B9271F2f0add1905B967d42",
+          "priceUsd": 22.709999
+        },
+        "UNP": {
+          "address": "0xBfabFA79Bafc206E51c929eBe45AA47037653722",
+          "priceUsd": 271.279999
+        },
+        "SCHW": {
+          "address": "0x1A59764e2408801dB9058126806b621e9779CB71",
+          "priceUsd": 88.769997
+        },
+        "GILD": {
+          "address": "0xDe8928416Bb5cbd9Da30a2190ca17C63aB779cb1",
+          "priceUsd": 125.5
+        },
+        "COP": {
+          "address": "0x9ceaA4636B8311011ce4AC8161267A7Ca60C8146",
+          "priceUsd": 116.790001
+        },
+        "ISRG": {
+          "address": "0x80b545cADE501217eD4DD6d89aD8C2c48C757A6B",
+          "priceUsd": 426.609985
+        },
+        "PFE": {
+          "address": "0x9b00c0ab184a80A8b3246Ce68CA88565F5B4C9E5",
+          "priceUsd": 25.700001
+        },
+        "ETN": {
+          "address": "0xeb18AA32e99eC50946b927302D9FAe1ED447e357",
+          "priceUsd": 401.720001
+        },
+        "IBKR": {
+          "address": "0xe2be9014284bB8F4Ca674Aca708B888EEC8C6429",
+          "priceUsd": 86.330002
+        },
+        "BX": {
+          "address": "0x26583F1114903c9843D3d59e1024B54965316D86",
+          "priceUsd": 120.290001
+        },
+        "GLW": {
+          "address": "0x475A6fBfC03c9E642e31B570c0E7e1E37ff183ad",
+          "priceUsd": 173.940002
+        },
+        "SHOP": {
+          "address": "0x737E221AF45b1363604E2b5000C49da7295db62F",
+          "priceUsd": 110.419998
+        },
+        "CRM": {
+          "address": "0x68B617F9f43ED055DD49a42D5F2c78f069f39e1f",
+          "priceUsd": 175.350006
+        },
+        "SCCO": {
+          "address": "0x874d0b933fe3432637d91d9E546EF8dbc679d2Fd",
+          "priceUsd": 175.169998
+        },
+        "UBER": {
+          "address": "0x5aC74Cd6Cc7a4a61798261f3391f1761be109974",
+          "priceUsd": 70.379997
+        },
+        "HON": {
+          "address": "0x7164844eA2BDf330D5943C002160DEEDe78A3Bcf",
+          "priceUsd": 215.699997
+        },
+        "DHR": {
+          "address": "0x40ceC2fA0d2Be061e3F8C0aba4eF715440401db6",
+          "priceUsd": 188.410004
+        },
+        "CB": {
+          "address": "0x305c15F5D9f47fB37cb4ac80354E9fF8b144026b",
+          "priceUsd": 325.130005
+        },
+        "SPGI": {
+          "address": "0x4d3d1596AD153DE32219b21aBD32e35f054786ec",
+          "priceUsd": 424.820007
+        },
+        "CVS": {
+          "address": "0x883533e4a63d95d44C5c94482b0906F2Cb9D637f",
+          "priceUsd": 97.059998
+        },
+        "BKNG": {
+          "address": "0xF749EA9e718CA56D95FB0BBA8851eD849fDddE57",
+          "priceUsd": 163.990005
+        },
+        "ENB": {
+          "address": "0x2c5875c03a91fCa3df405B29FAb7cBa401E283cd",
+          "priceUsd": 55.540001
+        },
+        "MO": {
+          "address": "0x5A333Af94fB7085dC94f1CDa43C35C6dF421E6E2",
+          "priceUsd": 71.559998
+        },
+        "LOW": {
+          "address": "0x0bC9D08f5E5863AE94A8c061a81B1DaB2B9C0885",
+          "priceUsd": 217.369995
+        },
+        "LMT": {
+          "address": "0xd435aDA8f2e61FeF6ba6b2B8E602df28869bDf96",
+          "priceUsd": 530.130005
+        },
+        "PGR": {
+          "address": "0xea84f2cF90f3006E96c97C73aF7d288e3dF05B6c",
+          "priceUsd": 200.130005
+        },
+        "SYK": {
+          "address": "0x399B2F708A17C2230DF6665917803940A2460893",
+          "priceUsd": 314.01001
+        },
+        "BMY": {
+          "address": "0x1C521C260aD075202c7a1C0398D21c11Ccf407aF",
+          "priceUsd": 56.48
+        }
+      },
       "sources": {
         "0x89eC78b779E00bc99044656b04a8DB059c9b7270": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
         "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
@@ -115,7 +521,26 @@
         "MSTRx",
         "TSLAx",
         "NVDAx"
-      ]
+      ],
+      "count": 100,
+      "scene": {
+        "stocks": [
+          "0x89eC78b779E00bc99044656b04a8DB059c9b7270",
+          "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3",
+          "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1"
+        ],
+        "sources": {
+          "0x89eC78b779E00bc99044656b04a8DB059c9b7270": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
+          "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
+          "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364"
+        },
+        "sharedSource": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
+        "names": [
+          "MSTRx",
+          "TSLAx",
+          "NVDAx"
+        ]
+      }
     }
   }
 }

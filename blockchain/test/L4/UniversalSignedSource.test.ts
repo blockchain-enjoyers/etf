@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { buildUniversalPayload } from "../../keeper/sign";
 
 const ONE = 10n ** 18n;
 const FEED = ethers.id("TSLA");
@@ -41,7 +42,11 @@ describe("UniversalSignedSource", () => {
   it("accepts a >= threshold signature set and returns the reading", async () => {
     const { src, signers } = await loadFixture(deploy);
     const ts = await time.latest();
-    const payload = await signReading([signers.s1, signers.s2], FEED, 300n * ONE, 5_000_000n * ONE, ts);
+    // valid path: reuse the keeper's production payload builder (DRY with keeper/sign.ts)
+    const payload = await buildUniversalPayload(
+      { feedId: FEED, price: 300n * ONE, depth: 5_000_000n * ONE, lastUpdate: BigInt(ts) },
+      [signers.s1.privateKey, signers.s2.privateKey]
+    );
     const r = await src.read.staticCall(payload);
     expect(r.price).to.equal(300n * ONE);
     expect(r.depth).to.equal(5_000_000n * ONE);

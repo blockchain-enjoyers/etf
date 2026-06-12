@@ -10,7 +10,7 @@ dist/
 
 # keep Hardhat happy
 *.log
-lib/
+/lib/
 
 # Foundry (invariant/property fuzzing only; hardhat suite is canonical)
 out/

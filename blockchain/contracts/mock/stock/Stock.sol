@@ -12,6 +12,10 @@ contract Stock is IStock, AccessControlled, ERC20ScaledUIUpgradeable {
     event MetaDataUpdated(string name, string symbol);
 
     error IsPaused();
+    error FaucetCapExceeded();
+
+    uint256 public constant FAUCET_AMOUNT = 100e18;
+    uint256 public constant FAUCET_CAP = 100e18; // per-address cumulative cap on the open mint
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address registry) AccessControlled(registry) {
@@ -22,6 +26,7 @@ contract Stock is IStock, AccessControlled, ERC20ScaledUIUpgradeable {
     struct StockStorage {
         bytes32 uid;
         bool paused;
+        mapping(address => uint256) faucetMinted;
     }
 
     bytes32 private constant StockStorageLocation = 0x8d25ea8ee309999a79f0af498fbab0e424669497170669bd9e93b81a62babc00;
@@ -106,6 +111,20 @@ contract Stock is IStock, AccessControlled, ERC20ScaledUIUpgradeable {
         onlyNotBlocked(_msgSender())
     {
         _mint(to, amount);
+    }
+
+    /// @notice Open, capped, fixed-amount mint anyone can call (demo faucet). No role, no amount arg,
+    ///         so there is no mint(uint256.max) vector. Respects pause and the block list.
+    function faucetMint() external onlyNotPaused onlyNotBlocked(_msgSender()) {
+        StockStorage storage $ = _getStockStorage();
+        uint256 next = $.faucetMinted[_msgSender()] + FAUCET_AMOUNT;
+        if (next > FAUCET_CAP) revert FaucetCapExceeded();
+        $.faucetMinted[_msgSender()] = next;
+        _mint(_msgSender(), FAUCET_AMOUNT);
+    }
+
+    function faucetMinted(address who) external view returns (uint256) {
+        return _getStockStorage().faucetMinted[who];
     }
 
     function burn(address from, uint256 amount)

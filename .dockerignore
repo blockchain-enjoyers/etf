@@ -1,0 +1,33 @@
+# Build context hygiene for the Railway Dockerfiles (backend/ + app/).
+# Keep: every workspace's src + package.json, yarn.lock, .yarnrc.yml, prisma/.
+# Drop: installed deps (fresh install), build output, secrets, the Hardhat tree.
+
+# deps — reinstalled in the image
+**/node_modules
+.yarn/cache
+.yarn/install-state.gz
+
+# build output — rebuilt in the image
+**/dist
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+
+# secrets — NEVER bake into an image (Railway injects env at runtime)
+**/.env
+**/.env.*
+!**/.env.example
+
+# the Hardhat / contracts tree is not a workspace and not needed to build backend or app
+blockchain
+
+# vcs / editor / docs / claude
+.git
+.github
+.vscode
+.idea
+docs
+**/*.md
+.claude
+app/dist
+backend/dist

@@ -23,7 +23,7 @@ backend / frontend  --payloads-->  PriceAggregator.priceOf / FairValueNAV.navOf 
 ```
 
 Three things must be true for a constituent to value `safe=true`:
-1. It has **>= 2 registered price sources** (`PriceAggregator.sourceCount(asset) >= 2`). Done on-chain for all 200 demo stocks (weekday + weekend `UniversalSignedSource`).
+1. It has **>= 2 registered price sources** (`PriceAggregator.sourceCount(asset) >= 2`). Done on-chain for every demo stock (the full current set is in `config.params.demo.stocks`; 300 at last deploy).
 2. The caller passes **fresh keeper-signed payloads** for those sources into the read/settle call.
 3. The committee that signed is the one registered on the source (`setCommittee`). Done.
 
@@ -39,7 +39,7 @@ If a constituent has < 2 sources, or stale/missing payloads, `navOf.safe == fals
 | AccessControlsRegistry | `0xC2c43ea6789048C74ea88e086819796c352326f2` | role registry for our Stock clones (MINTER_ROLE etc.) |
 | Stock_impl | `0x7b8F92e75F5Ef7E80B34aFEbc766492740fFd593` | shared Stock implementation behind every clone |
 | StockCloneFactory | `0x536ecff29A204d8177E7aBF4bc28b2D1B1589007` | EIP-1167 clone factory |
-| 200 stock clones | see `config.params.demo.stocks` | the demo constituents (object map `{ ticker: { address, priceUsd } }`) |
+| demo stock clones (N in `config.params.demo.stocks`) | see `config.params.demo.stocks` | the demo constituents (object map `{ ticker: { address, priceUsd } }`) |
 
 **Colleague's stand (reused, do not redeploy):**
 | Name | Address | Role |
@@ -57,7 +57,7 @@ If a constituent has < 2 sources, or stale/missing payloads, `navOf.safe == fals
 
 **Demo price committee signer (sandbox):** `0x1bCC28037Ee100818857F7da936EF1bD39E84639` (private key in `blockchain/.env` `KEEPER_KEYS`, gitignored — burner, rotate after the buildathon).
 
-The 3 original colleague stocks (`MSTRx`/`TSLAx`/`NVDAx`, public-mint MockERC20) are the controlled-scene subset — see `config.params.demo.scene`. They are NOT part of the 200-name fund's price wiring.
+The 3 original colleague stocks (`MSTRx`/`TSLAx`/`NVDAx`, public-mint MockERC20) are the controlled-scene subset — see `config.params.demo.scene`. They are NOT part of the demo fund's price wiring.
 
 ---
 
@@ -74,7 +74,7 @@ KEEPER_KEYS=$(grep '^KEEPER_KEYS=' .env | cut -d= -f2) KEEPER_PORT=8787 \
   node --import tsx/esm keeper/server.ts        # or: npx ts-node keeper/server.ts
 ```
 
-**Endpoint:** `GET /reports?assets=NVDA,AAPL` (omit `assets` for all 200). Response:
+**Endpoint:** `GET /reports?assets=NVDA,AAPL` (omit `assets` for every demo stock). Response:
 ```json
 {
   "0x0c779f3d751a146991E52EB3a7306830F8e7E59E": {
@@ -108,7 +108,7 @@ Order matters: `payloads[i]` goes to the i-th registered source. Weekday source 
 
 ## 5. Getting demo tokens (faucet)
 
-Each of the 200 stock clones has a built-in open faucet on the token itself — no separate faucet contract:
+Each demo stock clone has a built-in open faucet on the token itself — no separate faucet contract:
 ```solidity
 Stock(stockAddr).faucetMint();   // mints a fixed 100e18 to msg.sender; per-address cap 100e18
 ```
@@ -128,7 +128,7 @@ The fund is created via the frontend (it bootstraps the `RegistryIndex`). Once a
    - `ap` = `MockAPFiller`.
    Settle runs gates g0–g8 (bootstrapped, sources registered per held token, market open, safe band, TWAP band, peg band) and mints shares to the ticket owner at the open NAV.
 
-For settle to pass, every `heldToken` must have its 2 sources registered (done for the 200) and fresh payloads supplied. Keep the keeper running and the settler feeding `/reports`.
+For settle to pass, every `heldToken` must have its 2 sources registered (done for all demo constituents) and fresh payloads supplied. Keep the keeper running and the settler feeding `/reports`.
 
 **One-time gate-param check (ops):** `ForwardCashQueue` is global; verify `setG1Refs(aggregator, l2RouterSource)` points at PriceAggregator `0x77b0…` and the bands (`setGateParams`) are sane before the live demo. Read current values first; do not clobber working config.
 

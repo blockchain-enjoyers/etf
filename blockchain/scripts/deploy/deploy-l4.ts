@@ -10,6 +10,7 @@
 // The real RHC VerifierProxy is recorded in params.realVerifierProxy for a later swap. Per-constituent
 // aggregator.addSource(asset, source) and UniversalSignedSource.setCommittee(...) are asset/governance
 // steps, NOT infra — done separately per fund/demo.
+import { ethers } from "hardhat";
 import { ensure, getDeployer, loadConfig, saveConfig, DEFAULTS, EXPLORER } from "./_shared";
 
 export async function deployL4() {
@@ -38,14 +39,26 @@ export async function deployL4() {
   // 5. Universal ecrecover-committee source (committee set later via governance, not here).
   const signedSource = await ensure(config, "UniversalSignedSource", [deployer], deployer);
 
+  // 6. Second instance for closed-market estimates: weekendAware=true means it survives the
+  //    aggregator's liveness filter when US equities are closed, so marketStatus stays honest
+  //    (weekday source stale -> Closed). Payload convention: source 0 = weekday, 1 = weekend.
+  const weekendSource = await ensure(
+    config,
+    "UniversalSignedSource",
+    [deployer],
+    deployer,
+    "UniversalSignedSourceWeekend",
+  );
+  const weekend = await ethers.getContractAt("UniversalSignedSource", weekendSource);
+  if (!(await weekend.weekendAware())) {
+    await (await weekend.setWeekendAware(true)).wait();
+    console.log("  UniversalSignedSourceWeekend -> weekendAware=true");
+  }
+
   console.log(`\n✅ L4 ready. Aggregator: ${EXPLORER}${aggregator}`);
   console.log(`   StreamsSource -> MockVerifierProxy ${mockVerifier}  (real: ${p.realVerifierProxy})`);
-  console.log(
-    "   Next: aggregator.addSource(asset, source) per constituent; " +
-      "UniversalSignedSource.setCommittee(members, threshold) for the signed path; " +
-      "optionally aggregator.setParams(...).",
-  );
-  return { aggregator, fairValueNav, mockVerifier, streamsSource, signedSource };
+  console.log("   Next: scripts/configure-l4.ts (sources per constituent + committee + testnet params).");
+  return { aggregator, fairValueNav, mockVerifier, streamsSource, signedSource, weekendSource };
 }
 
 if (require.main === module) {

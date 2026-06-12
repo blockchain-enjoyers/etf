@@ -27,7 +27,7 @@ export const oracleSourceSchema = z.enum([
 ]);
 export type OracleSource = z.infer<typeof oracleSourceSchema>;
 
-export const vaultTypeSchema = z.enum(["basket", "managed", "committed", "rebalance"]);
+export const vaultTypeSchema = z.enum(["basket", "managed", "committed", "rebalance", "registry"]);
 export type VaultType = z.infer<typeof vaultTypeSchema>;
 
 export const oracleSeveritySchema = z.enum(["open", "degraded", "halted", "closed", "unknown"]);
@@ -94,6 +94,8 @@ export const basketSummarySchema = z.object({
   vaultType: vaultTypeSchema.default("basket"),
   manager: z.string().nullable().optional(),
   managerFeeBps: z.number().int().nonnegative().nullable().optional(),
+  // Meridian's own annual AUM fee (bps). null/absent when the deployed impl predates the getter.
+  platformFeeBps: z.number().int().nonnegative().nullable().optional(),
   keeperBps: z.number().int().nonnegative().nullable().optional(),
   keeperEscrow: z.string().nullable().optional(),
 });
@@ -313,10 +315,23 @@ export const queueCapacitySchema = z.object({
 });
 export type QueueCapacity = z.infer<typeof queueCapacitySchema>;
 
+// Registry-vault forward fees: fixed USDG amounts FeeCore applies at settle — create costs the user
+// +flatCreateFee, redeem proceeds are −flatRedeemFee. The create/redeem CALLDATA is unchanged; this is
+// disclosure so the FE can show honest net amounts. null/absent for managed (non-registry) queues.
+// Amounts are raw base units in the fee token's (USDG, 6-dec) decimals.
+export const forwardQueueFeesSchema = z.object({
+  isRegistry: z.boolean(),
+  feeToken: z.string(),
+  flatCreateFee: baseUnitString,
+  flatRedeemFee: baseUnitString,
+});
+export type ForwardQueueFees = z.infer<typeof forwardQueueFeesSchema>;
+
 export const forwardQueueSchema = z.object({
   queueAddress: z.string().nullable(),
   tickets: z.array(forwardTicketSchema),
   capacity: queueCapacitySchema,
+  fees: forwardQueueFeesSchema.nullable().optional(),
 });
 export type ForwardQueue = z.infer<typeof forwardQueueSchema>;
 
@@ -355,6 +370,30 @@ export const accountHoldingsResponseSchema = z.object({
 });
 export type AccountHoldingsResponse = z.infer<typeof accountHoldingsResponseSchema>;
 
+// Per-account activity feed: in-kind mint/redeem + forward lifecycle, newest first. `payload` holds the
+// raw amounts (mint: nUnits+minted; redeem: amount; forward: cash/shares/cutoff) for the FE to format.
+export const activityKindSchema = z.enum([
+  "mint",
+  "redeem",
+  "forward-create",
+  "forward-redeem",
+  "forward-fill",
+  "forward-settle",
+  "forward-cancel",
+]);
+export type ActivityKind = z.infer<typeof activityKindSchema>;
+
+export const activityEventSchema = z.object({
+  vaultAddress: z.string(),
+  symbol: z.string(),
+  owner: z.string(),
+  kind: activityKindSchema,
+  payload: z.record(z.string(), z.string()),
+  txHash: z.string(),
+  timestampMs: z.number().int().nonnegative(),
+});
+export type ActivityEvent = z.infer<typeof activityEventSchema>;
+
 export const txActionSchema = z.enum([
   "mint", "redeemInKind", "deploy",
   "forwardCreate", "forwardRedeem", "forwardCancel",
@@ -390,11 +429,25 @@ export const mintQuoteDepositSchema = z.object({
   token: z.string(), symbol: z.string(),
   amount: decimalString, valueUsd: decimalString,
 });
+// A fixed USDG fee pulled by the protocol (mint-time flatCreateFee, or the deploy-time per-TYPE
+// creation fee). amount is raw base units in the fee token's decimals; valueUsd is 18-dec USD.
+export const feeQuoteSchema = z.object({
+  token: z.string(),
+  symbol: z.string(),
+  amount: baseUnitString,
+  valueUsd: decimalString,
+});
+export type FeeQuote = z.infer<typeof feeQuoteSchema>;
+
+// Per-vault fixed USDG flatCreateFee pulled by FeeCore.create(). Optional: absent on the no-op
+// fee seam (Basket/Committed) or when the fee is 0.
+export const mintQuoteFeeSchema = feeQuoteSchema;
 export const mintQuoteResponseSchema = z.object({
   unitsOut: decimalString,
   deposits: z.array(mintQuoteDepositSchema),
   estTotalUsd: decimalString,
   gate: gateStateSchema,
+  fee: mintQuoteFeeSchema.optional(),
 });
 export type MintQuoteResponse = z.infer<typeof mintQuoteResponseSchema>;
 
@@ -487,8 +540,34 @@ export const previewDeployResponseSchema = z.object({
   priceMissing: z.array(z.string()),
   predictedVault: z.string().nullable(),
   gate: previewGateSchema,
+  // Fixed USDG fund-creation fee the deployer pays the CloneFactory for this vault TYPE. Omitted when 0.
+  creationFee: feeQuoteSchema.optional(),
 });
 export type DeployPreview = z.infer<typeof previewDeployResponseSchema>;
+
+// --- Registry (5th vault type) AP/holder claim-lifecycle tx requests ---
+// The vault custodies constituents as ERC-6909 claims; these drive wrap/unwrap/setOperator/bootstrap +
+// in-kind create/redeem. amounts are raw base-unit strings in the constituent's (or share's) decimals.
+export const registryWrapTxRequestSchema = z.object({ token: addr, amount: baseUnitString, account: addr });
+export const registryBatchWrapTxRequestSchema = z
+  .object({ tokens: z.array(addr), amounts: z.array(baseUnitString), account: addr })
+  .refine((v) => v.tokens.length === v.amounts.length, { message: "tokens and amounts length mismatch" });
+export const registryUnwrapTxRequestSchema = z.object({ token: addr, amount: baseUnitString, to: addr, account: addr });
+export const registrySetOperatorTxRequestSchema = z.object({ operator: addr, approved: z.boolean(), account: addr });
+export const registryBootstrapTxRequestSchema = z
+  .object({
+    tokens: z.array(addr),
+    unitQty: z.array(baseUnitString),
+    unitSize: baseUnitString,
+    nShares: baseUnitString.optional(),
+    account: addr,
+  })
+  .refine((v) => v.tokens.length === v.unitQty.length, { message: "tokens and unitQty length mismatch" });
+// In-kind create pulls the caller's OWN claims (internal _transfer; no operator needed) and mints
+// nShares; the builder prepends wraps for any per-token claim shortfall. Redeem burns shares -> claims,
+// then unwraps each to real ERC-20 (set withUnwrap=false to receive bare claims).
+export const registryCreateTxRequestSchema = z.object({ nShares: baseUnitString, account: addr });
+export const registryRedeemTxRequestSchema = z.object({ amount: baseUnitString, withUnwrap: z.boolean().optional(), account: addr });
 
 export const forwardCreateTxRequestSchema = z.object({ cash: baseUnitString, account: addr });
 export const forwardRedeemTxRequestSchema = z.object({ shares: baseUnitString, account: addr });
@@ -514,7 +593,12 @@ export const auctionBidTxRequestSchema = z.object({
   account: addr,
   acquire: z.array(z.object({ token: addr, amount: baseUnitString })),
 });
-export const auctionSetExecModeTxRequestSchema = z.object({ mode: z.number().int(), account: addr });
+// Permissionless (2) is contract-disabled (reverts PermissionlessDisabled); only Manager-only (0)
+// and Allowlist (1) are settable.
+export const auctionSetExecModeTxRequestSchema = z.object({
+  mode: z.union([z.literal(0), z.literal(1)]),
+  account: addr,
+});
 
 export const auctionStatusSchema = z.object({
   vaultAddress: z.string(),
@@ -524,3 +608,41 @@ export const auctionStatusSchema = z.object({
   acquireIn: z.array(decimalString),
 });
 export type AuctionStatus = z.infer<typeof auctionStatusSchema>;
+
+// --- Suggested-funds catalog (create-flow recommender) ---
+// Static REFERENCE data: real-ETF-replica fund templates produced by tools/registry. Each carries a
+// recommended vault kind + a capped sample of holdings (full count in holdingsCount). resolvableTokens
+// is the subset whose address exists on the target chain (usually empty on testnet) → pre-fill source.
+export const suggestedHoldingSchema = z.object({
+  symbol: z.string(),
+  weightBps: z.number().int().nonnegative(),
+  address: z.string().nullable(),
+});
+export type SuggestedHolding = z.infer<typeof suggestedHoldingSchema>;
+
+export const suggestedResolvableTokenSchema = z.object({
+  token: z.string(),
+  symbol: z.string(),
+  weightBps: z.number().int().nonnegative(),
+});
+export type SuggestedResolvableToken = z.infer<typeof suggestedResolvableTokenSchema>;
+
+export const suggestedFundSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: z.string(),
+  recommendedVaultKind: vaultTypeSchema,
+  description: z.string(),
+  sampleHoldings: z.array(suggestedHoldingSchema),
+  holdingsCount: z.number().int().nonnegative(),
+  // Fraction of the source ETF (by weight) the registry actually covers; informational.
+  coveragePct: z.number().optional(),
+  // The subset of constituents resolvable to on-chain tokens (for wizard pre-fill). Empty => reference-only.
+  resolvableTokens: z.array(suggestedResolvableTokenSchema),
+});
+export type SuggestedFund = z.infer<typeof suggestedFundSchema>;
+
+export const suggestedFundsResponseSchema = z.object({
+  funds: z.array(suggestedFundSchema),
+});
+export type SuggestedFundsResponse = z.infer<typeof suggestedFundsResponseSchema>;

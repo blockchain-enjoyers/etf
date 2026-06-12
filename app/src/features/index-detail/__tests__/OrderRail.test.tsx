@@ -10,6 +10,7 @@ const capsMintDisabled = {
   canMint: (_v: string) => ({ enabled: false, reason: "not-deployed" as const }),
   canRedeemInKind: () => ({ enabled: true, reason: "ok" as const }),
   canRedeemCash: () => ({ enabled: true, reason: "ok" as const }),
+  canForwardCreate: () => ({ enabled: true, reason: "ok" as const }),
   canForwardRedeem: () => ({ enabled: true, reason: "ok" as const }),
   canDeploy: () => ({ enabled: false, reason: "not-deployed" as const }),
   status: () => "absent" as const,
@@ -18,6 +19,7 @@ const capsMintEnabled = {
   canMint: () => ({ enabled: true, reason: "ok" as const }),
   canRedeemInKind: () => ({ enabled: true, reason: "ok" as const }),
   canRedeemCash: () => ({ enabled: true, reason: "ok" as const }),
+  canForwardCreate: () => ({ enabled: true, reason: "ok" as const }),
   canForwardRedeem: () => ({ enabled: true, reason: "ok" as const }),
   canDeploy: () => ({ enabled: false, reason: "not-deployed" as const }),
   status: () => "present" as const,
@@ -71,6 +73,16 @@ vi.mock("../../../data/useMintQuote", () => ({
   useMintQuote: (...args: unknown[]) => mockUseMintQuote(...(args as [])),
 }));
 
+// Forward-queue (registry fees) + settle-gate (navPerShare / bootstrapped guard) — registry-only.
+const mockUseForwardQueue = vi.fn(() => ({ data: undefined as unknown }));
+vi.mock("../../../data/useForwardQueue", () => ({
+  useForwardQueue: (...args: unknown[]) => mockUseForwardQueue(...(args as [])),
+}));
+const mockUseSettleGateStatus = vi.fn(() => ({ data: undefined as unknown }));
+vi.mock("../../../data/useSettleGateStatus", () => ({
+  useSettleGateStatus: (...args: unknown[]) => mockUseSettleGateStatus(...(args as [])),
+}));
+
 const basket: BasketDetail = {
   vaultAddress: "0xabc",
   name: "Tech Giants",
@@ -113,6 +125,7 @@ const api = {
   finalizeMintTx: vi.fn(),
   buildRedeemTx: vi.fn(),
   buildForwardRedeemTx: vi.fn(),
+  buildForwardCreateTx: vi.fn(),
 } as unknown as MeridianApi;
 
 function makeWrapper() {
@@ -131,12 +144,17 @@ beforeEach(() => {
   mockUseTxPlan.mockImplementation(() => txDefaults());
   mockUseMintQuote.mockReset();
   mockUseMintQuote.mockImplementation(() => ({ data: mintQuoteData(), isLoading: false, refetch: vi.fn() }));
+  mockUseForwardQueue.mockReset();
+  mockUseForwardQueue.mockImplementation(() => ({ data: undefined }));
+  mockUseSettleGateStatus.mockReset();
+  mockUseSettleGateStatus.mockImplementation(() => ({ data: undefined }));
   mockUseCapabilities.mockReset();
   mockUseCapabilities.mockReturnValue(capsMintDisabled as never);
   (api.buildMintTx as ReturnType<typeof vi.fn>).mockReset();
   (api.finalizeMintTx as ReturnType<typeof vi.fn>).mockReset();
   (api.buildRedeemTx as ReturnType<typeof vi.fn>).mockReset();
   (api.buildForwardRedeemTx as ReturnType<typeof vi.fn>).mockReset();
+  (api.buildForwardCreateTx as ReturnType<typeof vi.fn>).mockReset();
 });
 
 describe("OrderRail — iron rules", () => {
@@ -246,6 +264,32 @@ describe("OrderRail — deposit list from mint-quote", () => {
     });
     // The vault clone is the create-step `to` and must be allowlisted alongside the deposit tokens.
     expect(mockUseTxPlan).toHaveBeenCalledWith(["0xabc", sampleDeposits[0]!.token]);
+  });
+
+  it("shows $0.00 create fee when the mint-quote carries no fee (Basket/no-op seam)", () => {
+    render(<OrderRail vaultAddress="0xabc" basket={basket} nav={openNav} />, {
+      wrapper: makeWrapper(),
+    });
+    expect(screen.getByText(/create fee/i)).toBeInTheDocument();
+    expect(screen.getByText("$0.00")).toBeInTheDocument();
+    // flow fee headline stays 0%.
+    expect(screen.getByText(/flow fee/i)).toBeInTheDocument();
+  });
+
+  it("shows the flat USDG create fee (valueUsd + amount + symbol) when the mint-quote carries one", () => {
+    mockUseMintQuote.mockReturnValue({
+      data: {
+        ...mintQuoteData(),
+        fee: { token: "0xusdg", symbol: "USDG", amount: "2500000", valueUsd: "2500000000000000000" },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    } as never);
+    render(<OrderRail vaultAddress="0xabc" basket={basket} nav={openNav} />, {
+      wrapper: makeWrapper(),
+    });
+    expect(screen.getByText(/\$2\.50/)).toBeInTheDocument();
+    expect(screen.getByText(/in USDG/)).toBeInTheDocument();
   });
 });
 
@@ -375,6 +419,76 @@ describe("OrderRail — redeem via tx-plan executor", () => {
       account: "0xme",
       shares: "2000000000000000000",
     });
+    expect(api.buildRedeemTx).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderRail — registry vault routes to forward cash", () => {
+  const registryBasket: BasketDetail = {
+    ...basket,
+    vaultType: "registry",
+    cashToken: "0x9999999999999999999999999999999999999999",
+  };
+  const queueWithFees = {
+    fees: { isRegistry: true, feeToken: "0xusdg", flatCreateFee: "5000000", flatRedeemFee: "3000000" },
+  };
+  const gateWithNav = { navPerShare: "1000000000000000000", guards: [{ id: "g0", ok: true }] };
+
+  beforeEach(() => {
+    mockUseCapabilities.mockReturnValue(capsMintEnabled as never);
+    mockUseForwardQueue.mockImplementation(() => ({ data: queueWithFees }));
+    mockUseSettleGateStatus.mockImplementation(() => ({ data: gateWithNav }));
+  });
+
+  it("shows the Forward cash header tag (not In-kind mint)", () => {
+    render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
+    expect(screen.getByText(/forward cash/i)).toBeInTheDocument();
+    expect(screen.queryByText(/in-kind mint/i)).not.toBeInTheDocument();
+  });
+
+  it("Create rail takes USDC cash-in and hides the in-kind mint button", () => {
+    render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
+    expect(screen.getByLabelText(/usdc amount/i)).toBeInTheDocument();
+    // The in-kind mint button must not exist for registry.
+    expect(screen.queryByRole("button", { name: /mint basket tokens/i })).not.toBeInTheDocument();
+    // The flat USDG create fee from the queue DTO is disclosed (5.00 USDG).
+    expect(screen.getByText(/\+ \$5\.00 USDG/i)).toBeInTheDocument();
+  });
+
+  it("clicking cash create routes to buildForwardCreateTx with 6-dec USDC base units", async () => {
+    const user = userEvent.setup();
+    render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
+    await user.type(screen.getByLabelText(/usdc amount/i), "1");
+    await user.click(screen.getByRole("button", { name: /queue cash create/i }));
+
+    expect(mockRun).toHaveBeenCalledOnce();
+    const [fetcher] = mockRun.mock.calls[0]!;
+    fetcher();
+    expect(api.buildForwardCreateTx).toHaveBeenCalledWith("0xabc", { cash: "1000000", account: "0xme" });
+    expect(api.buildMintTx).not.toHaveBeenCalled();
+  });
+
+  it("Redeem is cash-only (no in-kind option) and discloses the flat redeem fee", async () => {
+    const user = userEvent.setup();
+    render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
+    await user.click(screen.getByRole("button", { name: "Redeem" }));
+    // No in-kind method offered; the queued-cash label is shown.
+    expect(screen.queryByText(/in-kind · instant/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/cash · forward queue/i)).toBeInTheDocument();
+    expect(screen.getByText(/net − \$3\.00 USDG/i)).toBeInTheDocument();
+  });
+
+  it("clicking redeem on a registry vault routes to buildForwardRedeemTx (cash), not buildRedeemTx", async () => {
+    const user = userEvent.setup();
+    render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
+    await user.click(screen.getByRole("button", { name: "Redeem" }));
+    await user.type(screen.getByLabelText(/redeem amount/i), "2");
+    await user.click(screen.getByRole("button", { name: /redeem basket tokens/i }));
+
+    expect(mockRun).toHaveBeenCalledOnce();
+    const [fetcher] = mockRun.mock.calls[0]!;
+    fetcher();
+    expect(api.buildForwardRedeemTx).toHaveBeenCalledWith("0xabc", { account: "0xme", shares: "2000000000000000000" });
     expect(api.buildRedeemTx).not.toHaveBeenCalled();
   });
 });

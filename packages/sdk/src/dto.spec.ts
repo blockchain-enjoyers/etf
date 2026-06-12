@@ -33,6 +33,14 @@ import {
   auctionStatusSchema,
   previewDeployRequestSchema,
   previewDeployResponseSchema,
+  suggestedFundsResponseSchema,
+  registryWrapTxRequestSchema,
+  registryBatchWrapTxRequestSchema,
+  registryUnwrapTxRequestSchema,
+  registrySetOperatorTxRequestSchema,
+  registryBootstrapTxRequestSchema,
+  registryCreateTxRequestSchema,
+  registryRedeemTxRequestSchema,
 } from "./dto.js";
 
 describe("sdk DTO schemas", () => {
@@ -123,8 +131,9 @@ describe("sdk DTO schemas", () => {
 });
 
 describe("vault type + nav severity DTO additions", () => {
-  it("vaultTypeSchema accepts the three types", () => {
-    for (const t of ["basket", "managed", "committed"]) expect(vaultTypeSchema.parse(t)).toBe(t);
+  it("vaultTypeSchema accepts every vault type", () => {
+    for (const t of ["basket", "managed", "committed", "rebalance", "registry"])
+      expect(vaultTypeSchema.parse(t)).toBe(t);
     expect(() => vaultTypeSchema.parse("nope")).toThrow();
   });
   it("oracleSeveritySchema mirrors the on-chain 5-value enum", () => {
@@ -133,9 +142,16 @@ describe("vault type + nav severity DTO additions", () => {
   it("basketSummary defaults vaultType to basket and allows managed fields", () => {
     const base = { vaultAddress: "0x1", name: "N", symbol: "S", frozen: false };
     expect(basketSummarySchema.parse(base).vaultType).toBe("basket");
-    const managed = basketSummarySchema.parse({ ...base, vaultType: "managed", manager: "0xabc", managerFeeBps: 100 });
+    const managed = basketSummarySchema.parse({ ...base, vaultType: "managed", manager: "0xabc", managerFeeBps: 100, platformFeeBps: 15 });
     expect(managed.manager).toBe("0xabc");
     expect(managed.managerFeeBps).toBe(100);
+    expect(managed.platformFeeBps).toBe(15);
+  });
+  it("basketSummary carries platformFeeBps and accepts null (deployed impl predates the getter)", () => {
+    const base = { vaultAddress: "0x1", name: "N", symbol: "S", frozen: false };
+    expect(basketSummarySchema.parse({ ...base, platformFeeBps: null }).platformFeeBps).toBeNull();
+    // absent is allowed (optional); basket/committed vaults carry no platform fee.
+    expect(basketSummarySchema.parse(base).platformFeeBps).toBeUndefined();
   });
   it("basketDetail carries recipeCommitment", () => {
     const detail = basketDetailSchema.parse({
@@ -370,7 +386,7 @@ describe("positions / availability / quotes DTOs", () => {
     expect(av.items[0]!.reason).toBe("unsupported-vault-type");
   });
 
-  it("mintQuote carries deposits + gate", () => {
+  it("mintQuote carries deposits + gate (fee omitted by default)", () => {
     const q = mintQuoteResponseSchema.parse({
       unitsOut: "3000000000000000000",
       deposits: [{ token: "0xA", symbol: "TSLA", amount: "100000000000000000", valueUsd: "25000000000000000000" }],
@@ -378,6 +394,19 @@ describe("positions / availability / quotes DTOs", () => {
       gate: { gated: false, reason: "none" },
     });
     expect(q.deposits[0]!.symbol).toBe("TSLA");
+    expect(q.fee).toBeUndefined();
+  });
+
+  it("mintQuote carries an optional USDG flatCreateFee", () => {
+    const q = mintQuoteResponseSchema.parse({
+      unitsOut: "3000000000000000000",
+      deposits: [{ token: "0xA", symbol: "TSLA", amount: "100000000000000000", valueUsd: "25000000000000000000" }],
+      estTotalUsd: "75000000000000000000",
+      gate: { gated: false, reason: "none" },
+      fee: { token: "0xFEED", symbol: "USDG", amount: "5000000", valueUsd: "5000000000000000000" },
+    });
+    expect(q.fee!.symbol).toBe("USDG");
+    expect(q.fee!.amount).toBe("5000000");
   });
 
   it("redeem-quote assets stay back-compat ({token,amount}) and accept enrichment", () => {
@@ -562,5 +591,116 @@ describe("previewDeploy schemas", () => {
       predictedVault: null, gate: { gated: true, reason: "price-missing" },
     });
     expect(p.predictedVault).toBeNull();
+  });
+});
+
+describe("suggestedFunds catalog DTO", () => {
+  it("parses a fund with sample holdings, holdingsCount, and no resolvable tokens (reference-only)", () => {
+    const r = suggestedFundsResponseSchema.parse({
+      funds: [
+        {
+          id: "sp500",
+          name: "S&P 500",
+          category: "broad market",
+          recommendedVaultKind: "registry",
+          description: "The 500 large-cap US companies (SPY).",
+          sampleHoldings: [
+            { symbol: "NVDA", weightBps: 842, address: "0xD798Fb9fCc5208fB935E974cd3f673B95C9EE69E" },
+            { symbol: "AAPL", weightBps: 710, address: "0x012c768e5162d5Ed965D45935634EFCe705A57AC" },
+          ],
+          holdingsCount: 442,
+          coveragePct: 94.85,
+          resolvableTokens: [],
+        },
+      ],
+    });
+    expect(r.funds[0]!.recommendedVaultKind).toBe("registry");
+    expect(r.funds[0]!.holdingsCount).toBe(442);
+    expect(r.funds[0]!.sampleHoldings).toHaveLength(2);
+    expect(r.funds[0]!.resolvableTokens).toHaveLength(0);
+  });
+
+  it("carries resolvable tokens for pre-fill and accepts a null sample address", () => {
+    const r = suggestedFundsResponseSchema.parse({
+      funds: [
+        {
+          id: "dow30",
+          name: "Dow Jones 30",
+          category: "broad market",
+          recommendedVaultKind: "basket",
+          description: "DIA.",
+          sampleHoldings: [{ symbol: "UNRESOLVED", weightBps: 100, address: null }],
+          holdingsCount: 29,
+          resolvableTokens: [
+            { token: "0xabc", symbol: "AAPL", weightBps: 5000 },
+            { token: "0xdef", symbol: "MSFT", weightBps: 5000 },
+          ],
+        },
+      ],
+    });
+    expect(r.funds[0]!.sampleHoldings[0]!.address).toBeNull();
+    expect(r.funds[0]!.resolvableTokens).toHaveLength(2);
+    expect(r.funds[0]!.coveragePct).toBeUndefined();
+  });
+
+  it("rejects an unknown recommendedVaultKind", () => {
+    expect(() =>
+      suggestedFundsResponseSchema.parse({
+        funds: [{ id: "x", name: "X", category: "c", recommendedVaultKind: "nope", description: "d", sampleHoldings: [], holdingsCount: 0, resolvableTokens: [] }],
+      }),
+    ).toThrow();
+  });
+});
+
+describe("registry AP/holder claim-lifecycle tx request schemas", () => {
+  const ACCT = "0x0000000000000000000000000000000000000001";
+  const TOK = "0x000000000000000000000000000000000000aaaa";
+
+  it("parses wrap / unwrap with base-unit amounts", () => {
+    expect(registryWrapTxRequestSchema.parse({ token: TOK, amount: "2000000000000000000", account: ACCT }).amount).toBe(
+      "2000000000000000000",
+    );
+    const uw = registryUnwrapTxRequestSchema.parse({ token: TOK, amount: "5", to: ACCT, account: ACCT });
+    expect(uw.to).toBe(ACCT);
+  });
+
+  it("rejects a decimal-point (non-integer base-unit) wrap amount", () => {
+    expect(() => registryWrapTxRequestSchema.parse({ token: TOK, amount: "2.5", account: ACCT })).toThrow();
+  });
+
+  it("batchWrap requires tokens and amounts to be the same length", () => {
+    expect(
+      registryBatchWrapTxRequestSchema.parse({ tokens: [TOK], amounts: ["1"], account: ACCT }).tokens,
+    ).toHaveLength(1);
+    expect(() =>
+      registryBatchWrapTxRequestSchema.parse({ tokens: [TOK], amounts: ["1", "2"], account: ACCT }),
+    ).toThrow();
+  });
+
+  it("setOperator carries a boolean approved flag", () => {
+    expect(registrySetOperatorTxRequestSchema.parse({ operator: TOK, approved: true, account: ACCT }).approved).toBe(true);
+    expect(() => registrySetOperatorTxRequestSchema.parse({ operator: TOK, approved: "yes", account: ACCT })).toThrow();
+  });
+
+  it("bootstrap requires tokens/unitQty aligned; nShares optional", () => {
+    const ok = registryBootstrapTxRequestSchema.parse({
+      tokens: [TOK],
+      unitQty: ["2000000000000000000"],
+      unitSize: "1000000000000000000",
+      account: ACCT,
+    });
+    expect(ok.nShares).toBeUndefined();
+    expect(() =>
+      registryBootstrapTxRequestSchema.parse({ tokens: [TOK], unitQty: [], unitSize: "1", account: ACCT }),
+    ).toThrow();
+  });
+
+  it("registry in-kind create/redeem parse (redeem withUnwrap optional)", () => {
+    expect(registryCreateTxRequestSchema.parse({ nShares: "1000000000000000000", account: ACCT }).nShares).toBe(
+      "1000000000000000000",
+    );
+    const r = registryRedeemTxRequestSchema.parse({ amount: "1000000000000000000", account: ACCT });
+    expect(r.withUnwrap).toBeUndefined();
+    expect(registryRedeemTxRequestSchema.parse({ amount: "1", withUnwrap: false, account: ACCT }).withUnwrap).toBe(false);
   });
 });

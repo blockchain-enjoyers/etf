@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import type {
   ForwardTicket,
   ForwardQueue,
+  ForwardQueueFees,
   ForwardHistory,
   QueueCapacity,
   SettleGateStatus,
@@ -33,6 +34,8 @@ type TicketRow = {
 
 @Injectable()
 export class ForwardService {
+  private readonly logger = new Logger(ForwardService.name);
+
   constructor(
     private readonly repo: IndexerRepository,
     private readonly forwardQueues: ForwardQueueRegistry,
@@ -48,12 +51,80 @@ export class ForwardService {
     return rows.map((r) => this.toWire(r));
   }
 
+  /** OPEN (pending/partial) forward tickets for one owner across ALL vaults — Portfolio queue section. */
+  async getAccountTickets(owner: string): Promise<ForwardTicket[]> {
+    const rows = (await this.repo.getOpenForwardTicketsForOwner(owner)) as TicketRow[];
+    return rows.map((r) => this.toWire(r));
+  }
+
   async getQueue(vault: string): Promise<ForwardQueue> {
     const queue = this.forwardQueues.queueFor(vault);
     const pending = (await this.repo.getPendingForwardTickets(vault)) as TicketRow[];
     const tickets = pending.map((r) => this.toWire(r));
     const capacity = await this.capacity(vault, queue, pending);
-    return { queueAddress: queue ?? null, tickets, capacity };
+    const fees = await this.forwardFees(vault, queue);
+    return { queueAddress: queue ?? null, tickets, capacity, fees };
+  }
+
+  /**
+   * Disclose a registry queue's fixed USDG create/redeem fees so the FE can show honest net amounts.
+   * Registry settle pulls flatCreateFee (create) and deducts flatRedeemFee (redeem) in USDG; the
+   * request CALLDATA is identical to managed, only this disclosure differs. null for managed queues.
+   * RESILIENCE: every read is wrapped — the deployed impl may predate these getters — and this never
+   * throws; getQueue must succeed even with a stale contract.
+   */
+  private async forwardFees(
+    vault: string,
+    queue: string | undefined,
+  ): Promise<ForwardQueueFees | null> {
+    if (!queue) return null;
+    let isRegistry = false;
+    try {
+      isRegistry = await this.forward.isRegistry(queue as `0x${string}`);
+    } catch {
+      isRegistry = false;
+    }
+    if (!isRegistry) return null;
+
+    const v = vault as `0x${string}`;
+    let flatCreateFee = 0n;
+    let flatRedeemFee = 0n;
+    let feeToken = "0x0000000000000000000000000000000000000000";
+    try {
+      flatCreateFee = await this.rebVault.flatCreateFee(v);
+    } catch {
+      flatCreateFee = 0n;
+    }
+    try {
+      flatRedeemFee = await this.rebVault.flatRedeemFee(v);
+    } catch {
+      flatRedeemFee = 0n;
+    }
+    try {
+      feeToken = await this.rebVault.feeToken(v);
+    } catch {
+      feeToken = "0x0000000000000000000000000000000000000000";
+    }
+
+    // Defensive: the constructor enforces stable == feeToken on a real deploy (else FeeTokenMismatch),
+    // so a mismatch here means a stale/inconsistent contract — warn, never throw.
+    try {
+      const stable = await this.forward.stable(queue as `0x${string}`);
+      if (stable.toLowerCase() !== feeToken.toLowerCase()) {
+        this.logger.warn(
+          `registry queue ${queue} stable ${stable} != vault ${vault} feeToken ${feeToken}`,
+        );
+      }
+    } catch {
+      // stable() unreadable on a stale impl — skip the cross-check, keep the disclosed fees.
+    }
+
+    return {
+      isRegistry: true,
+      feeToken,
+      flatCreateFee: flatCreateFee.toString(),
+      flatRedeemFee: flatRedeemFee.toString(),
+    };
   }
 
   async getHistory(vault: string): Promise<ForwardHistory> {
@@ -97,12 +168,12 @@ export class ForwardService {
     const payloads = await this.aggSourcePayloads.payloadsFor(held);
 
     try {
-      const navPerShare = (await this.chain.publicClient.readContract({
+      const { result: navPerShare } = await this.chain.publicClient.simulateContract({
         address: queue as `0x${string}`,
         abi: ForwardCashQueueAbi,
         functionName: "settleGateView",
         args: [held, payloads],
-      })) as bigint;
+      });
       return {
         open: true,
         navPerShare: navPerShare.toString(),
@@ -130,8 +201,13 @@ export class ForwardService {
 
   private async readTwap(vault: `0x${string}`): Promise<string | null> {
     try {
+      // Per-vault observer: read it off the vault's own queue. The registered singleton would be the
+      // wrong TWAP window once more than one forward vault exists.
+      const queue = this.forwardQueues.queueFor(vault);
+      if (!queue) return null;
+      const observer = await this.forward.observer(queue as `0x${string}`);
       const window = 86_400n; // 1 day; the FE band is decision-only
-      const { twap, count } = await this.observer.consult(vault, window);
+      const { twap, count } = await this.observer.consult(vault, window, observer);
       return count > 0n ? twap.toString() : null;
     } catch {
       return null;

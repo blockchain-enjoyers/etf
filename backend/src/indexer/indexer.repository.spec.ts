@@ -103,15 +103,36 @@ describe("applyManagedBasketCreated", () => {
     } as unknown as ConstructorParameters<typeof IndexerRepository>[0];
     const repo = new IndexerRepository(prisma, fakeTokenMeta() as never);
     await repo.applyManagedBasketCreated({
-      vaultAddress: "0xv", creator: "0xc", manager: "0xm", managerFeeBps: 100,
+      vaultAddress: "0xv", creator: "0xc", manager: "0xm", managerFeeBps: 100, platformFeeBps: 15,
       unitSize: 1n, name: "N", symbol: "S",
       constituents: [{ token: "0xt", unitQty: 1n }],
       recipeCommitment: "0xabc",
     });
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ vaultType: "Managed", manager: "0xm", managerFeeBps: 100 }),
+        create: expect.objectContaining({
+          vaultType: "Managed", manager: "0xm", managerFeeBps: 100, platformFeeBps: 15,
+        }),
       }),
+    );
+  });
+
+  it("writes platformFeeBps=null when the read reverted (deployed impl predates the getter)", async () => {
+    const upsert = vi.fn().mockReturnValue({});
+    const prisma = {
+      $transaction: vi.fn().mockResolvedValue(undefined),
+      basket: { upsert },
+      constituent: { upsert: vi.fn().mockReturnValue({}) },
+    } as unknown as ConstructorParameters<typeof IndexerRepository>[0];
+    const repo = new IndexerRepository(prisma, fakeTokenMeta() as never);
+    await repo.applyManagedBasketCreated({
+      vaultAddress: "0xv", creator: "0xc", manager: "0xm", managerFeeBps: 100, platformFeeBps: null,
+      unitSize: 1n, name: "N", symbol: "S",
+      constituents: [{ token: "0xt", unitQty: 1n }],
+      recipeCommitment: "0xabc",
+    });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ platformFeeBps: null }) }),
     );
   });
 });
@@ -130,6 +151,7 @@ describe("applyRebalanceBasketCreated", () => {
       creator: "0xc",
       manager: "0xm",
       managerFeeBps: 50,
+      platformFeeBps: 15,
       keeperBps: 1000,
       keeperEscrow: "0xk",
       unitSize: 1000n,
@@ -140,18 +162,111 @@ describe("applyRebalanceBasketCreated", () => {
     });
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ vaultType: "Rebalance", keeperBps: 1000, keeperEscrow: "0xk" }),
+        create: expect.objectContaining({
+          vaultType: "Rebalance", keeperBps: 1000, keeperEscrow: "0xk", platformFeeBps: 15,
+        }),
       }),
     );
+  });
+});
+
+describe("applyRegistryIndexCreated", () => {
+  it("upserts Basket with Registry type, manager + fees, and EMPTY constituents", async () => {
+    const basketUpsert = vi.fn();
+    const constituentUpsert = vi.fn();
+    const prisma = {
+      $transaction: vi.fn((ops: unknown[]) => Promise.resolve(ops)),
+      basket: { upsert: basketUpsert },
+      constituent: { upsert: constituentUpsert },
+    };
+    const repo = new IndexerRepository(prisma as never, fakeTokenMeta() as never);
+    await repo.applyRegistryIndexCreated({
+      vaultAddress: "0xreg",
+      creator: "0xc",
+      manager: "0xm",
+      managerFeeBps: 50,
+      platformFeeBps: 15,
+      keeperBps: 1000,
+      keeperEscrow: "0xk",
+      unitSize: 1000n,
+      name: "SP500",
+      symbol: "SP5",
+      constituents: [],
+      recipeCommitment: "0xroot",
+    });
+    expect(basketUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          vaultType: "Registry", manager: "0xm", managerFeeBps: 50,
+          keeperBps: 1000, keeperEscrow: "0xk", platformFeeBps: 15,
+          recipeCommitment: "0xroot",
+        }),
+      }),
+    );
+    // Constituents are populated in a later slice — none written at creation.
+    expect(constituentUpsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("replaceRegistryConstituents", () => {
+  function fakeReplacePrisma() {
+    const deleteMany = vi.fn(async (a: unknown) => a);
+    const constituentUpsert = vi.fn(async (a: unknown) => a);
+    const $transaction = vi.fn(async (ops: unknown[]) => ops);
+    return {
+      spy: { deleteMany, constituentUpsert, $transaction },
+      prisma: {
+        $transaction,
+        constituent: { deleteMany, upsert: constituentUpsert },
+      } as unknown as PrismaService,
+    };
+  }
+
+  it("upserts each constituent of the new recipe keyed by vaultAddress_token", async () => {
+    const { spy, prisma } = fakeReplacePrisma();
+    const repo = new IndexerRepository(prisma, fakeTokenMeta() as never);
+    await repo.replaceRegistryConstituents({
+      vaultAddress: "0xReg",
+      constituents: [
+        { token: "0xA", unitQty: 5n },
+        { token: "0xB", unitQty: 6n },
+      ],
+    });
+    expect(spy.$transaction).toHaveBeenCalledOnce();
+    expect(spy.constituentUpsert).toHaveBeenCalledTimes(2);
+    const c0 = spy.constituentUpsert.mock.calls[0]![0] as {
+      where: { vaultAddress_token: { vaultAddress: string; token: string } };
+      create: { unitQty: string };
+    };
+    expect(c0.where.vaultAddress_token).toEqual({ vaultAddress: "0xReg", token: "0xA" });
+    expect(c0.create.unitQty).toBe("5");
+  });
+
+  it("prunes constituents NOT in the new recipe (a reconstitution that drops a token)", async () => {
+    const { spy, prisma } = fakeReplacePrisma();
+    const repo = new IndexerRepository(prisma, fakeTokenMeta() as never);
+    await repo.replaceRegistryConstituents({
+      vaultAddress: "0xReg",
+      constituents: [{ token: "0xA", unitQty: 5n }], // 0xB dropped vs a prior {0xA,0xB}
+    });
+    expect(spy.deleteMany).toHaveBeenCalledOnce();
+    const arg = spy.deleteMany.mock.calls[0]![0] as {
+      where: { vaultAddress: string; token: { notIn: string[] } };
+    };
+    // delete everything for the vault whose token is NOT the surviving 0xA → prunes 0xB.
+    expect(arg.where.vaultAddress).toBe("0xReg");
+    expect(arg.where.token.notIn).toEqual(["0xA"]);
   });
 });
 
 function fakeForwardPrisma() {
   const tickets = new Map<string, Record<string, unknown>>();
   const events: Record<string, unknown>[] = [];
+  const activity: Record<string, unknown>[] = [];
   return {
     _tickets: tickets,
     _events: events,
+    _activity: activity,
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
     forwardTicket: {
       upsert: vi.fn(async ({ where, create, update }: {
@@ -164,10 +279,22 @@ function fakeForwardPrisma() {
         tickets.set(k, existing ? { ...existing, ...update } : { ...create });
         return tickets.get(k);
       }),
+      findUnique: vi.fn(async ({ where }: {
+        where: { queueAddress_ticketId: { queueAddress: string; ticketId: number } };
+      }) => {
+        const k = `${where.queueAddress_ticketId.queueAddress}:${where.queueAddress_ticketId.ticketId}`;
+        return tickets.get(k) ?? null;
+      }),
     },
     forwardEvent: {
       upsert: vi.fn(async ({ create }: { create: Record<string, unknown> }) => {
         events.push(create);
+        return create;
+      }),
+    },
+    activityEvent: {
+      upsert: vi.fn(async ({ create }: { create: Record<string, unknown> }) => {
+        activity.push(create);
         return create;
       }),
     },

@@ -8,7 +8,7 @@ import {
   createWalletClient,
   http,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, nonceManager } from "viem/accounts";
 import { ConfigService } from "../config/config.service.js";
 import { defineRhcChain } from "./chain.constants.js";
 
@@ -33,7 +33,9 @@ export class ChainService {
 
     const pk = this.config.get("KEEPER_PRIVATE_KEY");
     if (pk) {
-      this.account = privateKeyToAccount(pk as `0x${string}`);
+      // Shared nonce manager: the keeper jobs (forward record + settle + any push) send concurrently
+      // from one account; without it viem refetches the nonce per tx and races ("nonce too low").
+      this.account = privateKeyToAccount(pk as `0x${string}`, { nonceManager });
       this.walletClient = createWalletClient({
         account: this.account,
         chain: this.chain,

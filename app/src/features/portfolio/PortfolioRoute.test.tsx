@@ -25,6 +25,10 @@ vi.mock("../../data/useAccountHoldings", () => ({
   }),
 }));
 
+vi.mock("../../data/useAccountForwardTickets", () => ({
+  useAccountForwardTickets: () => ({ data: [] }),
+}));
+
 function renderRoute() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -46,10 +50,10 @@ describe("PortfolioRoute (connected)", () => {
     expect(screen.getByText("RH5")).toBeInTheDocument();
   });
 
-  it("does not render a forward-queue section (no fixtures; no account-level source yet)", () => {
+  it("does not render a forward-queue section when the account has no open tickets", () => {
     renderRoute();
-    // The "positions · forward queue" header subtitle is always present; assert the actual
-    // pending SECTION (and any fixture ticket) is absent and the in-queue count is zero.
+    // The "positions · forward queue" header subtitle is always present; with the tickets hook
+    // returning [], assert the actual pending SECTION is absent and the in-queue count is zero.
     expect(screen.queryByText(/pending \(forward queue\)/i)).not.toBeInTheDocument();
     expect(screen.queryByText("#42")).not.toBeInTheDocument();
     expect(screen.getByTestId("stat-pending")).toHaveTextContent("0");

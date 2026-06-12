@@ -1,15 +1,13 @@
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "../config/config.service.js";
 import { PgBossService } from "../jobs/pg-boss.service.js";
-import { AttestationService } from "./attestation.service.js";
 import { ForwardRecordService } from "./forward-record.service.js";
 import { ForwardSettleService } from "./forward-settle.service.js";
 import { RebalanceService } from "./rebalance.service.js";
 import { SettleService } from "./settle.service.js";
-import { attestationKey, rebalanceKey } from "./idempotency.js";
+import { rebalanceKey } from "./idempotency.js";
 import {
   KEEPER_JOBS,
-  type AttestationPushPayload,
   type RebalancePayload,
   type SettlePayload,
 } from "./keeper.types.js";
@@ -22,7 +20,6 @@ export class KeeperJobs implements OnModuleInit {
 
   constructor(
     private readonly pgboss: PgBossService,
-    private readonly attestation: AttestationService,
     private readonly rebalance: RebalanceService,
     private readonly settle: SettleService,
     private readonly forwardRecord: ForwardRecordService,
@@ -38,17 +35,8 @@ export class KeeperJobs implements OnModuleInit {
     }
 
     // pg-boss 12 requires createQueue before work() / send() calls.
-    await this.pgboss.createQueue(KEEPER_JOBS.attestationPush);
     await this.pgboss.createQueue(KEEPER_JOBS.rebalance);
     await this.pgboss.createQueue(KEEPER_JOBS.settle);
-
-    await this.pgboss.work(KEEPER_JOBS.attestationPush, async (jobs) => {
-      const job = jobs[0];
-      if (!job) return;
-      const data = job.data as AttestationPushPayload;
-      const res = await this.attestation.push(data);
-      this.logger.log(`attestation-push ${data.vaultAddress}: ${res.status} ${res.txHash ?? ""}`);
-    });
 
     await this.pgboss.work(KEEPER_JOBS.rebalance, async (jobs) => {
       const job = jobs[0];
@@ -83,14 +71,6 @@ export class KeeperJobs implements OnModuleInit {
       await this.pgboss.scheduleSingleton(KEEPER_JOBS.forwardRecord, "*/30 * * * * *");
       await this.pgboss.scheduleSingleton(KEEPER_JOBS.forwardSettle, "*/60 * * * * *");
     }
-  }
-
-  /** Producer: enqueue an attestation push (singleton per vault+attestation, retried+backed-off). */
-  async enqueueAttestationPush(payload: AttestationPushPayload): Promise<string | null> {
-    return this.pgboss.send(KEEPER_JOBS.attestationPush, payload, {
-      singletonKey: attestationKey(payload.vaultAddress, payload.attestationId),
-      ...RETRY,
-    });
   }
 
   /** Producer: enqueue a rebalance (one per vault per UTC day). */

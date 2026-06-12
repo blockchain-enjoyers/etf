@@ -102,6 +102,15 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       };
     case "SET_VAULT_KIND":
       return { ...state, vaultKind: action.value };
+    case "LOAD_TEMPLATE":
+      return {
+        ...state,
+        vaultKind: action.vaultKind,
+        constituents:
+          action.rows.length > 0
+            ? action.rows.map((r) => ({ id: crypto.randomUUID(), token: r.token, amount: r.amount }))
+            : state.constituents,
+      };
     case "SET_CREATION_UNIT":
       return { ...state, creationUnitSize: action.value };
     case "SET_VALUE_PER_UNIT":

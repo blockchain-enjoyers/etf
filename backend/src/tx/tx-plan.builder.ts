@@ -18,6 +18,13 @@ import {
   mintQuoteRequestSchema,
   mintTxRequestSchema,
   redeemTxRequestSchema,
+  registryBatchWrapTxRequestSchema,
+  registryBootstrapTxRequestSchema,
+  registryCreateTxRequestSchema,
+  registryRedeemTxRequestSchema,
+  registrySetOperatorTxRequestSchema,
+  registryUnwrapTxRequestSchema,
+  registryWrapTxRequestSchema,
 } from "@meridian/sdk";
 import type { z } from "zod";
 import { PayloadSignerService } from "../chain/payload-signer.service.js";
@@ -25,6 +32,7 @@ import { ChainService } from "../chain/chain.service.js";
 import { ConfigService } from "../config/config.service.js";
 import { CapabilityRegistry } from "../contracts/capability-registry.js";
 import { ForwardQueueRegistry } from "../contracts/forward-queue-registry.js";
+import { ForwardCashQueueReader } from "../contracts/forward-cash-queue.reader.js";
 import { ManagedRebalanceVaultReader } from "../contracts/managed-rebalance-vault.reader.js";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { PrismaService } from "../persistence/prisma.service.js";
@@ -39,6 +47,17 @@ import {
   quoteMint,
 } from "./actions/mint.js";
 import { buildRedeem, type RedeemDeps } from "./actions/redeem.js";
+import {
+  buildBatchWrap,
+  buildBootstrap,
+  buildRegistryCreate,
+  buildRegistryRedeem,
+  buildSetOperator,
+  buildUnwrap,
+  buildWrap,
+  type RegistryClaimsDeps,
+  type RegistryInKindDeps,
+} from "./actions/registry-claims.js";
 import {
   buildForwardCancel,
   buildForwardCreate,
@@ -72,6 +91,7 @@ export class TxPlanBuilder {
     private readonly rebVault: ManagedRebalanceVaultReader,
     private readonly signer: PayloadSignerService,
     private readonly forwardQueues: ForwardQueueRegistry,
+    private readonly queueReader: ForwardCashQueueReader,
   ) {}
 
   private chainId(): number {
@@ -92,6 +112,20 @@ export class TxPlanBuilder {
     return { prisma: this.prisma as unknown as RedeemDeps["prisma"] };
   }
 
+  private registryClaimsDeps(): RegistryClaimsDeps {
+    return {
+      publicClient: this.chain.publicClient as unknown as RegistryClaimsDeps["publicClient"],
+      meta: this.tokenMeta,
+    };
+  }
+
+  private registryInKindDeps(): RegistryInKindDeps {
+    return {
+      ...this.registryClaimsDeps(),
+      prisma: this.prisma as unknown as RegistryInKindDeps["prisma"],
+    };
+  }
+
   private forwardDeps(): ForwardDeps {
     return {
       prisma: this.prisma as unknown as ForwardDeps["prisma"],
@@ -102,7 +136,12 @@ export class TxPlanBuilder {
   }
 
   private keeperDeps(): KeeperDeps {
-    return { registry: this.registry, rebVault: this.rebVault, signer: this.signer };
+    return {
+      forwardQueues: this.forwardQueues,
+      queueReader: this.queueReader,
+      rebVault: this.rebVault,
+      signer: this.signer,
+    };
   }
 
   private auctionDeps(): AuctionDeps {
@@ -116,7 +155,7 @@ export class TxPlanBuilder {
   private deployDeps(): DeployDeps {
     const cloneFactory = this.registry.address("CloneFactory");
     if (!cloneFactory) throw new Error("not-deployed: CloneFactory is not registered");
-    return { cloneFactory };
+    return { cloneFactory, publicClient: this.chain.publicClient as unknown as DeployDeps["publicClient"] };
   }
 
   async mintQuote(vault: string, req: z.infer<typeof mintQuoteRequestSchema>): Promise<MintQuoteResponse> {
@@ -142,6 +181,39 @@ export class TxPlanBuilder {
     // IRON RULE: in-kind redeem is never gated; the availability call is for surface consistency only.
     await this.availability.availability(vault, req.account || null);
     return this.toTxPlan(await buildRedeem(this.redeemDeps(), vault, req), req.account);
+  }
+
+  // --- Registry (5th vault type) AP/holder claim lifecycle ---
+  // These are claim-management / AP operations on the ERC-6909 custody. Like in-kind redeem they are
+  // not market-gated (the IRON RULE separation: in-kind claim moves never settle on a price); the
+  // availability call is for surface consistency only.
+  async wrap(vault: string, req: z.infer<typeof registryWrapTxRequestSchema>): Promise<TxPlan> {
+    return this.toTxPlan(await buildWrap(this.registryClaimsDeps(), vault, req), req.account);
+  }
+
+  async batchWrap(vault: string, req: z.infer<typeof registryBatchWrapTxRequestSchema>): Promise<TxPlan> {
+    return this.toTxPlan(await buildBatchWrap(this.registryClaimsDeps(), vault, req), req.account);
+  }
+
+  async unwrap(vault: string, req: z.infer<typeof registryUnwrapTxRequestSchema>): Promise<TxPlan> {
+    return this.toTxPlan(buildUnwrap(vault, req), req.account);
+  }
+
+  async setOperator(vault: string, req: z.infer<typeof registrySetOperatorTxRequestSchema>): Promise<TxPlan> {
+    return this.toTxPlan(buildSetOperator(vault, req), req.account);
+  }
+
+  async bootstrap(vault: string, req: z.infer<typeof registryBootstrapTxRequestSchema>): Promise<TxPlan> {
+    return this.toTxPlan(await buildBootstrap(this.registryClaimsDeps(), vault, req), req.account);
+  }
+
+  async registryCreate(vault: string, req: z.infer<typeof registryCreateTxRequestSchema>): Promise<TxPlan> {
+    return this.toTxPlan(await buildRegistryCreate(this.registryInKindDeps(), vault, req), req.account);
+  }
+
+  async registryRedeem(vault: string, req: z.infer<typeof registryRedeemTxRequestSchema>): Promise<TxPlan> {
+    // IRON RULE: in-kind redeem is never gated.
+    return this.toTxPlan(await buildRegistryRedeem(this.registryInKindDeps(), vault, req), req.account);
   }
 
   async forwardCreate(vault: string, req: z.infer<typeof forwardCreateTxRequestSchema>): Promise<TxPlan> {

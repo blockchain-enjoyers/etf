@@ -3,6 +3,7 @@ import {
   formatUsd,
   formatQty,
   formatSignedPctFromBps,
+  formatBpsPct,
   timeAgo,
   shortenAddress,
 } from "../format";
@@ -45,6 +46,20 @@ describe("formatSignedPctFromBps", () => {
 
   it.each(cases)("%s", (_label, bps, expected) => {
     expect(formatSignedPctFromBps(bps)).toBe(expected);
+  });
+});
+
+describe("formatBpsPct", () => {
+  const cases: [string, number, string][] = [
+    ["platform AUM 15 bps", 15, "0.15%"],
+    ["manager 50 bps trims zero", 50, "0.5%"],
+    ["100 bps -> 1%", 100, "1%"],
+    ["keeper 1000 bps -> 10%", 1000, "10%"],
+    ["zero", 0, "0%"],
+  ];
+
+  it.each(cases)("%s", (_label, bps, expected) => {
+    expect(formatBpsPct(bps)).toBe(expected);
   });
 });
 

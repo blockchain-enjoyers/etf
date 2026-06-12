@@ -15,6 +15,7 @@ import { formatQty, formatUsd, formatSignedPctFromBps } from "../../lib/format";
 import { useAccountHoldings } from "../../data/useAccountHoldings";
 import { TradeWorkspace } from "./workspaces/TradeWorkspace";
 import { LiquidityWorkspace } from "./workspaces/LiquidityWorkspace";
+import { RegistryApWorkspace } from "./workspaces/RegistryApWorkspace";
 import { OperationsWorkspace } from "./workspaces/OperationsWorkspace";
 import { ManageWorkspace } from "./workspaces/ManageWorkspace";
 import { OrderRail, type Direction, type RedeemMethod } from "./OrderRail";
@@ -31,6 +32,7 @@ const VAULT_TYPE_LABEL: Record<string, string> = {
   managed: "Managed",
   committed: "Committed",
   rebalance: "Rebalance",
+  registry: "Registry",
 };
 
 // Fee bps → unsigned percent, e.g. 50 → "0.50%". Null/absent fees render as "—".
@@ -52,6 +54,9 @@ export function IndexDetailScreen() {
   const { data: nav } = useNav(vaultAddress ?? "");
   const { data: premium } = usePremiumDiscount(vaultAddress ?? "");
   const isRebalance = basket?.vaultType === "rebalance";
+  // Registry vaults expose an AP claim-lifecycle workspace under the same Liquidity tab (no
+  // keeper/curator tabs — those are rebalance-only).
+  const isRegistry = basket?.vaultType === "registry";
   const { data: rebalance } = useRebalanceDetail(vaultAddress ?? "", Boolean(isRebalance));
   const { address } = useAccount();
   const { data: acct } = useAccountHoldings(address);
@@ -60,9 +65,14 @@ export function IndexDetailScreen() {
       (h) => h.vaultAddress.toLowerCase() === (vaultAddress ?? "").toLowerCase(),
     )?.balance ?? "0";
 
-  // Liquidity/Operations/Manage are rebalance-only (forward queue, keeper, curator). Static
-  // vault types (basket/managed/committed) expose only Trade.
-  const tabs = isRebalance ? TABS : TABS.filter((t) => t.id === "trade");
+  // Liquidity/Operations/Manage are rebalance-only (forward queue, keeper, curator). Registry vaults
+  // expose Trade + a registry-flavoured Liquidity (AP) tab. Other static vault types (basket/managed/
+  // committed) expose only Trade.
+  const tabs = isRebalance
+    ? TABS
+    : isRegistry
+      ? TABS.filter((t) => t.id === "trade" || t.id === "liquidity")
+      : TABS.filter((t) => t.id === "trade");
 
   // A stale active tab (e.g. "manage" carried from a rebalance vault) must never persist on a
   // static vault — fall back to Trade whenever the active tab isn't in the visible set.
@@ -154,7 +164,7 @@ export function IndexDetailScreen() {
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-w-0 overflow-y-auto p-4 flex flex-col gap-4">
           <WorkspaceTabs tabs={tabs} active={active} onChange={setActive} />
-          {isRebalance && (
+          {tabs.length > 1 && (
             <p className="flex items-center gap-1.5 -mt-1 px-0.5 text-[10.5px] text-txt3">
               <span aria-hidden>ⓘ</span>
               One workspace shows at a time — click a tab to switch. You start on Trade.
@@ -189,7 +199,14 @@ export function IndexDetailScreen() {
               }}
             />
           )}
-          {active === "liquidity" && (isRebalance ? <LiquidityWorkspace vaultAddress={vaultAddress} basket={basket} /> : notRebalance)}
+          {active === "liquidity" &&
+            (isRegistry ? (
+              <RegistryApWorkspace vaultAddress={vaultAddress} basket={basket} />
+            ) : isRebalance ? (
+              <LiquidityWorkspace vaultAddress={vaultAddress} basket={basket} />
+            ) : (
+              notRebalance
+            ))}
           {active === "operations" && (isRebalance ? <OperationsWorkspace vaultAddress={vaultAddress} basket={basket} /> : notRebalance)}
           {active === "manage" && (isRebalance ? <ManageWorkspace vaultAddress={vaultAddress} basket={basket} rebalance={rebalance ?? null} /> : notRebalance)}
         </div>

@@ -105,6 +105,10 @@ describe("StepReview", () => {
     renderReview({ ...rebalanceState(), vaultKind: "basket" }, PREVIEW, "success");
     expect(screen.queryByRole("button", { name: /set target weights/i })).not.toBeInTheDocument();
   });
+  it("registry deploy shows the Set-target-weights CTA (shares the curator surface)", () => {
+    renderReview({ ...rebalanceState(), vaultKind: "registry" }, PREVIEW, "success");
+    expect(screen.getByRole("button", { name: /set target weights/i })).toBeInTheDocument();
+  });
   it("mentions the timelock in the CTA copy", () => {
     renderReview(rebalanceState(), PREVIEW, "success");
     expect(screen.getByText(/timelock/i)).toBeInTheDocument();

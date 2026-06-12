@@ -19,6 +19,7 @@ export class CloneFactoryReader {
   readonly managedBasketCreatedEvent = findEvent("ManagedBasketCreated");
   readonly committedBasketCreatedEvent = findEvent("CommittedBasketCreated");
   readonly rebalanceBasketCreatedEvent = findEvent("RebalanceBasketCreated");
+  readonly registryIndexCreatedEvent = findEvent("RegistryIndexCreated");
 
   constructor(
     private readonly chain: ChainService,

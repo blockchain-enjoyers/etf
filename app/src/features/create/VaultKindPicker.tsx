@@ -23,6 +23,7 @@ const CARDS: KindCard[] = [
   { id: "managed", label: "Managed", badge: "curated", whatItIs: "Same fixed holdings as Static, plus a capped, timelocked manager fee.", unlocks: ["everything in Static", "manager fee"], hasFee: true },
   { id: "committed", label: "Committed", badge: "advanced", whatItIs: "Static holdings with the recipe committed by hash and passed at mint. For very large baskets.", unlocks: ["in-kind mint", "in-kind redeem"], hasFee: false },
   { id: "rebalance", label: "Rebalanced", badge: "full", whatItIs: "Holds target weights. A keeper trades back to target via auctions when drift exceeds the band.", unlocks: ["target weights", "keeper + auction", "manager fee"], hasFee: true },
+  { id: "registry", label: "Registry Index", badge: "SP500", whatItIs: "A large registry-native index (up to 500 names). Cash create/redeem via a forward queue; a keeper rebalances to target weights.", unlocks: ["target weights", "cash create/redeem", "keeper + auction"], hasFee: true },
 ];
 
 export function VaultKindPicker({ value, onChange }: Props) {

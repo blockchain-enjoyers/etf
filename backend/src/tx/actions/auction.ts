@@ -34,6 +34,12 @@ export function buildAuctionSetExecMode(
 ): ActionResult {
   const auction = resolveAuction(deps);
 
+  // PERMISSIONLESS (2) is contract-disabled (setExecMode reverts PermissionlessDisabled); only
+  // MANAGER_ONLY (0) and ALLOWLIST (1) are settable. Reject 2 here so we never build a reverting tx.
+  if (mode !== 0 && mode !== 1) {
+    throw new Error(`invalid auction exec mode ${mode}: only 0 (manager-only) and 1 (allowlist) are allowed`);
+  }
+
   // use-auction.ts: setExecMode(vault, mode) on RebalanceAuction.
   const data = encodeFunctionData({
     abi: RebalanceAuctionAbi,
@@ -47,7 +53,7 @@ export function buildAuctionSetExecMode(
     value: "0",
     contractName: "RebalanceAuction",
     label: "Set auction execution mode",
-    summary: "Set who may open rebalance auctions for this basket (manager / allowlist / permissionless)",
+    summary: "Set who may open rebalance auctions for this basket (manager-only or allowlist)",
     needsPriorApproval: false,
   };
   return { steps: [call], finalize: null };

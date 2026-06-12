@@ -17,10 +17,12 @@ import {
   forwardHistorySchema,
   holdingsResponseSchema,
   accountHoldingsResponseSchema,
+  activityEventSchema,
   availabilityResponseSchema,
   mintQuoteResponseSchema,
   txPlanSchema,
   auctionStatusSchema,
+  suggestedFundsResponseSchema,
   previewDeployResponseSchema,
   type FeedResponse,
   type BasketSummary,
@@ -41,12 +43,14 @@ import {
   type ForwardHistory,
   type HoldingsResponse,
   type AccountHoldingsResponse,
+  type ActivityEvent,
   type AvailabilityResponse,
   type MintQuoteResponse,
   type TxPlan,
   type AuctionStatus,
   type PreviewDeployRequest,
   type DeployPreview,
+  type SuggestedFundsResponse,
 } from "./dto.js";
 import { ApiError, CapabilityUnavailableError } from "./errors.js";
 import type { MeridianApi } from "./api.js";
@@ -165,6 +169,16 @@ export class MeridianClient implements MeridianApi {
     return parseResponse(res, accountHoldingsResponseSchema);
   }
 
+  async getAccountForwardTickets(account: string): Promise<ForwardTicket[]> {
+    const res = await fetch(`${this.baseUrl}/accounts/${account}/forward-tickets`);
+    return parseResponse(res, z.array(forwardTicketSchema));
+  }
+
+  async getAccountActivity(account: string): Promise<ActivityEvent[]> {
+    const res = await fetch(`${this.baseUrl}/accounts/${account}/activity`);
+    return parseResponse(res, z.array(activityEventSchema));
+  }
+
   async getAvailability(vaultAddress: string, account?: string): Promise<AvailabilityResponse> {
     const q = account ? `?account=${account}` : "";
     const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/availability${q}`);
@@ -221,6 +235,90 @@ export class MeridianClient implements MeridianApi {
 
   async buildDeployTx(req: Record<string, unknown>): Promise<TxPlan> {
     const res = await fetch(`${this.baseUrl}/tx/deploy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildWrapTx(
+    vaultAddress: string,
+    req: { token: string; amount: string; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/wrap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildBatchWrapTx(
+    vaultAddress: string,
+    req: { tokens: string[]; amounts: string[]; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/batch-wrap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildUnwrapTx(
+    vaultAddress: string,
+    req: { token: string; amount: string; to: string; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/unwrap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildSetOperatorTx(
+    vaultAddress: string,
+    req: { operator: string; approved: boolean; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/set-operator`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildBootstrapTx(
+    vaultAddress: string,
+    req: { tokens: string[]; unitQty: string[]; unitSize: string; nShares?: string; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/bootstrap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildRegistryCreateTx(
+    vaultAddress: string,
+    req: { nShares: string; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
+  }
+
+  async buildRegistryRedeemTx(
+    vaultAddress: string,
+    req: { amount: string; withUnwrap?: boolean; account: string },
+  ): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/tx/registry/redeem`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req),
@@ -366,5 +464,10 @@ export class MeridianClient implements MeridianApi {
     const q = account ? `?account=${account}` : "";
     const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/auction${q}`);
     return parseResponse(res, auctionStatusSchema);
+  }
+
+  async getSuggestedFunds(): Promise<SuggestedFundsResponse> {
+    const res = await fetch(`${this.baseUrl}/catalog/suggested-funds`);
+    return parseResponse(res, suggestedFundsResponseSchema);
   }
 }

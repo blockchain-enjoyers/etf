@@ -39,12 +39,40 @@ export class ForwardCashQueueReader {
     });
   }
 
+  /** The BasketNavObserver this queue settles against. Each forward vault has its own queue+observer
+   *  pair, so the observer must be read off the vault's queue — never resolved as a chain singleton. */
+  async observer(queue: `0x${string}`): Promise<`0x${string}`> {
+    return this.chain.publicClient.readContract({
+      address: queue,
+      abi: ForwardCashQueueAbi,
+      functionName: "observer",
+    });
+  }
+
   async maxCreateFlowBps(queue: `0x${string}`): Promise<bigint> {
     return this.chain.publicClient.readContract({
       address: queue,
       abi: ForwardCashQueueAbi,
       functionName: "maxCreateFlowBps",
     }) as Promise<bigint>;
+  }
+
+  /** True when this queue settles against a registry vault (fixed flat USDG create/redeem fees). */
+  async isRegistry(queue: `0x${string}`): Promise<boolean> {
+    return this.chain.publicClient.readContract({
+      address: queue,
+      abi: ForwardCashQueueAbi,
+      functionName: "isRegistry",
+    }) as Promise<boolean>;
+  }
+
+  /** The settlement cash token. For a registry queue the constructor enforces stable == vault.feeToken. */
+  async stable(queue: `0x${string}`): Promise<`0x${string}`> {
+    return this.chain.publicClient.readContract({
+      address: queue,
+      abi: ForwardCashQueueAbi,
+      functionName: "stable",
+    });
   }
 
   async spreadBps(queue: `0x${string}`): Promise<number> {

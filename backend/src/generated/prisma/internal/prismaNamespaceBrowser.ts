@@ -63,7 +63,8 @@ export const ModelName = {
   TargetChange: 'TargetChange',
   ForwardTicket: 'ForwardTicket',
   ForwardEvent: 'ForwardEvent',
-  KeeperPayout: 'KeeperPayout'
+  KeeperPayout: 'KeeperPayout',
+  ActivityEvent: 'ActivityEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -93,6 +94,7 @@ export const BasketScalarFieldEnum = {
   vaultType: 'vaultType',
   manager: 'manager',
   managerFeeBps: 'managerFeeBps',
+  platformFeeBps: 'platformFeeBps',
   keeperBps: 'keeperBps',
   keeperEscrow: 'keeperEscrow',
   recipeCommitment: 'recipeCommitment',
@@ -280,6 +282,22 @@ export const KeeperPayoutScalarFieldEnum = {
 } as const
 
 export type KeeperPayoutScalarFieldEnum = (typeof KeeperPayoutScalarFieldEnum)[keyof typeof KeeperPayoutScalarFieldEnum]
+
+
+export const ActivityEventScalarFieldEnum = {
+  id: 'id',
+  owner: 'owner',
+  vaultAddress: 'vaultAddress',
+  kind: 'kind',
+  payload: 'payload',
+  txHash: 'txHash',
+  logIndex: 'logIndex',
+  blockNumber: 'blockNumber',
+  timestamp: 'timestamp',
+  createdAt: 'createdAt'
+} as const
+
+export type ActivityEventScalarFieldEnum = (typeof ActivityEventScalarFieldEnum)[keyof typeof ActivityEventScalarFieldEnum]
 
 
 export const SortOrder = {

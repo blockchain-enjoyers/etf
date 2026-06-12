@@ -4,12 +4,20 @@ import userEvent from "@testing-library/user-event";
 import { VaultKindPicker } from "./VaultKindPicker";
 
 describe("VaultKindPicker", () => {
-  it("renders all four kinds and marks the selected one", () => {
+  it("renders all five kinds and marks the selected one", () => {
     render(<VaultKindPicker value="basket" onChange={vi.fn()} />);
-    for (const label of [/static/i, /managed/i, /committed/i, /rebalanced/i]) {
+    for (const label of [/^static$/i, /^managed$/i, /^committed$/i, /^rebalanced$/i, /registry index/i]) {
       expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
     }
-    expect(screen.getByRole("radio", { name: /static/i })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^static$/i })).toBeChecked();
+  });
+
+  it("calls onChange with 'registry' when the Registry Index card is clicked", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<VaultKindPicker value="basket" onChange={onChange} />);
+    await user.click(screen.getByRole("radio", { name: /registry index/i }));
+    expect(onChange).toHaveBeenCalledWith("registry");
   });
 
   it("calls onChange with the kind when a card is clicked", async () => {
@@ -20,12 +28,12 @@ describe("VaultKindPicker", () => {
     expect(onChange).toHaveBeenCalledWith("rebalance");
   });
 
-  it("shows a fee badge only on managed and rebalanced cards", () => {
+  it("shows a fee badge on managed, rebalanced and registry cards", () => {
     render(<VaultKindPicker value="basket" onChange={vi.fn()} />);
-    // exactly two cards carry the "manager fee" badge
+    // managed, rebalanced and registry carry the "manager fee" badge
     const feeCards = screen
       .getAllByRole("radio")
       .filter((card) => within(card).queryAllByText(/manager fee/i).length > 0);
-    expect(feeCards).toHaveLength(2);
+    expect(feeCards).toHaveLength(3);
   });
 });

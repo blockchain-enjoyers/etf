@@ -14,7 +14,7 @@ import { ConfidenceService } from "./confidence.service.js";
 const SCALE = 1_000_000_000_000_000_000n; // 1e18
 
 /**
- * Computes NAV exactly like the contract NAVEngine.latestNAV: nav = Σ holdingᵢ·priceᵢ / 1e18,
+ * Computes NAV like the L4 contract FairValueNAV.navOf: nav = Σ holdingᵢ·priceᵢ / 1e18,
  * band = Σ holdingᵢ·confidenceᵢ / 1e18, estimated if any constituent is not Regular.
  * When NAV_SOURCE=onchain and FairValueNAV is deployed, delegates to the on-chain L4 reader.
  */
@@ -45,7 +45,9 @@ export class NavEngineService {
     });
     if (!basket) throw new Error(`NAV: unknown basket ${vault}`);
 
-    if (basket.vaultType === "Rebalance") {
+    // Rebalance + Registry are holdings-based (ERC-6909 claim backing for registry); their on-chain
+    // "recipe" is a Merkle root, not keccak(tokens,unitQty,unitSize), so navOf would RecipeMismatch.
+    if (basket.vaultType === "Rebalance" || basket.vaultType === "Registry") {
       return this.onchain.readL4Holdings(vault);
     }
     // Basket/Managed/Committed: L4 per-unit recipe NAV scaled to total.

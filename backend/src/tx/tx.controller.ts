@@ -21,6 +21,13 @@ import {
   mintTxRequestSchema,
   previewDeployRequestSchema,
   redeemTxRequestSchema,
+  registryBatchWrapTxRequestSchema,
+  registryBootstrapTxRequestSchema,
+  registryCreateTxRequestSchema,
+  registryRedeemTxRequestSchema,
+  registrySetOperatorTxRequestSchema,
+  registryUnwrapTxRequestSchema,
+  registryWrapTxRequestSchema,
 } from "@meridian/sdk";
 import { TxPlanBuilder } from "./tx-plan.builder.js";
 import { PreviewDeployService } from "./preview-deploy.service.js";
@@ -43,6 +50,13 @@ export class KeeperSettleTxDto extends createZodDto(keeperSettleTxRequestSchema)
 export class AuctionOpenTxDto extends createZodDto(auctionOpenTxRequestSchema) {}
 export class AuctionBidTxDto extends createZodDto(auctionBidTxRequestSchema) {}
 export class AuctionSetExecModeTxDto extends createZodDto(auctionSetExecModeTxRequestSchema) {}
+export class RegistryWrapTxDto extends createZodDto(registryWrapTxRequestSchema) {}
+export class RegistryBatchWrapTxDto extends createZodDto(registryBatchWrapTxRequestSchema) {}
+export class RegistryUnwrapTxDto extends createZodDto(registryUnwrapTxRequestSchema) {}
+export class RegistrySetOperatorTxDto extends createZodDto(registrySetOperatorTxRequestSchema) {}
+export class RegistryBootstrapTxDto extends createZodDto(registryBootstrapTxRequestSchema) {}
+export class RegistryCreateTxDto extends createZodDto(registryCreateTxRequestSchema) {}
+export class RegistryRedeemTxDto extends createZodDto(registryRedeemTxRequestSchema) {}
 
 @ApiTags("tx")
 @Controller()
@@ -79,6 +93,55 @@ export class TxController {
   @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
   redeem(@Param("id") id: string, @Body() body: RedeemTxDto): Promise<TxPlan> {
     return this.builder.redeem(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/wrap")
+  @ApiOperation({ summary: "Build a registry wrap plan (approve constituent + wrap → ERC-6909 claim)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registryWrap(@Param("id") id: string, @Body() body: RegistryWrapTxDto): Promise<TxPlan> {
+    return this.builder.wrap(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/batch-wrap")
+  @ApiOperation({ summary: "Build a registry batch-wrap plan (per-token approves + batchWrap)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registryBatchWrap(@Param("id") id: string, @Body() body: RegistryBatchWrapTxDto): Promise<TxPlan> {
+    return this.builder.batchWrap(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/unwrap")
+  @ApiOperation({ summary: "Build a registry unwrap plan (burn own claim → send real ERC-20)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registryUnwrap(@Param("id") id: string, @Body() body: RegistryUnwrapTxDto): Promise<TxPlan> {
+    return this.builder.unwrap(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/set-operator")
+  @ApiOperation({ summary: "Build a registry setOperator plan (ERC-6909 operator authorization over claims)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registrySetOperator(@Param("id") id: string, @Body() body: RegistrySetOperatorTxDto): Promise<TxPlan> {
+    return this.builder.setOperator(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/bootstrap")
+  @ApiOperation({ summary: "Build a registry bootstrap plan (approves + wraps + Merkle-gated genesis mint)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registryBootstrap(@Param("id") id: string, @Body() body: RegistryBootstrapTxDto): Promise<TxPlan> {
+    return this.builder.bootstrap(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/create")
+  @ApiOperation({ summary: "Build a registry in-kind create plan (wrap claim shortfall + create N shares)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registryCreate(@Param("id") id: string, @Body() body: RegistryCreateTxDto): Promise<TxPlan> {
+    return this.builder.registryCreate(id, body);
+  }
+
+  @Post("baskets/:id/tx/registry/redeem")
+  @ApiOperation({ summary: "Build a registry in-kind redeem plan (burn shares → claims, then unwrap to ERC-20)" })
+  @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
+  registryRedeem(@Param("id") id: string, @Body() body: RegistryRedeemTxDto): Promise<TxPlan> {
+    return this.builder.registryRedeem(id, body);
   }
 
   @Post("baskets/:id/tx/forward/create")

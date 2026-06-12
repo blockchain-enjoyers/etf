@@ -1,4 +1,5 @@
 import type { WizardState, WizardAction } from "./types";
+import { isManagedRebalance } from "./types";
 import { Module } from "../../components/Module";
 import { HelpPopover } from "../../components/HelpPopover";
 import { CREATE_HELP } from "./help-content";
@@ -17,8 +18,9 @@ const labelRowCls = "flex items-center gap-1.5 mb-1.5";
 const labelCls = "text-[10px] font-semibold uppercase tracking-wide text-txt3";
 
 export function StepSettings({ state, dispatch, onBack, onNext }: Props) {
-  const hasManagerFee = state.vaultKind === "managed" || state.vaultKind === "rebalance";
-  const isRebalance = state.vaultKind === "rebalance";
+  const hasManagerFee = state.vaultKind === "managed" || isManagedRebalance(state.vaultKind);
+  // Registry shares rebalance's keeper economics, so the keeper fields + "Manager & keeper" title apply.
+  const isRebalance = isManagedRebalance(state.vaultKind);
 
   return (
     <div className="flex flex-col gap-4">
@@ -73,14 +75,23 @@ export function StepSettings({ state, dispatch, onBack, onNext }: Props) {
       <div className="border border-amber/30 rounded-lg bg-amber/[0.06] overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2.5 border-b border-amber/30 bg-amber/[0.07]">
           <span aria-hidden>⚑</span>
-          <span className="text-[11.5px] font-bold text-amber tracking-wide">Zero protocol fee</span>
+          <span className="text-[11.5px] font-bold text-amber tracking-wide">Zero flow fee</span>
           <span className="flex-1" />
-          <Chip variant="ok">0% protocol</Chip>
+          <Chip variant="ok">0% flow</Chip>
         </div>
         <div className="px-3 py-3 text-[11.5px] text-txt2 leading-relaxed">
           Meridian takes <b className="text-amber">0%</b> on mint, redeem, or NAV — always. Keepers earn a fixed{" "}
           <b className="text-txt">tip per settled ticket</b>, never a percentage of volume.
-          {hasManagerFee && " The manager fee you set above is the issuer's, accrued from NAV — independent of any protocol cut."}
+          {hasManagerFee ? (
+            <>
+              {" "}This {state.vaultKind} vault does carry ongoing fees: the manager fee you set above (accrued from
+              NAV), Meridian&apos;s own platform AUM fee (<b className="text-txt">≤0.5%/yr</b>), and a one-time flat
+              USDG fee at deploy and at each mint.
+            </>
+          ) : (
+            <> This {state.vaultKind} vault has <b className="text-txt">no other fees</b> — fully in-kind, no AUM or
+              create fee.</>
+          )}
         </div>
       </div>
 

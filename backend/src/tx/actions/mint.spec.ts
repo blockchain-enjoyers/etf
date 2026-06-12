@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { encodeFunctionData } from "viem";
+import { encodeFunctionData, erc20Abi } from "viem";
 import { BasketVaultAbi, CommittedVaultAbi, ManagedRebalanceVaultAbi } from "@meridian/contracts";
 import { quoteMint, buildMint, buildMintPermit, finalizeMintPermit, buildMintAny } from "./mint.js";
 
@@ -150,6 +150,155 @@ describe("quoteMint / buildMint — basket vault (non-share-based)", () => {
     const res = await buildMint(deps, VAULT, { account: ACCOUNT, units });
     expect(res.steps).toHaveLength(1);
     expect(res.steps[0]!.kind).toBe("call");
+  });
+});
+
+// Fee deps: readContract is routed by functionName so feeToken/flatCreateFee resolve; every allowance
+// reads back 0 so each token (fee + constituents) emits an approve. Tracks the readContract spy so a
+// test can assert the no-op fee seam performs no on-chain read.
+const FEE_TOKEN = "0x000000000000000000000000000000000000feed";
+function makeFeeDeps(opts: {
+  basket: unknown;
+  feeToken?: string;
+  flatCreateFee?: bigint;
+  meta?: Record<string, { symbol: string; decimals: number }>;
+}) {
+  const readContract = vi.fn(async (raw: unknown) => {
+    const args = raw as { functionName: string };
+    if (args.functionName === "feeToken") return opts.feeToken ?? FEE_TOKEN;
+    if (args.functionName === "flatCreateFee") return opts.flatCreateFee ?? 0n;
+    throw new Error(`unexpected read ${args.functionName}`);
+  });
+  return {
+    prisma: {
+      basket: { findUnique: vi.fn().mockResolvedValue(opts.basket) },
+      priceSnapshot: { findFirst: vi.fn().mockResolvedValue(null) },
+    },
+    publicClient: {
+      // allowance multicall: always 0 → under-approved → approve emitted.
+      multicall: vi.fn(async (raw: unknown) => {
+        const { contracts } = raw as { contracts: unknown[] };
+        return contracts.map(() => ({ status: "success", result: 0n }));
+      }),
+      readContract,
+    },
+    meta: {
+      getMany: vi.fn().mockResolvedValue(
+        opts.meta ?? {
+          [TOKEN_A]: { symbol: "AAA", decimals: 18 },
+          [FEE_TOKEN]: { symbol: "USDG", decimals: 6 },
+        },
+      ),
+    },
+    chainId: CHAIN_ID,
+  };
+}
+
+describe("mint flatCreateFee (FeeCore vaults)", () => {
+  const FEE = 5_000_000n; // 5 USDG @ 6-dec
+
+  it("managed vault: prepends USDG fee approve as the FIRST step (feeToken → vault, flatCreateFee)", async () => {
+    const basket = basketRow({ vaultType: "Managed" });
+    const deps = makeFeeDeps({ basket, flatCreateFee: FEE });
+    const res = await buildMint(deps, VAULT, { account: ACCOUNT, units: "3" });
+
+    // [feeApprove, constituentApprove, call] — fee approval is first.
+    const first = res.steps[0] as { kind: string; to: string; data: string };
+    expect(first.kind).toBe("approve");
+    expect(first.to).toBe(FEE_TOKEN);
+    const expectedApprove = encodeFunctionData({
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [VAULT as `0x${string}`, FEE],
+    });
+    expect(first.data).toBe(expectedApprove);
+
+    // The mint call is still last and targets the vault.
+    expect(res.steps.at(-1)!.kind).toBe("call");
+  });
+
+  it("managed vault: quoteMint returns the fee (symbol/amount/valueUsd scaled to 18-dec USD)", async () => {
+    const basket = basketRow({ vaultType: "Managed" });
+    const deps = makeFeeDeps({ basket, flatCreateFee: FEE });
+    const q = await quoteMint(deps, VAULT, { units: "3" });
+
+    expect(q.fee).toBeDefined();
+    expect(q.fee!.token).toBe(FEE_TOKEN);
+    expect(q.fee!.symbol).toBe("USDG");
+    expect(q.fee!.amount).toBe(FEE.toString());
+    // 5e6 (6-dec) → 5e18 (18-dec USD): 5_000_000 * 1e18 / 1e6 = 5e18.
+    expect(q.fee!.valueUsd).toBe("5000000000000000000");
+  });
+
+  it("managed vault: no fee approve and no quote.fee when flatCreateFee is 0", async () => {
+    const basket = basketRow({ vaultType: "Managed" });
+    const deps = makeFeeDeps({ basket, flatCreateFee: 0n });
+    const res = await buildMint(deps, VAULT, { account: ACCOUNT, units: "3" });
+    // Only the constituent approve + the call — no fee approve to feeToken.
+    expect(res.steps.some((s) => s.kind === "approve" && (s as unknown as { to: string }).to === FEE_TOKEN)).toBe(false);
+    const q = await quoteMint(deps, VAULT, { units: "3" });
+    expect(q.fee).toBeUndefined();
+  });
+
+  it("basket vault: no fee approve, no quote.fee, and NO on-chain read for the fee", async () => {
+    const basket = basketRow({ vaultType: "Basket" });
+    const deps = makeFeeDeps({ basket, flatCreateFee: FEE });
+
+    const res = await buildMint(deps, VAULT, { account: ACCOUNT, units: "3" });
+    expect(res.steps.some((s) => s.kind === "approve" && (s as unknown as { to: string }).to === FEE_TOKEN)).toBe(false);
+    // Basket is non-share-based and has the no-op fee seam → readContract is never called.
+    expect(deps.publicClient.readContract).not.toHaveBeenCalled();
+
+    const q = await quoteMint(deps, VAULT, { units: "3" });
+    expect(q.fee).toBeUndefined();
+    expect(deps.publicClient.readContract).not.toHaveBeenCalled();
+  });
+
+  it("managed permit path: prepends the fee approve ahead of the sign712 steps", async () => {
+    const basket = basketRow({ vaultType: "Managed" });
+    const deps = makeFeeDeps({ basket, flatCreateFee: FEE });
+    // Permit path also reads name/nonces/version on each constituent — extend the router.
+    deps.publicClient.readContract = vi.fn(async (raw: unknown) => {
+      const args = raw as { functionName: string };
+      switch (args.functionName) {
+        case "feeToken":
+          return FEE_TOKEN;
+        case "flatCreateFee":
+          return FEE;
+        case "name":
+          return "Token A";
+        case "nonces":
+          return 1n;
+        case "version":
+          return "1";
+        default:
+          throw new Error(`unexpected read ${args.functionName}`);
+      }
+    });
+
+    const res = await buildMintPermit(deps, VAULT, { account: ACCOUNT, units: "3" });
+    const first = res.steps[0] as { kind: string; to?: string };
+    expect(first.kind).toBe("approve");
+    expect(first.to).toBe(FEE_TOKEN);
+    expect(res.steps.some((s) => s.kind === "sign712")).toBe(true);
+  });
+
+  it("pre-flat-fee deployment: fee getters revert → fee 0, no approve, mint still builds", async () => {
+    const basket = basketRow({ vaultType: "Managed" });
+    const deps = makeFeeDeps({ basket, flatCreateFee: FEE });
+    // An old managed impl lacks feeToken()/flatCreateFee() → the reads revert; treat as no fee.
+    deps.publicClient.readContract = vi.fn(async (raw: unknown) => {
+      const fn = (raw as { functionName: string }).functionName;
+      if (fn === "feeToken" || fn === "flatCreateFee") throw new Error("execution reverted");
+      throw new Error(`unexpected read ${fn}`);
+    });
+
+    const res = await buildMint(deps, VAULT, { account: ACCOUNT, units: "3" });
+    expect(res.steps.some((s) => s.kind === "approve" && (s as unknown as { to: string }).to === FEE_TOKEN)).toBe(false);
+    expect(res.steps.at(-1)!.kind).toBe("call");
+
+    const q = await quoteMint(deps, VAULT, { units: "3" });
+    expect(q.fee).toBeUndefined();
   });
 });
 

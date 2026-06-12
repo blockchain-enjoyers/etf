@@ -1,14 +1,25 @@
 import { Injectable } from "@nestjs/common";
-import { parseUnits } from "viem";
+import { parseUnits, zeroAddress } from "viem";
 import { CloneFactoryAbi } from "@meridian/contracts";
-import type { PreviewDeployRequest, DeployPreview } from "@meridian/sdk";
+import type { PreviewDeployRequest, DeployPreview, FeeQuote } from "@meridian/sdk";
 import { ChainService } from "../chain/chain.service.js";
 import { PrismaService } from "../persistence/prisma.service.js";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { CapabilityRegistry } from "../contracts/capability-registry.js";
+import { buildGenesisRoot } from "./registry-recipe.js";
 
 const DEFAULT_SALT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+// CloneFactory.VaultType enum index per vaultKind (BASKET=0, COMMITTED=1, MANAGED=2, REBALANCE=3,
+// REGISTRY=4). registry deploy is a later slice — the index only feeds creationFee(VaultType) reads.
+const VAULT_TYPE_INDEX: Record<PreviewDeployRequest["vaultKind"], number> = {
+  basket: 0,
+  committed: 1,
+  managed: 2,
+  rebalance: 3,
+  registry: 4,
+};
 
 /**
  * Reader that turns wizard inputs into the on-chain create args: derives unitQty
@@ -84,6 +95,7 @@ export class PreviewDeployService {
 
     // predicted address via simulate-create (also pre-flights the rebalance whitelist)
     const predicted = await this.simulateCreate(req, unitQty);
+    const creationFee = await this.readCreationFee(req.vaultKind);
     return {
       unitQty: unitQty.map(String),
       breakdown,
@@ -91,7 +103,32 @@ export class PreviewDeployService {
       priceMissing,
       predictedVault: predicted.address,
       gate: predicted.address ? { gated: false, reason: "none" } : { gated: true, reason: predicted.reason },
+      ...(creationFee ? { creationFee } : {}),
     };
+  }
+
+  // The fixed USDG fund-creation fee the deployer pays the factory for this vault TYPE. The currently-
+  // deployed factory predates these getters, so a live read reverts → undefined (no fee). USDG is
+  // priced at $1: valueUsd = amount scaled from its decimals to canonical 18-dec USD.
+  private async readCreationFee(vaultKind: PreviewDeployRequest["vaultKind"]): Promise<FeeQuote | undefined> {
+    const factory = this.registry.address("CloneFactory");
+    if (!factory) return undefined;
+    try {
+      const [token, amount] = await Promise.all([
+        this.chain.publicClient.readContract({
+          address: factory as `0x${string}`, abi: CloneFactoryAbi, functionName: "creationFeeToken",
+        }) as Promise<`0x${string}`>,
+        this.chain.publicClient.readContract({
+          address: factory as `0x${string}`, abi: CloneFactoryAbi, functionName: "creationFee", args: [VAULT_TYPE_INDEX[vaultKind]],
+        }) as Promise<bigint>,
+      ]);
+      if (amount <= 0n || token === zeroAddress) return undefined;
+      const m = (await this.meta.getMany([token]))[token.toLowerCase()] ?? { symbol: token.slice(0, 6), decimals: 18 };
+      const valueUsd = (amount * 10n ** 18n) / 10n ** BigInt(m.decimals);
+      return { token, symbol: m.symbol, amount: amount.toString(), valueUsd: valueUsd.toString() };
+    } catch {
+      return undefined;
+    }
   }
 
   private async simulateCreate(req: PreviewDeployRequest, unitQty: bigint[]): Promise<{ address: string | null; reason: string }> {
@@ -122,6 +159,15 @@ export class PreviewDeployService {
           ...base,
           functionName: "createRebalanceBasket",
           args: [{ tokens, unitQty, unitSize, name: req.name, symbol: req.symbol, manager, managerFeeBps: req.managerFeeBps ?? 0, keeperBps: req.keeperBps ?? 0, keeperEscrow: (req.keeperEscrow ?? ZERO_ADDRESS) as `0x${string}` }, salt],
+        });
+      } else if (req.vaultKind === "registry") {
+        // genesisRoot from sorted (tokens, unitQty, unitSize) Merkle leaves (must match the contract);
+        // the struct carries genesisRoot + sorted tokens, NOT unitQty (quantities live in leaves/bootstrap).
+        const { genesisRoot, sortedTokens } = buildGenesisRoot(tokens, unitQty, unitSize);
+        sim = await this.chain.publicClient.simulateContract({
+          ...base,
+          functionName: "createRegistryIndex",
+          args: [{ genesisRoot, tokens: sortedTokens, unitSize, name: req.name, symbol: req.symbol, manager, managerFeeBps: req.managerFeeBps ?? 0, keeperBps: req.keeperBps ?? 0, keeperEscrow: (req.keeperEscrow ?? ZERO_ADDRESS) as `0x${string}` }, salt],
         });
       } else {
         sim = await this.chain.publicClient.simulateContract({

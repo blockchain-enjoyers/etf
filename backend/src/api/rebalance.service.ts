@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { erc20Abi } from "viem";
-import { PriceAggregatorAbi } from "@meridian/contracts";
+import { ManagedRebalanceVaultAbi, PriceAggregatorAbi } from "@meridian/contracts";
 import type { RebalanceDetail, KeeperStatus, RebalanceHistory } from "@meridian/sdk";
 import { IndexerRepository } from "../indexer/indexer.repository.js";
 import { ManagedRebalanceVaultReader } from "../contracts/managed-rebalance-vault.reader.js";
@@ -34,8 +34,27 @@ export class RebalanceService {
     if (!basket) throw new NotFoundException(`basket ${vault} not found`);
 
     const held = await this.rebVault.heldTokens(vault as `0x${string}`);
+
+    // Prefer vault.holdingsOf(token) — correct for registry vaults (ERC-6909 backing).
+    // holdingsOf was added after current deployment; fall back to ERC20 balanceOf per token
+    // when the vault reverts (pre-seam deployment where holdingsOf == balanceOf anyway).
+    const holdingsResults = await this.chain.publicClient.multicall({
+      allowFailure: true,
+      contracts: held.map((token) => ({
+        address: vault as `0x${string}`,
+        abi: ManagedRebalanceVaultAbi,
+        functionName: "holdingsOf" as const,
+        args: [token as `0x${string}`],
+      })),
+    });
+
     const heldTokens = await Promise.all(
-      held.map(async (token) => {
+      held.map(async (token, i) => {
+        const hr = holdingsResults[i];
+        if (hr?.status === "success") {
+          return { token, balance: (hr.result as bigint).toString() };
+        }
+        // holdingsOf unavailable on this vault — fall back to ERC20 balanceOf.
         const balance = (await this.chain.publicClient.readContract({
           address: token as `0x${string}`,
           abi: erc20Abi,

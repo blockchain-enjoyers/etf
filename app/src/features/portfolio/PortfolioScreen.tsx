@@ -8,6 +8,7 @@ import { cn } from "../../lib/cn";
 import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useAccountHoldings } from "../../data/useAccountHoldings";
+import { useAccountForwardTickets } from "../../data/useAccountForwardTickets";
 
 interface Props {
   holdings?: AccountHolding[];
@@ -187,8 +188,6 @@ export function PortfolioScreen({ holdings = [], queueTickets = [] }: Props) {
 export function PortfolioRoute() {
   const { address } = useAccount();
   const { data: acct } = useAccountHoldings(address);
-  const rawHoldings = acct?.holdings ?? [];
-  // Forward tickets are per-vault (api.getForwardTickets) and account holdings carry no vaultType,
-  // so there is no account-level source yet — the queue section stays hidden rather than show fakes.
-  return <PortfolioScreen holdings={rawHoldings} queueTickets={[]} />;
+  const { data: tickets } = useAccountForwardTickets(address);
+  return <PortfolioScreen holdings={acct?.holdings ?? []} queueTickets={tickets ?? []} />;
 }

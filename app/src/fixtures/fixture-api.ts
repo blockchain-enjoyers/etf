@@ -17,9 +17,11 @@ import type {
   ForwardQueue,
   SettleGateStatus,
   ForwardHistory,
+  ActivityEvent,
   AuctionStatus,
   PreviewDeployRequest,
   DeployPreview,
+  SuggestedFundsResponse,
 } from "@meridian/sdk";
 
 import {
@@ -166,6 +168,26 @@ export class FixtureApi implements MeridianApi {
     };
   }
 
+  async getAccountForwardTickets(_account: string): Promise<ForwardTicket[]> {
+    await delay(DELAY_MS);
+    return [];
+  }
+
+  async getAccountActivity(_account: string): Promise<ActivityEvent[]> {
+    await delay(DELAY_MS);
+    return [
+      {
+        vaultAddress: "0xaaaa000000000000000000000000000000000001",
+        symbol: "RH5",
+        owner: "0xdemo",
+        kind: "mint",
+        payload: { nUnits: "1000000000000000000", minted: "3000000000000000000" },
+        txHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
+        timestampMs: 1781100000000,
+      },
+    ];
+  }
+
   async getAvailability(vaultAddress: string, account?: string) {
     await delay(DELAY_MS);
     return { vaultAddress, account: account ?? null, items: [] };
@@ -190,6 +212,37 @@ export class FixtureApi implements MeridianApi {
 
   buildDeployTx(_req: Record<string, unknown>) {
     return Promise.reject(new Error("Fixture: buildDeployTx not implemented"));
+  }
+
+  buildWrapTx(_vaultAddress: string, _req: { token: string; amount: string; account: string }) {
+    return Promise.reject(new Error("Fixture: buildWrapTx not implemented"));
+  }
+
+  buildBatchWrapTx(_vaultAddress: string, _req: { tokens: string[]; amounts: string[]; account: string }) {
+    return Promise.reject(new Error("Fixture: buildBatchWrapTx not implemented"));
+  }
+
+  buildUnwrapTx(_vaultAddress: string, _req: { token: string; amount: string; to: string; account: string }) {
+    return Promise.reject(new Error("Fixture: buildUnwrapTx not implemented"));
+  }
+
+  buildSetOperatorTx(_vaultAddress: string, _req: { operator: string; approved: boolean; account: string }) {
+    return Promise.reject(new Error("Fixture: buildSetOperatorTx not implemented"));
+  }
+
+  buildBootstrapTx(
+    _vaultAddress: string,
+    _req: { tokens: string[]; unitQty: string[]; unitSize: string; nShares?: string; account: string },
+  ) {
+    return Promise.reject(new Error("Fixture: buildBootstrapTx not implemented"));
+  }
+
+  buildRegistryCreateTx(_vaultAddress: string, _req: { nShares: string; account: string }) {
+    return Promise.reject(new Error("Fixture: buildRegistryCreateTx not implemented"));
+  }
+
+  buildRegistryRedeemTx(_vaultAddress: string, _req: { amount: string; withUnwrap?: boolean; account: string }) {
+    return Promise.reject(new Error("Fixture: buildRegistryRedeemTx not implemented"));
   }
 
   async previewDeploy(req: PreviewDeployRequest): Promise<DeployPreview> {
@@ -272,5 +325,44 @@ export class FixtureApi implements MeridianApi {
   async getAuctionStatus(vaultAddress: string, _account?: string): Promise<AuctionStatus> {
     await delay(DELAY_MS);
     return { vaultAddress, deployed: false, execMode: 0, openAllow: false, acquireIn: [] };
+  }
+
+  async getSuggestedFunds(): Promise<SuggestedFundsResponse> {
+    await delay(DELAY_MS);
+    return {
+      funds: [
+        {
+          id: "sp500",
+          name: "S&P 500",
+          category: "broad market",
+          recommendedVaultKind: "registry",
+          description: "The 500 large-cap US companies in the S&P 500 (SPY).",
+          sampleHoldings: [
+            { symbol: "NVDA", weightBps: 842, address: "0xnvda" },
+            { symbol: "AAPL", weightBps: 710, address: "0xaapl" },
+            { symbol: "MSFT", weightBps: 499, address: "0xmsft" },
+          ],
+          holdingsCount: 442,
+          coveragePct: 94.85,
+          resolvableTokens: [],
+        },
+        {
+          id: "fintech",
+          name: "Fintech & Blockchain",
+          category: "thematic",
+          recommendedVaultKind: "basket",
+          description: "Fintech innovators (ARKF replica).",
+          sampleHoldings: [
+            { symbol: "AAA", weightBps: 6000, address: "0xaaaa000000000000000000000000000000000001" },
+            { symbol: "BBB", weightBps: 4000, address: "0xbbbb000000000000000000000000000000000002" },
+          ],
+          holdingsCount: 2,
+          resolvableTokens: [
+            { token: "0xaaaa000000000000000000000000000000000001", symbol: "AAA", weightBps: 6000 },
+            { token: "0xbbbb000000000000000000000000000000000002", symbol: "BBB", weightBps: 4000 },
+          ],
+        },
+      ],
+    };
   }
 }

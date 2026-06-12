@@ -172,4 +172,30 @@ describe("NavEngineService.computeNav (on-chain path)", () => {
     expect(onchain.readL4Holdings).toHaveBeenCalledWith("0xreb");
     expect(r.nav).toBe(7n);
   });
+
+  it("routes a Registry vault to readL4Holdings (Merkle recipe → navOf would RecipeMismatch)", async () => {
+    const onchain = {
+      readL4PerUnit: vi.fn(),
+      readL4Holdings: vi.fn().mockResolvedValue({ nav: 9n } as never),
+    };
+    const prisma = {
+      basket: {
+        findUnique: vi.fn().mockResolvedValue({
+          vaultAddress: "0xreg",
+          vaultType: "Registry",
+          constituents: [],
+          unitSize: { toString: () => "1000" },
+        }),
+      },
+    };
+    const registry = { present: vi.fn(() => true) };
+    const config = { get: vi.fn((k: string) => (k === "NAV_SOURCE" ? "onchain" : undefined)) };
+    const svc = new NavEngineService(
+      {} as never, {} as never, {} as never,
+      onchain as never, prisma as never, registry as never, config as never, {} as never,
+    );
+    const r = await svc.computeNav("0xreg");
+    expect(onchain.readL4Holdings).toHaveBeenCalledWith("0xreg");
+    expect(r.nav).toBe(9n);
+  });
 });

@@ -2,13 +2,14 @@ import { parseUnits } from "viem";
 import { useAccount } from "wagmi";
 import type { DeployPreview } from "@meridian/sdk";
 import type { WizardState } from "./types";
-import { isWeightsMode } from "./types";
+import { isWeightsMode, isManagedRebalance } from "./types";
 import { sortedValidConstituents, hasDuplicateAddresses, weightSum, weightsBalanced, constituentsOk } from "./reducer";
 import { randomSalt } from "./salt";
 import { useCapabilities } from "../../capabilities/use-capabilities";
 import { useApi } from "../../lib/api";
 import { useTxPlan } from "../../wallet/use-tx-plan";
 import { GateBanner } from "../../components/GateBanner";
+import { formatBpsPct, formatUsd } from "../../lib/format";
 import { Chip } from "../../components/Chip";
 import { KV } from "../../components/KV";
 import { HelpTip } from "../../components/HelpTip";
@@ -33,7 +34,8 @@ export function buildDeployRequest(
 ) {
   const valid = sortedValidConstituents(state.constituents);
   const tokens = valid.map((c) => c.token.trim().toLowerCase());
-  const isRebalance = state.vaultKind === "rebalance";
+  // Registry shares rebalance's field profile (manager + keeper economics); only vaultKind differs.
+  const isRebalance = isManagedRebalance(state.vaultKind);
   const isManaged = state.vaultKind === "managed";
 
   const manager =
@@ -73,6 +75,8 @@ export function PreviewRail({ state, preview, userSalt }: Props) {
   const addressesOk = valid.length >= 1 && !hasDuplicates;
 
   const weights = isWeightsMode(state.vaultKind);
+  // Basket/Committed are genuinely fee-free; managed/rebalance/registry carry the manager + platform AUM legs.
+  const hasOngoingFees = state.vaultKind === "managed" || isManagedRebalance(state.vaultKind);
   const sum = weightSum(state.constituents);
   const balanced = weightsBalanced(state.constituents);
   const sumLabel = `${(Math.round(sum * 10) / 10).toFixed(1)}%`;
@@ -87,7 +91,7 @@ export function PreviewRail({ state, preview, userSalt }: Props) {
     (managerOk && Number(state.managerFeeBps) >= 0 && Number(state.managerFeeBps) <= 200);
 
   const rebalanceOk =
-    state.vaultKind !== "rebalance" ||
+    !isManagedRebalance(state.vaultKind) ||
     (managerOk &&
       Number(state.managerFeeBps) >= 0 &&
       Number(state.managerFeeBps) <= 200 &&
@@ -204,13 +208,24 @@ export function PreviewRail({ state, preview, userSalt }: Props) {
 
       {/* fees */}
       <div className="px-3.5 py-3.5 border-b border-line">
-        {(state.vaultKind === "managed" || state.vaultKind === "rebalance") && (
-          <KV label="Manager fee" value={`${Number(state.managerFeeBps || "0") / 100}% / yr`} />
+        <KV label="Flow fee (mint/redeem)" value={<span className="text-emerald">0%</span>} />
+        {hasOngoingFees ? (
+          <>
+            <KV label="Manager fee" value={`${formatBpsPct(Number(state.managerFeeBps || "0"))} / yr`} />
+            {isManagedRebalance(state.vaultKind) && (
+              <KV label="Keeper cut (of mgr fee)" value={formatBpsPct(Number(state.keeperBps || "0"))} />
+            )}
+            <KV label="Platform AUM fee" value="≤ 0.5% / yr" />
+            {preview?.creationFee && (
+              <KV
+                label="Fund-creation fee"
+                value={`${formatUsd(preview.creationFee.valueUsd)} once`}
+              />
+            )}
+          </>
+        ) : (
+          <KV label="Other fees" value={<span className="text-emerald">none</span>} />
         )}
-        {state.vaultKind === "rebalance" && (
-          <KV label="Keeper cut" value={`${Number(state.keeperBps || "0") / 100}%`} />
-        )}
-        <KV label="Protocol fee" value={<span className="text-emerald">$0.00 — 0%</span>} />
       </div>
 
       {/* CTA */}

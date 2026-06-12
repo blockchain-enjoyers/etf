@@ -17,10 +17,13 @@ export const queryKeys = {
   forwardHistory: (vaultAddress: string) => ["forwardHistory", vaultAddress] as const,
   holdings: (vault: string) => ["holdings", vault] as const,
   accountHoldings: (account: string) => ["accountHoldings", account] as const,
+  accountForwardTickets: (account: string) => ["accountForwardTickets", account] as const,
+  activity: (account: string) => ["activity", account] as const,
   availability: (vault: string, account?: string) => ["availability", vault, account ?? null] as const,
   auctionStatus: (vault: string, account?: string) => ["auctionStatus", vault, account ?? null] as const,
   mintQuote: (vault: string, units: string, account?: string) => ["mintQuote", vault, units, account ?? null] as const,
   deployPreview: (key: string) => ["deployPreview", key] as const,
+  suggestedFunds: ["suggestedFunds"] as const,
 };
 
 export function makeQueryClient(): QueryClient {

@@ -3,14 +3,23 @@ import { BasketNavObserverAbi, ForwardCashQueueAbi } from "@meridian/contracts";
 import type { ActionResult, BuiltStep } from "../action-registry.js";
 
 export interface KeeperDeps {
-  registry: { address: (capability: "BasketNavObserver" | "ForwardCashQueue") => `0x${string}` | undefined };
+  // Per-vault forward routing: each forward vault has its OWN ForwardCashQueue + BasketNavObserver,
+  // so both must be resolved from the vault — the chain singleton would settle/record the wrong vault.
+  forwardQueues: { queueFor: (vault: string) => string | undefined };
+  queueReader: { observer: (queue: `0x${string}`) => Promise<`0x${string}`> };
   rebVault: { heldTokens: (vault: `0x${string}`) => Promise<`0x${string}`[]> };
   signer: { payloadsFor: (token: string) => Promise<readonly `0x${string}`[]> };
 }
 
+function resolveQueue(deps: KeeperDeps, vault: string): `0x${string}` {
+  const queue = deps.forwardQueues.queueFor(vault);
+  if (!queue) throw new Error("not-deployed: no forward queue for this vault");
+  return queue as `0x${string}`;
+}
+
 export async function buildKeeperRecord(deps: KeeperDeps, vault: string): Promise<ActionResult> {
-  const observer = deps.registry.address("BasketNavObserver");
-  if (!observer) throw new Error("not-deployed: BasketNavObserver is not registered");
+  // The observer is the one this vault's queue settles against (queue.observer()), not a global one.
+  const observer = await deps.queueReader.observer(resolveQueue(deps, vault));
 
   const held = await deps.rebVault.heldTokens(vault as `0x${string}`);
   const payloads = await Promise.all(held.map((t) => deps.signer.payloadsFor(t)));
@@ -37,8 +46,7 @@ export async function buildKeeperSettle(
   vault: string,
   { ticketIds, ap }: { ticketIds: number[]; ap: string },
 ): Promise<ActionResult> {
-  const queue = deps.registry.address("ForwardCashQueue");
-  if (!queue) throw new Error("not-deployed: ForwardCashQueue is not registered");
+  const queue = resolveQueue(deps, vault);
 
   const held = await deps.rebVault.heldTokens(vault as `0x${string}`);
   const payloads = await Promise.all(held.map((t) => deps.signer.payloadsFor(t)));

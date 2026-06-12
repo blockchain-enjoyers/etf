@@ -29,12 +29,14 @@ export type AggregateBasket = {
 export type BasketAvgAggregateOutputType = {
   unitSize: runtime.Decimal | null
   managerFeeBps: number | null
+  platformFeeBps: number | null
   keeperBps: number | null
 }
 
 export type BasketSumAggregateOutputType = {
   unitSize: runtime.Decimal | null
   managerFeeBps: number | null
+  platformFeeBps: number | null
   keeperBps: number | null
 }
 
@@ -49,6 +51,7 @@ export type BasketMinAggregateOutputType = {
   vaultType: $Enums.VaultType | null
   manager: string | null
   managerFeeBps: number | null
+  platformFeeBps: number | null
   keeperBps: number | null
   keeperEscrow: string | null
   recipeCommitment: string | null
@@ -66,6 +69,7 @@ export type BasketMaxAggregateOutputType = {
   vaultType: $Enums.VaultType | null
   manager: string | null
   managerFeeBps: number | null
+  platformFeeBps: number | null
   keeperBps: number | null
   keeperEscrow: string | null
   recipeCommitment: string | null
@@ -83,6 +87,7 @@ export type BasketCountAggregateOutputType = {
   vaultType: number
   manager: number
   managerFeeBps: number
+  platformFeeBps: number
   keeperBps: number
   keeperEscrow: number
   recipeCommitment: number
@@ -94,12 +99,14 @@ export type BasketCountAggregateOutputType = {
 export type BasketAvgAggregateInputType = {
   unitSize?: true
   managerFeeBps?: true
+  platformFeeBps?: true
   keeperBps?: true
 }
 
 export type BasketSumAggregateInputType = {
   unitSize?: true
   managerFeeBps?: true
+  platformFeeBps?: true
   keeperBps?: true
 }
 
@@ -114,6 +121,7 @@ export type BasketMinAggregateInputType = {
   vaultType?: true
   manager?: true
   managerFeeBps?: true
+  platformFeeBps?: true
   keeperBps?: true
   keeperEscrow?: true
   recipeCommitment?: true
@@ -131,6 +139,7 @@ export type BasketMaxAggregateInputType = {
   vaultType?: true
   manager?: true
   managerFeeBps?: true
+  platformFeeBps?: true
   keeperBps?: true
   keeperEscrow?: true
   recipeCommitment?: true
@@ -148,6 +157,7 @@ export type BasketCountAggregateInputType = {
   vaultType?: true
   manager?: true
   managerFeeBps?: true
+  platformFeeBps?: true
   keeperBps?: true
   keeperEscrow?: true
   recipeCommitment?: true
@@ -252,6 +262,7 @@ export type BasketGroupByOutputType = {
   vaultType: $Enums.VaultType
   manager: string | null
   managerFeeBps: number | null
+  platformFeeBps: number | null
   keeperBps: number | null
   keeperEscrow: string | null
   recipeCommitment: string | null
@@ -292,6 +303,7 @@ export type BasketWhereInput = {
   vaultType?: Prisma.EnumVaultTypeFilter<"Basket"> | $Enums.VaultType
   manager?: Prisma.StringNullableFilter<"Basket"> | string | null
   managerFeeBps?: Prisma.IntNullableFilter<"Basket"> | number | null
+  platformFeeBps?: Prisma.IntNullableFilter<"Basket"> | number | null
   keeperBps?: Prisma.IntNullableFilter<"Basket"> | number | null
   keeperEscrow?: Prisma.StringNullableFilter<"Basket"> | string | null
   recipeCommitment?: Prisma.StringNullableFilter<"Basket"> | string | null
@@ -305,6 +317,7 @@ export type BasketWhereInput = {
   keeperPayouts?: Prisma.KeeperPayoutListRelationFilter
   forwardTickets?: Prisma.ForwardTicketListRelationFilter
   forwardEvents?: Prisma.ForwardEventListRelationFilter
+  activityEvents?: Prisma.ActivityEventListRelationFilter
 }
 
 export type BasketOrderByWithRelationInput = {
@@ -318,6 +331,7 @@ export type BasketOrderByWithRelationInput = {
   vaultType?: Prisma.SortOrder
   manager?: Prisma.SortOrderInput | Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrderInput | Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrderInput | Prisma.SortOrder
   keeperBps?: Prisma.SortOrderInput | Prisma.SortOrder
   keeperEscrow?: Prisma.SortOrderInput | Prisma.SortOrder
   recipeCommitment?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -331,6 +345,7 @@ export type BasketOrderByWithRelationInput = {
   keeperPayouts?: Prisma.KeeperPayoutOrderByRelationAggregateInput
   forwardTickets?: Prisma.ForwardTicketOrderByRelationAggregateInput
   forwardEvents?: Prisma.ForwardEventOrderByRelationAggregateInput
+  activityEvents?: Prisma.ActivityEventOrderByRelationAggregateInput
 }
 
 export type BasketWhereUniqueInput = Prisma.AtLeast<{
@@ -347,6 +362,7 @@ export type BasketWhereUniqueInput = Prisma.AtLeast<{
   vaultType?: Prisma.EnumVaultTypeFilter<"Basket"> | $Enums.VaultType
   manager?: Prisma.StringNullableFilter<"Basket"> | string | null
   managerFeeBps?: Prisma.IntNullableFilter<"Basket"> | number | null
+  platformFeeBps?: Prisma.IntNullableFilter<"Basket"> | number | null
   keeperBps?: Prisma.IntNullableFilter<"Basket"> | number | null
   keeperEscrow?: Prisma.StringNullableFilter<"Basket"> | string | null
   recipeCommitment?: Prisma.StringNullableFilter<"Basket"> | string | null
@@ -360,6 +376,7 @@ export type BasketWhereUniqueInput = Prisma.AtLeast<{
   keeperPayouts?: Prisma.KeeperPayoutListRelationFilter
   forwardTickets?: Prisma.ForwardTicketListRelationFilter
   forwardEvents?: Prisma.ForwardEventListRelationFilter
+  activityEvents?: Prisma.ActivityEventListRelationFilter
 }, "vaultAddress">
 
 export type BasketOrderByWithAggregationInput = {
@@ -373,6 +390,7 @@ export type BasketOrderByWithAggregationInput = {
   vaultType?: Prisma.SortOrder
   manager?: Prisma.SortOrderInput | Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrderInput | Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrderInput | Prisma.SortOrder
   keeperBps?: Prisma.SortOrderInput | Prisma.SortOrder
   keeperEscrow?: Prisma.SortOrderInput | Prisma.SortOrder
   recipeCommitment?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -398,6 +416,7 @@ export type BasketScalarWhereWithAggregatesInput = {
   vaultType?: Prisma.EnumVaultTypeWithAggregatesFilter<"Basket"> | $Enums.VaultType
   manager?: Prisma.StringNullableWithAggregatesFilter<"Basket"> | string | null
   managerFeeBps?: Prisma.IntNullableWithAggregatesFilter<"Basket"> | number | null
+  platformFeeBps?: Prisma.IntNullableWithAggregatesFilter<"Basket"> | number | null
   keeperBps?: Prisma.IntNullableWithAggregatesFilter<"Basket"> | number | null
   keeperEscrow?: Prisma.StringNullableWithAggregatesFilter<"Basket"> | string | null
   recipeCommitment?: Prisma.StringNullableWithAggregatesFilter<"Basket"> | string | null
@@ -415,6 +434,7 @@ export type BasketCreateInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -428,6 +448,7 @@ export type BasketCreateInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateInput = {
@@ -441,6 +462,7 @@ export type BasketUncheckedCreateInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -454,6 +476,7 @@ export type BasketUncheckedCreateInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUpdateInput = {
@@ -467,6 +490,7 @@ export type BasketUpdateInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -480,6 +504,7 @@ export type BasketUpdateInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateInput = {
@@ -493,6 +518,7 @@ export type BasketUncheckedUpdateInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -506,6 +532,7 @@ export type BasketUncheckedUpdateInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateManyInput = {
@@ -519,6 +546,7 @@ export type BasketCreateManyInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -536,6 +564,7 @@ export type BasketUpdateManyMutationInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -553,6 +582,7 @@ export type BasketUncheckedUpdateManyInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -570,6 +600,7 @@ export type BasketCountOrderByAggregateInput = {
   vaultType?: Prisma.SortOrder
   manager?: Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrder
   keeperBps?: Prisma.SortOrder
   keeperEscrow?: Prisma.SortOrder
   recipeCommitment?: Prisma.SortOrder
@@ -579,6 +610,7 @@ export type BasketCountOrderByAggregateInput = {
 export type BasketAvgOrderByAggregateInput = {
   unitSize?: Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrder
   keeperBps?: Prisma.SortOrder
 }
 
@@ -593,6 +625,7 @@ export type BasketMaxOrderByAggregateInput = {
   vaultType?: Prisma.SortOrder
   manager?: Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrder
   keeperBps?: Prisma.SortOrder
   keeperEscrow?: Prisma.SortOrder
   recipeCommitment?: Prisma.SortOrder
@@ -610,6 +643,7 @@ export type BasketMinOrderByAggregateInput = {
   vaultType?: Prisma.SortOrder
   manager?: Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrder
   keeperBps?: Prisma.SortOrder
   keeperEscrow?: Prisma.SortOrder
   recipeCommitment?: Prisma.SortOrder
@@ -619,6 +653,7 @@ export type BasketMinOrderByAggregateInput = {
 export type BasketSumOrderByAggregateInput = {
   unitSize?: Prisma.SortOrder
   managerFeeBps?: Prisma.SortOrder
+  platformFeeBps?: Prisma.SortOrder
   keeperBps?: Prisma.SortOrder
 }
 
@@ -789,6 +824,20 @@ export type BasketUpdateOneRequiredWithoutKeeperPayoutsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.BasketUpdateToOneWithWhereWithoutKeeperPayoutsInput, Prisma.BasketUpdateWithoutKeeperPayoutsInput>, Prisma.BasketUncheckedUpdateWithoutKeeperPayoutsInput>
 }
 
+export type BasketCreateNestedOneWithoutActivityEventsInput = {
+  create?: Prisma.XOR<Prisma.BasketCreateWithoutActivityEventsInput, Prisma.BasketUncheckedCreateWithoutActivityEventsInput>
+  connectOrCreate?: Prisma.BasketCreateOrConnectWithoutActivityEventsInput
+  connect?: Prisma.BasketWhereUniqueInput
+}
+
+export type BasketUpdateOneRequiredWithoutActivityEventsNestedInput = {
+  create?: Prisma.XOR<Prisma.BasketCreateWithoutActivityEventsInput, Prisma.BasketUncheckedCreateWithoutActivityEventsInput>
+  connectOrCreate?: Prisma.BasketCreateOrConnectWithoutActivityEventsInput
+  upsert?: Prisma.BasketUpsertWithoutActivityEventsInput
+  connect?: Prisma.BasketWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BasketUpdateToOneWithWhereWithoutActivityEventsInput, Prisma.BasketUpdateWithoutActivityEventsInput>, Prisma.BasketUncheckedUpdateWithoutActivityEventsInput>
+}
+
 export type BasketCreateWithoutConstituentsInput = {
   vaultAddress: string
   basketToken?: string | null
@@ -800,6 +849,7 @@ export type BasketCreateWithoutConstituentsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -812,6 +862,7 @@ export type BasketCreateWithoutConstituentsInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutConstituentsInput = {
@@ -825,6 +876,7 @@ export type BasketUncheckedCreateWithoutConstituentsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -837,6 +889,7 @@ export type BasketUncheckedCreateWithoutConstituentsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutConstituentsInput = {
@@ -866,6 +919,7 @@ export type BasketUpdateWithoutConstituentsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -878,6 +932,7 @@ export type BasketUpdateWithoutConstituentsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutConstituentsInput = {
@@ -891,6 +946,7 @@ export type BasketUncheckedUpdateWithoutConstituentsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -903,6 +959,7 @@ export type BasketUncheckedUpdateWithoutConstituentsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutNavSnapshotsInput = {
@@ -916,6 +973,7 @@ export type BasketCreateWithoutNavSnapshotsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -928,6 +986,7 @@ export type BasketCreateWithoutNavSnapshotsInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutNavSnapshotsInput = {
@@ -941,6 +1000,7 @@ export type BasketUncheckedCreateWithoutNavSnapshotsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -953,6 +1013,7 @@ export type BasketUncheckedCreateWithoutNavSnapshotsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutNavSnapshotsInput = {
@@ -982,6 +1043,7 @@ export type BasketUpdateWithoutNavSnapshotsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -994,6 +1056,7 @@ export type BasketUpdateWithoutNavSnapshotsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutNavSnapshotsInput = {
@@ -1007,6 +1070,7 @@ export type BasketUncheckedUpdateWithoutNavSnapshotsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1019,6 +1083,7 @@ export type BasketUncheckedUpdateWithoutNavSnapshotsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutQueueEntriesInput = {
@@ -1032,6 +1097,7 @@ export type BasketCreateWithoutQueueEntriesInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1044,6 +1110,7 @@ export type BasketCreateWithoutQueueEntriesInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutQueueEntriesInput = {
@@ -1057,6 +1124,7 @@ export type BasketUncheckedCreateWithoutQueueEntriesInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1069,6 +1137,7 @@ export type BasketUncheckedCreateWithoutQueueEntriesInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutQueueEntriesInput = {
@@ -1098,6 +1167,7 @@ export type BasketUpdateWithoutQueueEntriesInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1110,6 +1180,7 @@ export type BasketUpdateWithoutQueueEntriesInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutQueueEntriesInput = {
@@ -1123,6 +1194,7 @@ export type BasketUncheckedUpdateWithoutQueueEntriesInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1135,6 +1207,7 @@ export type BasketUncheckedUpdateWithoutQueueEntriesInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutFairValueAttestationsInput = {
@@ -1148,6 +1221,7 @@ export type BasketCreateWithoutFairValueAttestationsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1160,6 +1234,7 @@ export type BasketCreateWithoutFairValueAttestationsInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutFairValueAttestationsInput = {
@@ -1173,6 +1248,7 @@ export type BasketUncheckedCreateWithoutFairValueAttestationsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1185,6 +1261,7 @@ export type BasketUncheckedCreateWithoutFairValueAttestationsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutFairValueAttestationsInput = {
@@ -1214,6 +1291,7 @@ export type BasketUpdateWithoutFairValueAttestationsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1226,6 +1304,7 @@ export type BasketUpdateWithoutFairValueAttestationsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutFairValueAttestationsInput = {
@@ -1239,6 +1318,7 @@ export type BasketUncheckedUpdateWithoutFairValueAttestationsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1251,6 +1331,7 @@ export type BasketUncheckedUpdateWithoutFairValueAttestationsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutRebalanceEventsInput = {
@@ -1264,6 +1345,7 @@ export type BasketCreateWithoutRebalanceEventsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1276,6 +1358,7 @@ export type BasketCreateWithoutRebalanceEventsInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutRebalanceEventsInput = {
@@ -1289,6 +1372,7 @@ export type BasketUncheckedCreateWithoutRebalanceEventsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1301,6 +1385,7 @@ export type BasketUncheckedCreateWithoutRebalanceEventsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutRebalanceEventsInput = {
@@ -1330,6 +1415,7 @@ export type BasketUpdateWithoutRebalanceEventsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1342,6 +1428,7 @@ export type BasketUpdateWithoutRebalanceEventsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutRebalanceEventsInput = {
@@ -1355,6 +1442,7 @@ export type BasketUncheckedUpdateWithoutRebalanceEventsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1367,6 +1455,7 @@ export type BasketUncheckedUpdateWithoutRebalanceEventsInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutTargetChangesInput = {
@@ -1380,6 +1469,7 @@ export type BasketCreateWithoutTargetChangesInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1392,6 +1482,7 @@ export type BasketCreateWithoutTargetChangesInput = {
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutTargetChangesInput = {
@@ -1405,6 +1496,7 @@ export type BasketUncheckedCreateWithoutTargetChangesInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1417,6 +1509,7 @@ export type BasketUncheckedCreateWithoutTargetChangesInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutTargetChangesInput = {
@@ -1446,6 +1539,7 @@ export type BasketUpdateWithoutTargetChangesInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1458,6 +1552,7 @@ export type BasketUpdateWithoutTargetChangesInput = {
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutTargetChangesInput = {
@@ -1471,6 +1566,7 @@ export type BasketUncheckedUpdateWithoutTargetChangesInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1483,6 +1579,7 @@ export type BasketUncheckedUpdateWithoutTargetChangesInput = {
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutForwardTicketsInput = {
@@ -1496,6 +1593,7 @@ export type BasketCreateWithoutForwardTicketsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1508,6 +1606,7 @@ export type BasketCreateWithoutForwardTicketsInput = {
   targetChanges?: Prisma.TargetChangeCreateNestedManyWithoutBasketInput
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutForwardTicketsInput = {
@@ -1521,6 +1620,7 @@ export type BasketUncheckedCreateWithoutForwardTicketsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1533,6 +1633,7 @@ export type BasketUncheckedCreateWithoutForwardTicketsInput = {
   targetChanges?: Prisma.TargetChangeUncheckedCreateNestedManyWithoutBasketInput
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutForwardTicketsInput = {
@@ -1562,6 +1663,7 @@ export type BasketUpdateWithoutForwardTicketsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1574,6 +1676,7 @@ export type BasketUpdateWithoutForwardTicketsInput = {
   targetChanges?: Prisma.TargetChangeUpdateManyWithoutBasketNestedInput
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutForwardTicketsInput = {
@@ -1587,6 +1690,7 @@ export type BasketUncheckedUpdateWithoutForwardTicketsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1599,6 +1703,7 @@ export type BasketUncheckedUpdateWithoutForwardTicketsInput = {
   targetChanges?: Prisma.TargetChangeUncheckedUpdateManyWithoutBasketNestedInput
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutForwardEventsInput = {
@@ -1612,6 +1717,7 @@ export type BasketCreateWithoutForwardEventsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1624,6 +1730,7 @@ export type BasketCreateWithoutForwardEventsInput = {
   targetChanges?: Prisma.TargetChangeCreateNestedManyWithoutBasketInput
   keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutForwardEventsInput = {
@@ -1637,6 +1744,7 @@ export type BasketUncheckedCreateWithoutForwardEventsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1649,6 +1757,7 @@ export type BasketUncheckedCreateWithoutForwardEventsInput = {
   targetChanges?: Prisma.TargetChangeUncheckedCreateNestedManyWithoutBasketInput
   keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutForwardEventsInput = {
@@ -1678,6 +1787,7 @@ export type BasketUpdateWithoutForwardEventsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1690,6 +1800,7 @@ export type BasketUpdateWithoutForwardEventsInput = {
   targetChanges?: Prisma.TargetChangeUpdateManyWithoutBasketNestedInput
   keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutForwardEventsInput = {
@@ -1703,6 +1814,7 @@ export type BasketUncheckedUpdateWithoutForwardEventsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1715,6 +1827,7 @@ export type BasketUncheckedUpdateWithoutForwardEventsInput = {
   targetChanges?: Prisma.TargetChangeUncheckedUpdateManyWithoutBasketNestedInput
   keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketCreateWithoutKeeperPayoutsInput = {
@@ -1728,6 +1841,7 @@ export type BasketCreateWithoutKeeperPayoutsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1740,6 +1854,7 @@ export type BasketCreateWithoutKeeperPayoutsInput = {
   targetChanges?: Prisma.TargetChangeCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventCreateNestedManyWithoutBasketInput
 }
 
 export type BasketUncheckedCreateWithoutKeeperPayoutsInput = {
@@ -1753,6 +1868,7 @@ export type BasketUncheckedCreateWithoutKeeperPayoutsInput = {
   vaultType?: $Enums.VaultType
   manager?: string | null
   managerFeeBps?: number | null
+  platformFeeBps?: number | null
   keeperBps?: number | null
   keeperEscrow?: string | null
   recipeCommitment?: string | null
@@ -1765,6 +1881,7 @@ export type BasketUncheckedCreateWithoutKeeperPayoutsInput = {
   targetChanges?: Prisma.TargetChangeUncheckedCreateNestedManyWithoutBasketInput
   forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
   forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+  activityEvents?: Prisma.ActivityEventUncheckedCreateNestedManyWithoutBasketInput
 }
 
 export type BasketCreateOrConnectWithoutKeeperPayoutsInput = {
@@ -1794,6 +1911,7 @@ export type BasketUpdateWithoutKeeperPayoutsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1806,6 +1924,7 @@ export type BasketUpdateWithoutKeeperPayoutsInput = {
   targetChanges?: Prisma.TargetChangeUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUpdateManyWithoutBasketNestedInput
 }
 
 export type BasketUncheckedUpdateWithoutKeeperPayoutsInput = {
@@ -1819,6 +1938,7 @@ export type BasketUncheckedUpdateWithoutKeeperPayoutsInput = {
   vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
   manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1829,6 +1949,131 @@ export type BasketUncheckedUpdateWithoutKeeperPayoutsInput = {
   fairValueAttestations?: Prisma.FairValueAttestationUncheckedUpdateManyWithoutBasketNestedInput
   rebalanceEvents?: Prisma.RebalanceEventUncheckedUpdateManyWithoutBasketNestedInput
   targetChanges?: Prisma.TargetChangeUncheckedUpdateManyWithoutBasketNestedInput
+  forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
+  forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
+  activityEvents?: Prisma.ActivityEventUncheckedUpdateManyWithoutBasketNestedInput
+}
+
+export type BasketCreateWithoutActivityEventsInput = {
+  vaultAddress: string
+  basketToken?: string | null
+  cashToken?: string | null
+  unitSize: runtime.Decimal | runtime.DecimalJsLike | number | string
+  name: string
+  symbol: string
+  frozen?: boolean
+  vaultType?: $Enums.VaultType
+  manager?: string | null
+  managerFeeBps?: number | null
+  platformFeeBps?: number | null
+  keeperBps?: number | null
+  keeperEscrow?: string | null
+  recipeCommitment?: string | null
+  createdAt?: Date | string
+  constituents?: Prisma.ConstituentCreateNestedManyWithoutBasketInput
+  navSnapshots?: Prisma.NavSnapshotCreateNestedManyWithoutBasketInput
+  queueEntries?: Prisma.QueueEntryCreateNestedManyWithoutBasketInput
+  fairValueAttestations?: Prisma.FairValueAttestationCreateNestedManyWithoutBasketInput
+  rebalanceEvents?: Prisma.RebalanceEventCreateNestedManyWithoutBasketInput
+  targetChanges?: Prisma.TargetChangeCreateNestedManyWithoutBasketInput
+  keeperPayouts?: Prisma.KeeperPayoutCreateNestedManyWithoutBasketInput
+  forwardTickets?: Prisma.ForwardTicketCreateNestedManyWithoutBasketInput
+  forwardEvents?: Prisma.ForwardEventCreateNestedManyWithoutBasketInput
+}
+
+export type BasketUncheckedCreateWithoutActivityEventsInput = {
+  vaultAddress: string
+  basketToken?: string | null
+  cashToken?: string | null
+  unitSize: runtime.Decimal | runtime.DecimalJsLike | number | string
+  name: string
+  symbol: string
+  frozen?: boolean
+  vaultType?: $Enums.VaultType
+  manager?: string | null
+  managerFeeBps?: number | null
+  platformFeeBps?: number | null
+  keeperBps?: number | null
+  keeperEscrow?: string | null
+  recipeCommitment?: string | null
+  createdAt?: Date | string
+  constituents?: Prisma.ConstituentUncheckedCreateNestedManyWithoutBasketInput
+  navSnapshots?: Prisma.NavSnapshotUncheckedCreateNestedManyWithoutBasketInput
+  queueEntries?: Prisma.QueueEntryUncheckedCreateNestedManyWithoutBasketInput
+  fairValueAttestations?: Prisma.FairValueAttestationUncheckedCreateNestedManyWithoutBasketInput
+  rebalanceEvents?: Prisma.RebalanceEventUncheckedCreateNestedManyWithoutBasketInput
+  targetChanges?: Prisma.TargetChangeUncheckedCreateNestedManyWithoutBasketInput
+  keeperPayouts?: Prisma.KeeperPayoutUncheckedCreateNestedManyWithoutBasketInput
+  forwardTickets?: Prisma.ForwardTicketUncheckedCreateNestedManyWithoutBasketInput
+  forwardEvents?: Prisma.ForwardEventUncheckedCreateNestedManyWithoutBasketInput
+}
+
+export type BasketCreateOrConnectWithoutActivityEventsInput = {
+  where: Prisma.BasketWhereUniqueInput
+  create: Prisma.XOR<Prisma.BasketCreateWithoutActivityEventsInput, Prisma.BasketUncheckedCreateWithoutActivityEventsInput>
+}
+
+export type BasketUpsertWithoutActivityEventsInput = {
+  update: Prisma.XOR<Prisma.BasketUpdateWithoutActivityEventsInput, Prisma.BasketUncheckedUpdateWithoutActivityEventsInput>
+  create: Prisma.XOR<Prisma.BasketCreateWithoutActivityEventsInput, Prisma.BasketUncheckedCreateWithoutActivityEventsInput>
+  where?: Prisma.BasketWhereInput
+}
+
+export type BasketUpdateToOneWithWhereWithoutActivityEventsInput = {
+  where?: Prisma.BasketWhereInput
+  data: Prisma.XOR<Prisma.BasketUpdateWithoutActivityEventsInput, Prisma.BasketUncheckedUpdateWithoutActivityEventsInput>
+}
+
+export type BasketUpdateWithoutActivityEventsInput = {
+  vaultAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  basketToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cashToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitSize?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  symbol?: Prisma.StringFieldUpdateOperationsInput | string
+  frozen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
+  manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  constituents?: Prisma.ConstituentUpdateManyWithoutBasketNestedInput
+  navSnapshots?: Prisma.NavSnapshotUpdateManyWithoutBasketNestedInput
+  queueEntries?: Prisma.QueueEntryUpdateManyWithoutBasketNestedInput
+  fairValueAttestations?: Prisma.FairValueAttestationUpdateManyWithoutBasketNestedInput
+  rebalanceEvents?: Prisma.RebalanceEventUpdateManyWithoutBasketNestedInput
+  targetChanges?: Prisma.TargetChangeUpdateManyWithoutBasketNestedInput
+  keeperPayouts?: Prisma.KeeperPayoutUpdateManyWithoutBasketNestedInput
+  forwardTickets?: Prisma.ForwardTicketUpdateManyWithoutBasketNestedInput
+  forwardEvents?: Prisma.ForwardEventUpdateManyWithoutBasketNestedInput
+}
+
+export type BasketUncheckedUpdateWithoutActivityEventsInput = {
+  vaultAddress?: Prisma.StringFieldUpdateOperationsInput | string
+  basketToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  cashToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  unitSize?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  symbol?: Prisma.StringFieldUpdateOperationsInput | string
+  frozen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  vaultType?: Prisma.EnumVaultTypeFieldUpdateOperationsInput | $Enums.VaultType
+  manager?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  managerFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  platformFeeBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  keeperBps?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  keeperEscrow?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  recipeCommitment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  constituents?: Prisma.ConstituentUncheckedUpdateManyWithoutBasketNestedInput
+  navSnapshots?: Prisma.NavSnapshotUncheckedUpdateManyWithoutBasketNestedInput
+  queueEntries?: Prisma.QueueEntryUncheckedUpdateManyWithoutBasketNestedInput
+  fairValueAttestations?: Prisma.FairValueAttestationUncheckedUpdateManyWithoutBasketNestedInput
+  rebalanceEvents?: Prisma.RebalanceEventUncheckedUpdateManyWithoutBasketNestedInput
+  targetChanges?: Prisma.TargetChangeUncheckedUpdateManyWithoutBasketNestedInput
+  keeperPayouts?: Prisma.KeeperPayoutUncheckedUpdateManyWithoutBasketNestedInput
   forwardTickets?: Prisma.ForwardTicketUncheckedUpdateManyWithoutBasketNestedInput
   forwardEvents?: Prisma.ForwardEventUncheckedUpdateManyWithoutBasketNestedInput
 }
@@ -1848,6 +2093,7 @@ export type BasketCountOutputType = {
   keeperPayouts: number
   forwardTickets: number
   forwardEvents: number
+  activityEvents: number
 }
 
 export type BasketCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1860,6 +2106,7 @@ export type BasketCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   keeperPayouts?: boolean | BasketCountOutputTypeCountKeeperPayoutsArgs
   forwardTickets?: boolean | BasketCountOutputTypeCountForwardTicketsArgs
   forwardEvents?: boolean | BasketCountOutputTypeCountForwardEventsArgs
+  activityEvents?: boolean | BasketCountOutputTypeCountActivityEventsArgs
 }
 
 /**
@@ -1935,6 +2182,13 @@ export type BasketCountOutputTypeCountForwardEventsArgs<ExtArgs extends runtime.
   where?: Prisma.ForwardEventWhereInput
 }
 
+/**
+ * BasketCountOutputType without action
+ */
+export type BasketCountOutputTypeCountActivityEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ActivityEventWhereInput
+}
+
 
 export type BasketSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   vaultAddress?: boolean
@@ -1947,6 +2201,7 @@ export type BasketSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   vaultType?: boolean
   manager?: boolean
   managerFeeBps?: boolean
+  platformFeeBps?: boolean
   keeperBps?: boolean
   keeperEscrow?: boolean
   recipeCommitment?: boolean
@@ -1960,6 +2215,7 @@ export type BasketSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   keeperPayouts?: boolean | Prisma.Basket$keeperPayoutsArgs<ExtArgs>
   forwardTickets?: boolean | Prisma.Basket$forwardTicketsArgs<ExtArgs>
   forwardEvents?: boolean | Prisma.Basket$forwardEventsArgs<ExtArgs>
+  activityEvents?: boolean | Prisma.Basket$activityEventsArgs<ExtArgs>
   _count?: boolean | Prisma.BasketCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["basket"]>
 
@@ -1974,6 +2230,7 @@ export type BasketSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   vaultType?: boolean
   manager?: boolean
   managerFeeBps?: boolean
+  platformFeeBps?: boolean
   keeperBps?: boolean
   keeperEscrow?: boolean
   recipeCommitment?: boolean
@@ -1991,6 +2248,7 @@ export type BasketSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   vaultType?: boolean
   manager?: boolean
   managerFeeBps?: boolean
+  platformFeeBps?: boolean
   keeperBps?: boolean
   keeperEscrow?: boolean
   recipeCommitment?: boolean
@@ -2008,13 +2266,14 @@ export type BasketSelectScalar = {
   vaultType?: boolean
   manager?: boolean
   managerFeeBps?: boolean
+  platformFeeBps?: boolean
   keeperBps?: boolean
   keeperEscrow?: boolean
   recipeCommitment?: boolean
   createdAt?: boolean
 }
 
-export type BasketOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"vaultAddress" | "basketToken" | "cashToken" | "unitSize" | "name" | "symbol" | "frozen" | "vaultType" | "manager" | "managerFeeBps" | "keeperBps" | "keeperEscrow" | "recipeCommitment" | "createdAt", ExtArgs["result"]["basket"]>
+export type BasketOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"vaultAddress" | "basketToken" | "cashToken" | "unitSize" | "name" | "symbol" | "frozen" | "vaultType" | "manager" | "managerFeeBps" | "platformFeeBps" | "keeperBps" | "keeperEscrow" | "recipeCommitment" | "createdAt", ExtArgs["result"]["basket"]>
 export type BasketInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   constituents?: boolean | Prisma.Basket$constituentsArgs<ExtArgs>
   navSnapshots?: boolean | Prisma.Basket$navSnapshotsArgs<ExtArgs>
@@ -2025,6 +2284,7 @@ export type BasketInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   keeperPayouts?: boolean | Prisma.Basket$keeperPayoutsArgs<ExtArgs>
   forwardTickets?: boolean | Prisma.Basket$forwardTicketsArgs<ExtArgs>
   forwardEvents?: boolean | Prisma.Basket$forwardEventsArgs<ExtArgs>
+  activityEvents?: boolean | Prisma.Basket$activityEventsArgs<ExtArgs>
   _count?: boolean | Prisma.BasketCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type BasketIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2042,6 +2302,7 @@ export type $BasketPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     keeperPayouts: Prisma.$KeeperPayoutPayload<ExtArgs>[]
     forwardTickets: Prisma.$ForwardTicketPayload<ExtArgs>[]
     forwardEvents: Prisma.$ForwardEventPayload<ExtArgs>[]
+    activityEvents: Prisma.$ActivityEventPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     vaultAddress: string
@@ -2054,6 +2315,7 @@ export type $BasketPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     vaultType: $Enums.VaultType
     manager: string | null
     managerFeeBps: number | null
+    platformFeeBps: number | null
     keeperBps: number | null
     keeperEscrow: string | null
     recipeCommitment: string | null
@@ -2461,6 +2723,7 @@ export interface Prisma__BasketClient<T, Null = never, ExtArgs extends runtime.T
   keeperPayouts<T extends Prisma.Basket$keeperPayoutsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Basket$keeperPayoutsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$KeeperPayoutPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   forwardTickets<T extends Prisma.Basket$forwardTicketsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Basket$forwardTicketsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ForwardTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   forwardEvents<T extends Prisma.Basket$forwardEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Basket$forwardEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ForwardEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  activityEvents<T extends Prisma.Basket$activityEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Basket$activityEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ActivityEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2500,6 +2763,7 @@ export interface BasketFieldRefs {
   readonly vaultType: Prisma.FieldRef<"Basket", 'VaultType'>
   readonly manager: Prisma.FieldRef<"Basket", 'String'>
   readonly managerFeeBps: Prisma.FieldRef<"Basket", 'Int'>
+  readonly platformFeeBps: Prisma.FieldRef<"Basket", 'Int'>
   readonly keeperBps: Prisma.FieldRef<"Basket", 'Int'>
   readonly keeperEscrow: Prisma.FieldRef<"Basket", 'String'>
   readonly recipeCommitment: Prisma.FieldRef<"Basket", 'String'>
@@ -3110,6 +3374,30 @@ export type Basket$forwardEventsArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.ForwardEventScalarFieldEnum | Prisma.ForwardEventScalarFieldEnum[]
+}
+
+/**
+ * Basket.activityEvents
+ */
+export type Basket$activityEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ActivityEvent
+   */
+  select?: Prisma.ActivityEventSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ActivityEvent
+   */
+  omit?: Prisma.ActivityEventOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ActivityEventInclude<ExtArgs> | null
+  where?: Prisma.ActivityEventWhereInput
+  orderBy?: Prisma.ActivityEventOrderByWithRelationInput | Prisma.ActivityEventOrderByWithRelationInput[]
+  cursor?: Prisma.ActivityEventWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ActivityEventScalarFieldEnum | Prisma.ActivityEventScalarFieldEnum[]
 }
 
 /**

@@ -75,9 +75,11 @@ function makeBuilder(over: Partial<Mocks> = {}) {
   const rebVault = { heldTokens: vi.fn(async () => [TOKEN]) };
 
   const signer = { payloadsFor: vi.fn(async () => ["0xaa", "0xbb"] as const) };
-  // Per-vault forward-queue registry (read path's ForwardQueueRegistry); the forward builders resolve
-  // the vault's bound queue through this instead of the chain singleton.
+  // Per-vault forward-queue registry (read path's ForwardQueueRegistry); the forward + keeper builders
+  // resolve the vault's bound queue through this instead of the chain singleton.
   const forwardQueues = { queueFor: vi.fn((_v: string) => undefined as string | undefined) };
+  // Reads queue.observer() so keeper record targets the vault's own observer (not a chain singleton).
+  const queueReader = { observer: vi.fn(async (_q: string) => undefined as unknown as `0x${string}`) };
 
   const builder = new TxPlanBuilder(
     chain as never,
@@ -90,6 +92,7 @@ function makeBuilder(over: Partial<Mocks> = {}) {
     rebVault as never,
     signer as never,
     forwardQueues as never,
+    queueReader as never,
   );
 
   return { builder, availability, simulator, registry, prisma };

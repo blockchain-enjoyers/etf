@@ -2,55 +2,120 @@
   "networkName": "Robinhood Chain Testnet",
   "chainId": 46630,
   "deployments": {
-    "BasketFactory": {
-      "address": "0xc802691590d751ACa78729B2dc03b41f2578e557"
-    },
     "BasketVault": {
-      "address": "0x6E2e82baafAf08AC4f2fBc0f7fbb7af596c0539C"
+      "address": "0x94aC71ac16745838748367F0B5b1Cade54414277"
     },
     "ManagedVault": {
-      "address": "0x557b6E25be3F810Ab5ccc922d54E332a02BA13c2"
+      "address": "0x41bfa14085AC4439A01b044089d68c0B1AB036B2"
     },
     "CommittedVault": {
-      "address": "0x1F0b54fd73771D5DDd985D57799d6A0eF3b1A7F6"
+      "address": "0x41A7BB85E07C9db6B23EE627BFCef9d6F1ffF25b"
     },
     "CloneFactory": {
-      "address": "0x88d606a5fbcC8AE26676eD34568770049C1991B9"
+      "address": "0x453B28529273E240120D6475F2369e002deb13F5"
     },
     "KeeperModule": {
-      "address": "0x9845E5EbEE7BfF6cBa532dB692c8CA4435A559a8"
-    },
-    "ManagedRebalanceVault": {
-      "address": "0x0b03b53c9bA95b2c4514EFAE56D48B1a1057890a"
+      "address": "0x746db09AC8c7DE315dCd5A19732033fb0F14f877"
     },
     "RebalanceModule": {
-      "address": "0x9515441105694d270a5097625980F29d908EA9a6"
+      "address": "0x99602fC33C65dfCdBE1b966383DdD9575fDfb60D"
     },
     "RebalanceAuction": {
-      "address": "0x9601a1c96fF2Da6860ab85eEC943a1Cb911a1502"
-    },
-    "PriceAggregator": {
-      "address": "0x0d1D2E98c259f3d5C7325B038434Ab088a640D3f"
-    },
-    "FairValueNAV": {
-      "address": "0x5Aaae0231970e589481DefB2F8d7AC4660a2B579"
+      "address": "0xD39AA1Cab5E24150257e5FEd43A4d79c53e47CCc"
     },
     "MockVerifierProxy": {
-      "address": "0xdD31E36D02B3E5DBf47084174cB67A9e3c2cF462"
+      "address": "0x7703a06F6E43752B989a4aa6cA5e969d3e5af6CB"
     },
     "ChainlinkStreamsSource": {
-      "address": "0xB9dEC9B3229C84C63d84bd451766d6E55C8b9d6D"
+      "address": "0x9b5747f8A46EbEb70Ab4E111dBD873cf7620C2Bb"
+    },
+    "UniversalSignedSourceWeekend": {
+      "address": "0x32207892289a101d8546A430AbBdf62DD2049fFd"
+    },
+    "MockUSDC": {
+      "address": "0xB0D95286F9F7A7c8733c385B56BF9A3D8684421C"
+    },
+    "MockPegFeed": {
+      "address": "0x05B1F755BCcE797ED6945b9c1073e5139D04c829"
+    },
+    "MockFeedRouter": {
+      "address": "0x9302254e389ce47Ee0FD18Fe4bBC515F91D11177"
+    },
+    "PriceAggregator": {
+      "address": "0x25f04d55C0b3608C258c21CB603aCEe197Ca5301"
+    },
+    "FairValueNAV": {
+      "address": "0xcfaA21689D7273fADBD7576eDA0991576900aD96"
     },
     "UniversalSignedSource": {
-      "address": "0x2A7b845BB0c89BD970679e1D45c4b25708C476Fd"
+      "address": "0x41BE2284c8bBc5C89B5e2Bd4784a10B2646691aA"
+    },
+    "ManagedRebalanceVault": {
+      "address": "0x2E578Bd5e288ae6f62708D1BFd5f806b2F092e61"
     },
     "RebalanceObserver": {
-      "address": "0x08ee387Ed1Bce93B422f1907C214FF21CdE40fFb"
+      "address": "0x47DeCC7a347CD26804547C07B9817E4C2c5dB522"
+    },
+    "RebalanceVaultDemo": {
+      "address": "0x37dbD44F3FB2811C6a17dB1bfDa9000594Ebe2Ae",
+      "deployer": "0xb1Ce525A223DB37BbbC5636D1dd70f7bfeF6e3cD",
+      "txHash": "0x9543a7857952c28e4e433ffba037e20a14c69803dc3f5f6e7f4e9804794f6ba2",
+      "block": 72474635,
+      "deployedAt": "2026-06-10T00:54:05.030Z",
+      "args": []
+    },
+    "BasketNavObserver": {
+      "address": "0x16221e4FA1842B36587B496f81Ad3B51cc78E0B7"
+    },
+    "ForwardCashQueue": {
+      "address": "0xf109Cf55511d15E7906FbE421a39dB9f42121994"
+    },
+    "MockAPFiller": {
+      "address": "0x11B223e71BdB272695F489e5ecE2994694CFA512"
+    },
+    "USDG": {
+      "address": "0x5F28D5E0939FDb94943d5C65241cBf850c3d98d1"
+    },
+    "RegistryRebalanceVault": {
+      "address": "0x8937A6EE95097B5a794994Dce7c90C1168Af7205"
+    },
+    "Stock_MSTRx": {
+      "address": "0x89eC78b779E00bc99044656b04a8DB059c9b7270"
+    },
+    "Stock_TSLAx": {
+      "address": "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3"
+    },
+    "Stock_NVDAx": {
+      "address": "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1"
+    },
+    "Source_Shared": {
+      "address": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364"
+    },
+    "RegistryIndex": {
+      "address": "0x3F78db0F384e4bf325809F0f417ef4Afa76B2E4F"
     }
   },
   "params": {
     "schemaVersion": 11,
     "depthTier": "5000000000000000000000000",
-    "realVerifierProxy": "0x72790f9eB82db492a7DDb6d2af22A270Dcc3Db64"
+    "realVerifierProxy": "0x72790f9eB82db492a7DDb6d2af22A270Dcc3Db64",
+    "demo": {
+      "stocks": [
+        "0x89eC78b779E00bc99044656b04a8DB059c9b7270",
+        "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3",
+        "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1"
+      ],
+      "sources": {
+        "0x89eC78b779E00bc99044656b04a8DB059c9b7270": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
+        "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
+        "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364"
+      },
+      "sharedSource": "0xDb827A2C0a6623caafDa0bDd7a5F70F1cDB12364",
+      "names": [
+        "MSTRx",
+        "TSLAx",
+        "NVDAx"
+      ]
+    }
   }
 }

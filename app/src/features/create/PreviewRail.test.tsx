@@ -191,6 +191,26 @@ describe("buildDeployRequest", () => {
     expect(req.userSalt).toBe(SALT);
   });
 
+  it("registry carries vaultKind:'registry' with the rebalance field profile (manager + keeper)", () => {
+    const account = ("0x" + "c".repeat(40)) as `0x${string}`;
+    const req = buildDeployRequest(
+      makeState({
+        vaultKind: "registry",
+        manager: "", managerFeeBps: "30", keeperBps: "1500", keeperEscrow: "",
+        creationUnitSize: "1000",
+        constituents: [{ id: "1", token: "0x" + "1".repeat(40), amount: "100" }],
+      }),
+      account,
+      ["1000000000000000000"],
+      SALT,
+    );
+    // The deploy DTO routes to createRegistryIndex via vaultKind, but reuses rebalance's fields.
+    expect(req.vaultKind).toBe("registry");
+    expect(req.managerFeeBps).toBe(30);
+    expect(req.keeperBps).toBe(1500);
+    expect(req.manager).toBe(account.toLowerCase()); // blank → connected wallet
+  });
+
   it("omits manager/keeper fields for a static basket", () => {
     const req = buildDeployRequest(
       makeState({
@@ -221,22 +241,48 @@ describe("PreviewRail — fee rows by vault kind", () => {
     };
   }
 
-  it("static basket shows neither manager-fee nor keeper-cut rows", () => {
+  it("static basket shows the 0% flow fee but NO manager/keeper/platform fee rows", () => {
     renderRail(readyState());
+    expect(screen.getByText(/flow fee/i)).toBeInTheDocument();
+    expect(screen.getByText(/other fees/i)).toBeInTheDocument();
     expect(screen.queryByText(/manager fee/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/keeper cut/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/platform aum fee/i)).not.toBeInTheDocument();
   });
 
-  it("managed shows manager-fee but NOT keeper-cut", () => {
+  it("managed shows manager-fee + platform AUM fee but NOT keeper-cut", () => {
     renderRail({ ...readyState(), vaultKind: "managed", managerFeeBps: "100" });
     expect(screen.getByText(/manager fee/i)).toBeInTheDocument();
+    expect(screen.getByText("1% / yr")).toBeInTheDocument();
+    expect(screen.getByText(/platform aum fee/i)).toBeInTheDocument();
     expect(screen.queryByText(/keeper cut/i)).not.toBeInTheDocument();
   });
 
-  it("rebalance shows both manager-fee and keeper-cut", () => {
+  it("rebalance shows manager-fee, keeper-cut and platform AUM fee", () => {
     renderRail(rebalanceReady());
     expect(screen.getByText(/manager fee/i)).toBeInTheDocument();
     expect(screen.getByText(/keeper cut/i)).toBeInTheDocument();
+    expect(screen.getByText(/platform aum fee/i)).toBeInTheDocument();
+  });
+
+  it("surfaces the one-time fund-creation fee from preview.creationFee on a managed vault", () => {
+    renderRail(
+      { ...readyState(), vaultKind: "managed", managerFeeBps: "100" },
+      {
+        ...readyPreview(),
+        creationFee: { token: "0xusdg", symbol: "USDG", amount: "5000000", valueUsd: "5000000000000000000" },
+      },
+    );
+    expect(screen.getByText(/fund-creation fee/i)).toBeInTheDocument();
+    expect(screen.getByText(/\$5\.00 once/)).toBeInTheDocument();
+  });
+
+  it("basket never shows a fund-creation fee even if a creationFee is present", () => {
+    renderRail(readyState(), {
+      ...readyPreview(),
+      creationFee: { token: "0xusdg", symbol: "USDG", amount: "5000000", valueUsd: "5000000000000000000" },
+    });
+    expect(screen.queryByText(/fund-creation fee/i)).not.toBeInTheDocument();
   });
 
   it("rebalance with empty manager enables deploy (defaults to wallet, parity with Step5)", () => {

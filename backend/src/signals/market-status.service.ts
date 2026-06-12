@@ -18,8 +18,8 @@ export interface ResolveInput {
 
 /**
  * Per-token market-status FSM. Turns a raw feed status + reading age into a {status, degraded}
- * pair, and folds per-token resolutions into one basket status (worst-of). Mirrors the contract
- * NAVEngine rule: any constituent not Regular ⇒ estimated. [spec §10, R5]
+ * pair, and folds per-token resolutions into one basket status (worst-of). Mirrors the L4
+ * FairValueNAV rule: any constituent not Regular ⇒ estimated. [spec §10, R5]
  */
 @Injectable()
 export class MarketStatusService {

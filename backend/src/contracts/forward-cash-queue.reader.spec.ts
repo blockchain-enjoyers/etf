@@ -26,6 +26,12 @@ describe("ForwardCashQueueReader", () => {
     expect(await r.cutoffDelay("0xq")).toBe(3600n);
   });
 
+  it("reads isRegistry / stable for the registry forward path", async () => {
+    const r = readerWith({ isRegistry: true, stable: "0xusdg" });
+    expect(await r.isRegistry("0xq")).toBe(true);
+    expect(await r.stable("0xq")).toBe("0xusdg");
+  });
+
   it("exposes the five queue events for the indexer", () => {
     const r = readerWith({});
     expect(r.createRequestedEvent.name).toBe("CreateRequested");

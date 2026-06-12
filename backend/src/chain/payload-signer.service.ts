@@ -2,10 +2,14 @@ import { Injectable } from "@nestjs/common";
 import { encodeAbiParameters, keccak256, padHex, parseSignature } from "viem";
 import { PrismaService } from "../persistence/prisma.service.js";
 import { ChainService } from "./chain.service.js";
+import { marketStatusNow } from "../signals/market-calendar.js";
+import { MarketStatus } from "../domain/market-status.js";
 
 export interface PayloadSignerOptions {
   depth: bigint;
   nowSec: () => number;
+  /** Testnet demo flag: force the weekday leg live (market treated Regular) regardless of wall-clock. */
+  forceOpen?: () => boolean;
 }
 
 type RawSign = (p: { hash: `0x${string}` }) => Promise<`0x${string}`>;
@@ -28,13 +32,12 @@ const PAYLOAD_TYPES = [
 ] as const;
 
 /**
- * Date every signed reading this many seconds in the past. The aggregator computes
- * `block.timestamp - lastUpdate` UNGUARDED (PriceAggregator.priceOf / acceptedDepthOf), so a reading
- * dated ahead of the L2 block clock — even by the sub-second backend↔sequencer lead — underflows and
- * reverts the whole read ("arithmetic underflow or overflow"). The buffer stays far inside staleHorizon
- * (3600s), so sources remain fresh. The robust fix is to guard the subtraction on-chain (needs redeploy).
+ * Off-hours, the weekday leg is dated this far in the past so the aggregator's staleHorizon drops it,
+ * leaving only the (weekendAware) weekend leg → marketStatus Closed. This is what keeps a closed-market
+ * read honest (estimated): the weekday leg is the ONLY non-weekendAware source, so its liveness is the
+ * Open/Closed switch [spec §10, R5 iron rule].
  */
-const SKEW_BUFFER_SEC = 120;
+const STALE_BACKDATE_SEC = 86_400;
 
 @Injectable()
 export class PayloadSignerService {
@@ -54,36 +57,31 @@ export class PayloadSignerService {
       throw new Error("payload-signer: KEEPER_PRIVATE_KEY required");
     }
     const sign: RawSign = account.sign.bind(account);
-    const regular = await this.prisma.priceSnapshot.findFirst({
-      where: { token, marketStatus: "Regular", price: { gt: 0 } },
-      orderBy: { timestamp: "desc" },
-    });
+
     const latest = await this.prisma.priceSnapshot.findFirst({
       where: { token, price: { gt: 0 } },
       orderBy: { timestamp: "desc" },
     });
-    if (!latest && !regular) throw new Error(`payload-signer: no price snapshot for ${token}`);
+    if (!latest) throw new Error(`payload-signer: no price snapshot for ${token}`);
+
     const feedId = padHex(token as `0x${string}`, { size: 32 });
-    // Never date a payload after (now - buffer): the aggregator's `block.timestamp - lastUpdate` is
-    // unguarded, so a future-dated reading underflows the read. Clamp both legs (a fresh market-hours
-    // snapshot is as at-risk as the weekend "now").
-    const cap = this.opts.nowSec() - SKEW_BUFFER_SEC;
-    const weekdayTs = Math.min(
-      Math.floor((regular ?? latest)!.timestamp.getTime() / 1000),
-      cap,
-    );
-    const weekday = await this.signOne(
-      sign,
-      feedId,
-      BigInt((regular ?? latest)!.price.toFixed(0)),
-      BigInt(weekdayTs),
-    );
-    const weekend = await this.signOne(
-      sign,
-      feedId,
-      BigInt((latest ?? regular)!.price.toFixed(0)),
-      BigInt(cap),
-    );
+    const nowS = this.opts.nowSec();
+    const price = BigInt(latest.price.toFixed(0));
+    // The on-chain payload's lastUpdate must reflect WALL-CLOCK freshness, NOT the snapshot's source
+    // timestamp: the 24/7 demo feed is a last-close FV walk, so the snapshot ts is an old market time
+    // the aggregator's staleHorizon would reject. The F3 guard tolerates a sub-second backend↔L2 lead,
+    // so the old now-120 skew clamp is gone. Open/Closed comes from the calendar gate below.
+    const liveTs = nowS;
+
+    // The weekday (non-weekendAware) leg drives the Open verdict. It is live ONLY during regular
+    // US-equity hours (or under the testnet MARKET_FORCE_OPEN flag); otherwise back-date it so the
+    // aggregator filters it as stale → only the weekend leg survives → Closed (estimated).
+    const forceOpen = this.opts.forceOpen?.() ?? false;
+    const marketOpen = forceOpen || marketStatusNow(new Date(nowS * 1000)) === MarketStatus.Regular;
+    const weekdayTs = marketOpen ? liveTs : nowS - STALE_BACKDATE_SEC;
+
+    const weekday = await this.signOne(sign, feedId, price, BigInt(weekdayTs));
+    const weekend = await this.signOne(sign, feedId, price, BigInt(liveTs));
     return [weekday, weekend];
   }
 

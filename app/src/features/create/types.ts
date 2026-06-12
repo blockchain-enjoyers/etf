@@ -1,7 +1,10 @@
-export type VaultKind = "basket" | "managed" | "committed" | "rebalance";
+export type VaultKind = "basket" | "managed" | "committed" | "rebalance" | "registry";
 
-/** Rebalance vaults are defined by target weights; every other kind by literal per-unit quantities. */
-export const isWeightsMode = (k: VaultKind): boolean => k === "rebalance";
+/** Rebalance & registry vaults are defined by target weights; every other kind by literal per-unit quantities. */
+export const isWeightsMode = (k: VaultKind): boolean => k === "rebalance" || k === "registry";
+
+/** Kinds that carry the manager/keeper settings + manager-fee disclosure (rebalance-style economics). */
+export const isManagedRebalance = (k: VaultKind): boolean => k === "rebalance" || k === "registry";
 
 export interface ConstituentRow {
   id: string;
@@ -31,6 +34,7 @@ export type WizardAction =
   | { type: "REMOVE_CONSTITUENT"; id: string }
   | { type: "UPDATE_CONSTITUENT"; id: string; field: "token" | "amount"; value: string }
   | { type: "SET_VAULT_KIND"; value: VaultKind }
+  | { type: "LOAD_TEMPLATE"; vaultKind: VaultKind; rows: { token: string; amount: string }[] }
   | { type: "SET_CREATION_UNIT"; value: string }
   | { type: "SET_VALUE_PER_UNIT"; value: string }
   | { type: "GO_STEP"; step: WizardState["step"] }

@@ -17,6 +17,8 @@ export interface BasketCreatedEvent {
 export interface ManagedBasketCreatedEvent extends BasketCreatedEvent {
   manager: string;
   managerFeeBps: number;
+  /** Meridian's own AUM fee; null when the deployed impl predates the getter (read reverts). */
+  platformFeeBps: number | null;
 }
 
 export type CommittedBasketCreatedEvent = BasketCreatedEvent;
@@ -24,6 +26,24 @@ export type CommittedBasketCreatedEvent = BasketCreatedEvent;
 export interface RebalanceBasketCreatedEvent extends ManagedBasketCreatedEvent {
   keeperBps: number;
   keeperEscrow: string;
+}
+
+/**
+ * RegistryIndexCreated (5th type "registry"): manager comes from the event; everything else from
+ * resilient vault reads. recipeCommitment is the on-chain genesis Merkle root (recipeRoot()), and
+ * constituents are EMPTY here — the vault is not bootstrapped at creation (populated by the
+ * RootScheduled / genesis paths in this slice).
+ */
+export type RegistryIndexCreatedEvent = RebalanceBasketCreatedEvent;
+
+/**
+ * A full registry-vault recipe (constituent set) to write, from either a `RootScheduled` log (the
+ * curator-rotated target recipe) or the post-bootstrap genesis read (heldTokens/holdingsOf). The set
+ * is authoritative: replacing it MUST prune tokens no longer present, so it carries the whole list.
+ */
+export interface RegistryConstituentsUpdate {
+  vaultAddress: string;
+  constituents: { token: string; unitQty: bigint }[];
 }
 
 export interface RebalancedEvent {
@@ -87,6 +107,28 @@ export interface ForwardTicketEvent {
   payload: Record<string, string>;
 }
 
+export type ActivityKindLiteral =
+  | "Mint"
+  | "Redeem"
+  | "ForwardCreateRequested"
+  | "ForwardRedeemRequested"
+  | "ForwardPartialFill"
+  | "ForwardSettled"
+  | "ForwardCancelled";
+
+/** In-kind mint/redeem row for the account activity feed (forward lifecycle is folded in by
+ *  applyForwardEvent, which already knows the owner from the ticket). */
+export interface ActivityEventRecord {
+  owner: string;
+  vaultAddress: string;
+  kind: ActivityKindLiteral;
+  payload: Record<string, string>;
+  txHash: string;
+  logIndex: number;
+  blockNumber: bigint;
+  timestampMs: number;
+}
+
 /** Mirrors RecipeLib.commitment: keccak256(abi.encode(address[], uint256[], uint256)). */
 export function recipeCommitment(
   tokens: readonly string[],
@@ -110,26 +152,61 @@ export class IndexerRepository {
   ) {}
 
   async applyBasketCreated(e: BasketCreatedEvent): Promise<void> {
-    await this.upsertBasketWithConstituents(e, "Basket", null, null);
+    await this.upsertBasketWithConstituents(e, "Basket", null, null, null);
   }
 
   async applyManagedBasketCreated(e: ManagedBasketCreatedEvent): Promise<void> {
-    await this.upsertBasketWithConstituents(e, "Managed", e.manager, e.managerFeeBps);
+    await this.upsertBasketWithConstituents(e, "Managed", e.manager, e.managerFeeBps, e.platformFeeBps);
   }
 
   async applyCommittedBasketCreated(e: CommittedBasketCreatedEvent): Promise<void> {
-    await this.upsertBasketWithConstituents(e, "Committed", null, null);
+    await this.upsertBasketWithConstituents(e, "Committed", null, null, null);
   }
 
   async applyRebalanceBasketCreated(e: RebalanceBasketCreatedEvent): Promise<void> {
-    await this.upsertBasketWithConstituents(e, "Rebalance", e.manager, e.managerFeeBps, e.keeperBps, e.keeperEscrow);
+    await this.upsertBasketWithConstituents(
+      e, "Rebalance", e.manager, e.managerFeeBps, e.platformFeeBps, e.keeperBps, e.keeperEscrow,
+    );
+  }
+
+  // Registry: same fee/keeper shape as Rebalance, but constituents are EMPTY (e.constituents == []).
+  async applyRegistryIndexCreated(e: RegistryIndexCreatedEvent): Promise<void> {
+    await this.upsertBasketWithConstituents(
+      e, "Registry", e.manager, e.managerFeeBps, e.platformFeeBps, e.keeperBps, e.keeperEscrow,
+    );
+  }
+
+  /**
+   * Replace a registry vault's Constituent set with `u.constituents` (the authoritative recipe from a
+   * RootScheduled log or the genesis read). The recipe can DROP tokens (a reconstitution), so this
+   * prunes any constituent not in the new set rather than only upserting — otherwise a removed token
+   * would linger. Delete-then-insert in one transaction keeps the row set exactly the recipe. A
+   * mismatched address-casing on `u.vaultAddress` would orphan the rows from their Basket FK, so the
+   * caller passes the Basket-stored (checksummed) address, not a raw lowercase `log.address`.
+   */
+  async replaceRegistryConstituents(u: RegistryConstituentsUpdate): Promise<void> {
+    const tokens = u.constituents.map((c) => c.token);
+    await this.prisma.$transaction([
+      this.prisma.constituent.deleteMany({
+        where: { vaultAddress: u.vaultAddress, token: { notIn: tokens } },
+      }),
+      ...u.constituents.map((c) =>
+        this.prisma.constituent.upsert({
+          where: { vaultAddress_token: { vaultAddress: u.vaultAddress, token: c.token } },
+          create: { vaultAddress: u.vaultAddress, token: c.token, unitQty: c.unitQty.toString() },
+          update: { unitQty: c.unitQty.toString() },
+        }),
+      ),
+    ]);
+    try { await this.tokenMeta.getMany(tokens); } catch { /* non-fatal cache warm */ }
   }
 
   private async upsertBasketWithConstituents(
     e: BasketCreatedEvent,
-    vaultType: "Basket" | "Managed" | "Committed" | "Rebalance",
+    vaultType: "Basket" | "Managed" | "Committed" | "Rebalance" | "Registry",
     manager: string | null,
     managerFeeBps: number | null,
+    platformFeeBps: number | null = null,
     keeperBps: number | null = null,
     keeperEscrow: string | null = null,
   ): Promise<void> {
@@ -140,6 +217,7 @@ export class IndexerRepository {
       vaultType,
       manager,
       managerFeeBps,
+      platformFeeBps,
       keeperBps,
       keeperEscrow,
       recipeCommitment: e.recipeCommitment,
@@ -255,7 +333,25 @@ export class IndexerRepository {
       timestamp: new Date(e.timestampMs),
     };
 
-    await this.prisma.$transaction([
+    // Fold into the per-account activity feed. Settle/Cancel/PartialFill carry no owner on the event,
+    // so resolve it from the (already-indexed) request row; skip the activity row if still unknown.
+    const activityKind = {
+      CreateRequested: "ForwardCreateRequested",
+      RedeemRequested: "ForwardRedeemRequested",
+      PartialFill: "ForwardPartialFill",
+      Settled: "ForwardSettled",
+      Cancelled: "ForwardCancelled",
+    }[e.kind] as ActivityKindLiteral;
+    let owner = e.owner;
+    if (!isRequest) {
+      const existing = await this.prisma.forwardTicket.findUnique({
+        where: { queueAddress_ticketId: { queueAddress: e.queueAddress, ticketId: e.ticketId } },
+        select: { owner: true },
+      });
+      owner = existing?.owner ?? "";
+    }
+
+    const ops: Prisma.PrismaPromise<unknown>[] = [
       this.prisma.forwardTicket.upsert({
         where: { queueAddress_ticketId: { queueAddress: e.queueAddress, ticketId: e.ticketId } },
         create: ticketCreate,
@@ -266,7 +362,25 @@ export class IndexerRepository {
         create: eventCreate,
         update: eventCreate,
       }),
-    ]);
+    ];
+    if (owner) {
+      const activityData = {
+        owner,
+        vaultAddress: e.vaultAddress,
+        kind: activityKind,
+        payload: e.payload,
+        blockNumber: e.blockNumber,
+        timestamp: new Date(e.timestampMs),
+      };
+      ops.push(
+        this.prisma.activityEvent.upsert({
+          where: { txHash_logIndex: { txHash: e.txHash, logIndex: e.logIndex } },
+          create: { txHash: e.txHash, logIndex: e.logIndex, ...activityData },
+          update: activityData,
+        }),
+      );
+    }
+    await this.prisma.$transaction(ops);
   }
 
   async getForwardTickets(vault: string, owner?: string) {
@@ -290,9 +404,76 @@ export class IndexerRepository {
     });
   }
 
+  /** OPEN (pending/partial) forward tickets for one owner across ALL vaults — the Portfolio queue
+   *  section. Case-insensitive on owner (wallet addresses are checksum-cased, events may differ). */
+  async getOpenForwardTicketsForOwner(owner: string) {
+    return this.prisma.forwardTicket.findMany({
+      where: { owner: { equals: owner, mode: "insensitive" }, status: { in: ["Pending", "Partial"] } },
+      orderBy: { cutoff: "asc" },
+    });
+  }
+
+  /** Idempotent write of an in-kind mint/redeem activity row (forward lifecycle is written by
+   *  applyForwardEvent). No-op re-process via the (txHash, logIndex) unique key. */
+  async applyActivityEvent(e: ActivityEventRecord): Promise<void> {
+    const data = {
+      owner: e.owner,
+      vaultAddress: e.vaultAddress,
+      kind: e.kind,
+      payload: e.payload,
+      blockNumber: e.blockNumber,
+      timestamp: new Date(e.timestampMs),
+    };
+    await this.prisma.activityEvent.upsert({
+      where: { txHash_logIndex: { txHash: e.txHash, logIndex: e.logIndex } },
+      create: { txHash: e.txHash, logIndex: e.logIndex, ...data },
+      update: data,
+    });
+  }
+
+  /** Account-scoped activity feed (mint/redeem + forward lifecycle), newest first, with vault symbol. */
+  async getActivityForOwner(owner: string, limit: number) {
+    return this.prisma.activityEvent.findMany({
+      where: { owner: { equals: owner, mode: "insensitive" } },
+      orderBy: { timestamp: "desc" },
+      take: limit,
+      include: { basket: { select: { symbol: true } } },
+    });
+  }
+
   async getRebalanceVaultAddresses(): Promise<string[]> {
     const rows = await this.prisma.basket.findMany({
       where: { vaultType: "Rebalance" },
+      select: { vaultAddress: true },
+    });
+    return rows.map((r) => r.vaultAddress);
+  }
+
+  /** Every indexed vault — all types emit Created/Redeemed, so the activity reader scans them all. */
+  async getAllVaultAddresses(): Promise<string[]> {
+    const rows = await this.prisma.basket.findMany({ select: { vaultAddress: true } });
+    return rows.map((r) => r.vaultAddress);
+  }
+
+  /** All registry vaults (5th type) — the set scanned for RootScheduled/RootActivated recipe logs. */
+  async getRegistryVaultAddresses(): Promise<string[]> {
+    const rows = await this.prisma.basket.findMany({
+      where: { vaultType: "Registry" },
+      select: { vaultAddress: true },
+    });
+    return rows.map((r) => r.vaultAddress);
+  }
+
+  /**
+   * Registry vaults whose Constituent set is still EMPTY — the genesis-population candidates. A registry
+   * vault is created with no constituents (not bootstrapped at creation) and its composition lives behind
+   * a Merkle root, so its constituents are filled once it is bootstrapped (heldTokens non-empty). Bounded:
+   * a vault drops out of this set the moment its constituents are written, so the per-tick read is
+   * O(unbootstrapped registry vaults) and trends to zero.
+   */
+  async getRegistryVaultsNeedingGenesis(): Promise<string[]> {
+    const rows = await this.prisma.basket.findMany({
+      where: { vaultType: "Registry", constituents: { none: {} } },
       select: { vaultAddress: true },
     });
     return rows.map((r) => r.vaultAddress);

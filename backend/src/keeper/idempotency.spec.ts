@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { attestationKey, rebalanceKey, settleEntryKey } from "./idempotency.js";
+import { rebalanceKey, settleEntryKey } from "./idempotency.js";
 
 describe("keeper idempotency keys", () => {
-  it("attestation key is stable per basket+attestation", () => {
-    expect(attestationKey("0xbeef", "fv1")).toBe("attestation:0xbeef:fv1");
-    expect(attestationKey("0xbeef", "fv1")).toBe(attestationKey("0xbeef", "fv1"));
-    expect(attestationKey("0xbeef", "fv2")).not.toBe(attestationKey("0xbeef", "fv1"));
-  });
-
   it("rebalance key is per-basket per-UTC-day (one rebalance/day singleton)", () => {
     const a = rebalanceKey("0xbeef", new Date("2026-06-05T10:00:00Z"));
     const b = rebalanceKey("0xbeef", new Date("2026-06-05T23:00:00Z"));

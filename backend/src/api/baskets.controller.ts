@@ -76,6 +76,7 @@ export class BasketsController {
       vaultType: vaultTypeToWire(b.vaultType),
       manager: b.manager,
       managerFeeBps: b.managerFeeBps,
+      platformFeeBps: b.platformFeeBps,
       keeperBps: b.keeperBps,
       keeperEscrow: b.keeperEscrow,
     }));
@@ -99,6 +100,7 @@ export class BasketsController {
       vaultType: vaultTypeToWire(b.vaultType),
       manager: b.manager,
       managerFeeBps: b.managerFeeBps,
+      platformFeeBps: b.platformFeeBps,
       keeperBps: b.keeperBps,
       keeperEscrow: b.keeperEscrow,
       recipeCommitment: b.recipeCommitment,

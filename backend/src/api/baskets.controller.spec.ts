@@ -37,6 +37,7 @@ describe("BasketsController", () => {
     vaultType: "Managed",
     manager: "0xm",
     managerFeeBps: 100,
+    platformFeeBps: 15,
     recipeCommitment: "0xabc",
     constituents: [{ token: "0xA", unitQty: dec("10") }],
   };
@@ -103,6 +104,7 @@ describe("BasketsController", () => {
     expect(detail.vaultType).toBe("managed");
     expect(detail.manager).toBe("0xm");
     expect(detail.managerFeeBps).toBe(100);
+    expect(detail.platformFeeBps).toBe(15);
     expect(detail.recipeCommitment).toBe("0xabc");
   });
 
@@ -124,6 +126,7 @@ describe("BasketsController", () => {
     expect(list[0]!.vaultType).toBe("managed");
     expect(list[0]!.manager).toBe("0xm");
     expect(list[0]!.managerFeeBps).toBe(100);
+    expect(list[0]!.platformFeeBps).toBe(15);
   });
 
   it("404s on an unknown basket", async () => {

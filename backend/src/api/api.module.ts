@@ -10,6 +10,7 @@ import { RebalanceService } from "./rebalance.service.js";
 import { AggSourcePayloads } from "./agg-source-payloads.js";
 import { AccountsController } from "./accounts.controller.js";
 import { PositionService } from "./position.service.js";
+import { ActivityService } from "./activity.service.js";
 
 /**
  * API read surface. Zod DTOs come from @meridian/sdk; ports (RedeemQuotePort) come from
@@ -21,7 +22,7 @@ import { PositionService } from "./position.service.js";
 @Module({
   imports: [CapabilitiesModule],
   controllers: [BasketsController, FeedController, AccountsController],
-  providers: [AvailabilityService, RebalanceService, ForwardService, HoldingsService, AggSourcePayloads, IndexerRepository, PositionService],
+  providers: [AvailabilityService, RebalanceService, ForwardService, HoldingsService, AggSourcePayloads, IndexerRepository, PositionService, ActivityService],
   exports: [AvailabilityService],
 })
 export class ApiModule {}

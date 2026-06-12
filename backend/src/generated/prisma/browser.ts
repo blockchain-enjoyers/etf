@@ -82,3 +82,9 @@ export type ForwardEvent = Prisma.ForwardEventModel
  * 
  */
 export type KeeperPayout = Prisma.KeeperPayoutModel
+/**
+ * Model ActivityEvent
+ * Per-account activity feed: in-kind mint/redeem (vault Created/Redeemed) + forward lifecycle,
+ * denormalized for an owner-scoped, time-ordered query. Idempotent on (txHash, logIndex).
+ */
+export type ActivityEvent = Prisma.ActivityEventModel

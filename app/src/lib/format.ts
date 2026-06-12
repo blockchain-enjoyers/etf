@@ -28,6 +28,13 @@ export function formatSignedPctFromBps(bps: number): string {
   return `${sign}${pct.toFixed(2)}%`;
 }
 
+// Fee bps → unsigned percent, e.g. 15 → "0.15%". Trims trailing-zero noise (50 → "0.5%", 100 → "1%").
+export function formatBpsPct(bps: number): string {
+  const pct = bps / 100;
+  const s = pct.toFixed(2).replace(/\.?0+$/, "");
+  return `${s}%`;
+}
+
 export function timeAgo(ms: number): string {
   const diffSec = Math.floor((Date.now() - ms) / 1000);
   if (diffSec < 60) return `${diffSec}s ago`;

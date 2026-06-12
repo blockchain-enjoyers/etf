@@ -38,15 +38,28 @@ export class AvailabilityService {
     const halted = snap?.severity === "Halted";
     const isManager = !!account && !!basket.manager && account.toLowerCase() === basket.manager.toLowerCase();
     const hasAccount = !!account;
-    // Forward/curator/keeper/auction surfaces only exist on the ManagedRebalanceVault. For every
-    // other vault type they are structurally absent — gate them off so the FE never offers them.
+    // Forward/curator/keeper/auction surfaces exist on the ManagedRebalanceVault AND the registry
+    // (RegistryRebalanceVault) — both run the rebalance engine + forward queue. For every other vault
+    // type they are structurally absent — gate them off so the FE never offers them.
     const isRebalance = basket.vaultType === "Rebalance";
+    const isRegistry = basket.vaultType === "Registry";
+    const hasRebalanceSurface = isRebalance || isRegistry;
+    // Registry create/redeem are cash-only (forward queue); the in-kind mint/redeem surface is a later
+    // slice, so report it as structurally unsupported for registry (others keep the IRON-RULE path).
+    const inKind: AvailabilityResponse["items"] = isRegistry
+      ? [
+          { action: "redeemInKind", enabled: false, reason: "unsupported-vault-type" },
+          { action: "mint", enabled: false, reason: "unsupported-vault-type" },
+        ]
+      : [
+          { action: "redeemInKind", enabled: true, reason: "ok" }, // IRON RULE: never gated
+          { action: "mint", enabled: !frozen, reason: frozen ? "frozen" : "ok" },
+        ];
 
     const items: AvailabilityResponse["items"] = [
-      { action: "redeemInKind", enabled: true, reason: "ok" }, // IRON RULE: never gated
-      { action: "mint", enabled: !frozen, reason: frozen ? "frozen" : "ok" },
+      ...inKind,
       { action: "deploy", enabled: true, reason: "ok" },
-      ...(isRebalance ? this.rebalanceItems({ frozen, halted, isManager, hasAccount }) : NON_REBALANCE_ITEMS),
+      ...(hasRebalanceSurface ? this.rebalanceItems({ frozen, halted, isManager, hasAccount }) : NON_REBALANCE_ITEMS),
     ];
     return { vaultAddress: vault, account, items };
   }

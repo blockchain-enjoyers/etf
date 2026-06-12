@@ -26,7 +26,12 @@ function svc(overrides: {
   };
   const keeper = { escrowOf: vi.fn(async () => 12n) };
   const chain = {
-    publicClient: { readContract: vi.fn(async () => 5n), simulateContract: vi.fn(async () => ({ result: { price: 0n, safe: false } })) },
+    publicClient: {
+      // holdingsOf multicall: default returns success with 5n so heldTokens balance stays "5".
+      multicall: vi.fn(async () => [{ status: "success", result: 5n }]),
+      readContract: vi.fn(async () => 5n),
+      simulateContract: vi.fn(async () => ({ result: { price: 0n, safe: false } })),
+    },
     account: undefined,
     ...overrides.chain,
   };
@@ -79,12 +84,16 @@ describe("RebalanceService", () => {
       [TB.toLowerCase()]: 1n,
     };
 
+    // holdingsOf multicall returns the skewed balances so the service uses them directly.
+    const multicall = vi.fn(async (call: { contracts: { args: [`0x${string}`] }[] }) => {
+      return call.contracts.map((c) => {
+        const tokenAddr = c.args[0].toLowerCase();
+        return { status: "success" as const, result: balances[tokenAddr] ?? 0n };
+      });
+    });
+
     const readContract = vi.fn(async (call: Record<string, unknown>) => {
       const fn = call.functionName as string;
-      if (fn === "balanceOf") {
-        const tokenAddr = (call.address as string).toLowerCase();
-        return balances[tokenAddr] ?? 0n;
-      }
       if (fn === "decimals") return 18;
       return 0n;
     });
@@ -105,7 +114,7 @@ describe("RebalanceService", () => {
         heldTokens: vi.fn(async () => [TA, TB]),
         totalSupply: vi.fn(async () => 10n),
       },
-      chain: { publicClient: { readContract, simulateContract }, account: undefined },
+      chain: { publicClient: { multicall, readContract, simulateContract }, account: undefined },
       prisma: {
         basket: {
           findUnique: vi.fn(async () => ({
@@ -145,10 +154,16 @@ describe("RebalanceService", () => {
       [TB.toLowerCase()]: 3_000_000n,
     };
 
+    // holdingsOf multicall returns the balances so the service uses them directly.
+    const multicall = vi.fn(async (call: { contracts: { args: [`0x${string}`] }[] }) => {
+      return call.contracts.map((c) => {
+        const tokenAddr = c.args[0].toLowerCase();
+        return { status: "success" as const, result: balances[tokenAddr] ?? 0n };
+      });
+    });
+
     const readContract = vi.fn(async (call: Record<string, unknown>) => {
       const fn = call.functionName as string;
-      const tokenAddr = (call.address as string).toLowerCase();
-      if (fn === "balanceOf") return balances[tokenAddr] ?? 0n;
       if (fn === "decimals") {
         const arg = ((call.args as string[] | undefined)?.[0] ?? call.address) as string;
         return decimalsByToken[arg.toLowerCase()] ?? 18;
@@ -165,7 +180,7 @@ describe("RebalanceService", () => {
         heldTokens: vi.fn(async () => [TA, TB]),
         totalSupply: vi.fn(async () => 10n),
       },
-      chain: { publicClient: { readContract, simulateContract }, account: undefined },
+      chain: { publicClient: { multicall, readContract, simulateContract }, account: undefined },
       prisma: {
         basket: {
           findUnique: vi.fn(async () => ({
@@ -192,16 +207,16 @@ describe("RebalanceService", () => {
 
   it("returns null drift when signer throws (no price snapshot)", async () => {
     const TA = "0x000000000000000000000000000000000000000a" as `0x${string}`;
+    const multicall = vi.fn(async () => [{ status: "success" as const, result: 5n }]);
     const readContract = vi.fn(async (call: Record<string, unknown>) => {
       const fn = call.functionName as string;
-      if (fn === "balanceOf") return 5n;
       if (fn === "decimals") return 18;
       return 0n;
     });
 
     const d = await svc({
       rebVault: { heldTokens: vi.fn(async () => [TA]), totalSupply: vi.fn(async () => 5n) },
-      chain: { publicClient: { readContract, simulateContract: vi.fn() }, account: undefined },
+      chain: { publicClient: { multicall, readContract, simulateContract: vi.fn() }, account: undefined },
       prisma: {
         basket: {
           findUnique: vi.fn(async () => ({

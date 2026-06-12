@@ -16,11 +16,10 @@ Exports one typed ABI constant per exposed contract:
 | `BasketVaultAbi` | `BasketVault` | L1 |
 | `ManagedVaultAbi` | `ManagedVault` | L1 |
 | `CommittedVaultAbi` | `CommittedVault` | L1 |
-| `NAVEngineAbi` | `NAVEngine` | L2 |
-| `OracleRouterAbi` | `OracleRouter` | L2 |
-| `CommitmentNAVAbi` | `CommitmentNAV` | L2 (ABI only — not yet deployed) |
 | `FairValueNAVAbi` | `FairValueNAV` | L4 |
 | `PriceAggregatorAbi` | `PriceAggregator` | L4 |
+
+The full exposed set is defined by the `EXPOSE` list in `scripts/sync-contracts.mjs`; the table above is illustrative, not exhaustive.
 
 ### `src/addresses.ts`
 
@@ -28,7 +27,7 @@ Exports:
 
 - `CHAIN_IDS` — `{ robinhoodChainTestnet: 46630, arbitrumSepolia: 421614 }`
 - `ChainId` — union of the above values
-- `addresses` — `Record<ChainId, Record<string, `0x${string}`>>` — maps `chainId → contractName → address`. `CommitmentNAV` has an ABI but no address entry until deployed.
+- `addresses` — `Record<ChainId, Record<string, `0x${string}`>>` — maps `chainId → contractName → address`. A contract may have an ABI without an address entry until it is deployed.
 
 ## Regenerate
 

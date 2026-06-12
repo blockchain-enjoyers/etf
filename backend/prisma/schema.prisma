@@ -32,6 +32,7 @@ enum VaultType {
   Managed
   Committed
   Rebalance
+  Registry
 }
 
 enum OracleSeverity {
@@ -67,6 +68,16 @@ enum ForwardEventKind {
   PartialFill
 }
 
+enum ActivityKind {
+  Mint
+  Redeem
+  ForwardCreateRequested
+  ForwardRedeemRequested
+  ForwardPartialFill
+  ForwardSettled
+  ForwardCancelled
+}
+
 model Basket {
   vaultAddress          String                 @id
   basketToken           String?
@@ -78,6 +89,7 @@ model Basket {
   vaultType             VaultType              @default(Basket)
   manager               String?
   managerFeeBps         Int?
+  platformFeeBps        Int?
   keeperBps             Int?
   keeperEscrow          String?
   recipeCommitment      String?
@@ -91,6 +103,7 @@ model Basket {
   keeperPayouts         KeeperPayout[]
   forwardTickets        ForwardTicket[]
   forwardEvents         ForwardEvent[]
+  activityEvents        ActivityEvent[]
 }
 
 model Constituent {
@@ -282,4 +295,23 @@ model KeeperPayout {
 
   @@unique([txHash, logIndex])
   @@index([vaultAddress, timestamp(sort: Desc)])
+}
+
+/// Per-account activity feed: in-kind mint/redeem (vault Created/Redeemed) + forward lifecycle,
+/// denormalized for an owner-scoped, time-ordered query. Idempotent on (txHash, logIndex).
+model ActivityEvent {
+  id           String       @id @default(cuid())
+  basket       Basket       @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)
+  owner        String
+  vaultAddress String
+  kind         ActivityKind
+  payload      Json
+  txHash       String
+  logIndex     Int
+  blockNumber  BigInt
+  timestamp    DateTime
+  createdAt    DateTime     @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([owner, timestamp(sort: Desc)])
 }

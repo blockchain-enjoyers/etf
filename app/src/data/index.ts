@@ -8,3 +8,4 @@ export { useRedeemQuote } from "./useRedeemQuote";
 export { useRebalanceDetail } from "./useRebalanceDetail";
 export { useKeeperStatus } from "./useKeeperStatus";
 export { useRebalanceHistory } from "./useRebalanceHistory";
+export { useSuggestedFunds } from "./useSuggestedFunds";

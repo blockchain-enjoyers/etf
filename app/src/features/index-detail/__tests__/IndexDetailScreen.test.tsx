@@ -152,6 +152,22 @@ function renderRebalance() {
   return renderScreen(api);
 }
 
+// A registry vault exposes Trade + a registry-flavoured Liquidity (AP) tab — no Operations/Manage.
+const registryBasketTop: BasketDetail = {
+  ...basket,
+  name: "Registry Fund",
+  symbol: "RGX",
+  vaultType: "registry",
+  cashToken: "0xusdc",
+  constituents: [{ token: "0x1111111111111111111111111111111111111111", unitQty: "500000000000000000", symbol: "AAPL" }],
+  manager: "0xmanager",
+};
+
+function renderRegistry() {
+  const api = { ...makeApi(openNav), getBasket: vi.fn().mockResolvedValue(registryBasketTop) } as unknown as MeridianApi;
+  return renderScreen(api);
+}
+
 describe("IndexDetailScreen — orchestrator", () => {
   beforeEach(() => {
     vi.mocked(useRebalanceDetailMod.useRebalanceDetail).mockReturnValue({ data: undefined } as ReturnType<typeof useRebalanceDetailMod.useRebalanceDetail>);
@@ -192,6 +208,29 @@ describe("IndexDetailScreen — orchestrator", () => {
     for (const name of [/Liquidity/, /Operations/, /Manage/]) {
       expect(within(workspaceTablist as HTMLElement).queryByRole("tab", { name })).not.toBeInTheDocument();
     }
+  });
+
+  it("renders Trade + Liquidity (AP) tabs for a registry vault — no Operations/Manage", async () => {
+    renderRegistry();
+    await waitFor(() => expect(screen.getAllByText("RGX").length).toBeGreaterThan(0));
+    const workspaceTablist = screen.getByRole("tab", { name: /Trade/ }).closest("[role=tablist]");
+    expect(workspaceTablist).not.toBeNull();
+    const tabs = within(workspaceTablist as HTMLElement).getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(within(workspaceTablist as HTMLElement).getByRole("tab", { name: /Liquidity/ })).toBeInTheDocument();
+    for (const name of [/Operations/, /Manage/]) {
+      expect(within(workspaceTablist as HTMLElement).queryByRole("tab", { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it("registry Liquidity tab shows the AP claim-lifecycle workspace (no 'Not available')", async () => {
+    const user = userEvent.setup();
+    renderRegistry();
+    await waitFor(() => expect(screen.getAllByText("RGX").length).toBeGreaterThan(0));
+    await user.click(screen.getByRole("tab", { name: /Liquidity/ }));
+    expect(screen.queryByText(/Not available for this vault type/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /wrap token into claim/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /set operator authorization/i })).toBeInTheDocument();
   });
 
   it("defaults to the Trade workspace (holdings module visible)", async () => {

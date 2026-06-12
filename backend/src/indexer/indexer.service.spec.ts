@@ -26,9 +26,13 @@ function makeReader(): ChainLogReader {
     getManagedBasketCreated: vi.fn(async () => []),
     getCommittedBasketCreated: vi.fn(async () => []),
     getRebalanceBasketCreated: vi.fn(async () => []),
+    getRegistryIndexCreated: vi.fn(async () => []),
     getVaultLifecycleLogs: vi.fn(async () => ({ rebalanced: [], targetChanges: [] })),
+    getRegistryRecipeLogs: vi.fn(async () => []),
+    readRegistryGenesis: vi.fn(async () => []),
     getKeeperPayoutLogs: vi.fn(async () => []),
     getForwardQueueLogs: vi.fn(async () => []),
+    getVaultActivityLogs: vi.fn(async () => []),
   } as unknown as ChainLogReader;
 }
 
@@ -38,10 +42,16 @@ function makeRepo() {
     applyManagedBasketCreated: vi.fn().mockResolvedValue(undefined),
     applyCommittedBasketCreated: vi.fn().mockResolvedValue(undefined),
     applyRebalanceBasketCreated: vi.fn().mockResolvedValue(undefined),
+    applyRegistryIndexCreated: vi.fn().mockResolvedValue(undefined),
     applyRebalanced: vi.fn().mockResolvedValue(undefined),
     applyTargetChange: vi.fn().mockResolvedValue(undefined),
     applyKeeperPayout: vi.fn().mockResolvedValue(undefined),
+    applyActivityEvent: vi.fn().mockResolvedValue(undefined),
+    replaceRegistryConstituents: vi.fn().mockResolvedValue(undefined),
     getRebalanceVaultAddresses: vi.fn(async () => [] as string[]),
+    getRegistryVaultAddresses: vi.fn(async () => [] as string[]),
+    getAllVaultAddresses: vi.fn(async () => [] as string[]),
+    getRegistryVaultsNeedingGenesis: vi.fn(async () => [] as string[]),
     getCheckpoint: vi.fn(async () => 100n),
     setCheckpoint: vi.fn(async () => {}),
   };
@@ -101,6 +111,7 @@ describe("IndexerService", () => {
         creator: "0xc",
         manager: "0xm",
         managerFeeBps: 50,
+        platformFeeBps: 15,
         keeperBps: 1000,
         keeperEscrow: "0xk",
         unitSize: 1000n,
@@ -113,6 +124,29 @@ describe("IndexerService", () => {
     const applyRebalance = vi.spyOn(repo, "applyRebalanceBasketCreated");
     await service.tick();
     expect(applyRebalance).toHaveBeenCalledTimes(1);
+  });
+
+  it("indexes a RegistryIndexCreated event into a Registry basket (empty constituents)", async () => {
+    reader.getRegistryIndexCreated = vi.fn(async () => [
+      {
+        vaultAddress: "0xreg",
+        creator: "0xc",
+        manager: "0xm",
+        managerFeeBps: 50,
+        platformFeeBps: 15,
+        keeperBps: 1000,
+        keeperEscrow: "0xk",
+        unitSize: 1000n,
+        name: "SP500",
+        symbol: "SP5",
+        constituents: [],
+        recipeCommitment: "0xroot",
+      },
+    ]);
+    const applyRegistry = vi.spyOn(repo, "applyRegistryIndexCreated");
+    await service.tick();
+    expect(applyRegistry).toHaveBeenCalledTimes(1);
+    expect(applyRegistry.mock.calls[0]![0]!.constituents).toHaveLength(0);
   });
 
   it("scans vault lifecycle + keeper payouts for known rebalance vaults", async () => {
@@ -144,6 +178,61 @@ describe("IndexerService", () => {
     );
     expect(applyReb).toHaveBeenCalledTimes(1);
   });
+
+  it("writes a registry vault's constituents from a RootScheduled recipe log", async () => {
+    vi.spyOn(repo, "getRegistryVaultAddresses").mockResolvedValue(["0xReg"]);
+    reader.getRegistryRecipeLogs = vi.fn(async () => [
+      {
+        vaultAddress: "0xReg",
+        constituents: [
+          { token: "0xA", unitQty: 11n },
+          { token: "0xB", unitQty: 22n },
+        ],
+      },
+    ]);
+    const replace = vi.spyOn(repo, "replaceRegistryConstituents");
+    await service.tick();
+    expect(reader.getRegistryRecipeLogs).toHaveBeenCalledWith(
+      ["0xReg"],
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0]![0]).toEqual({
+      vaultAddress: "0xReg",
+      constituents: [
+        { token: "0xA", unitQty: 11n },
+        { token: "0xB", unitQty: 22n },
+      ],
+    });
+  });
+
+  it("populates genesis constituents from heldTokens/holdingsOf once a registry vault is bootstrapped", async () => {
+    vi.spyOn(repo, "getRegistryVaultsNeedingGenesis").mockResolvedValue(["0xReg"]);
+    reader.readRegistryGenesis = vi.fn(async () => [
+      { token: "0xA", unitQty: 100n },
+      { token: "0xB", unitQty: 200n },
+    ]);
+    const replace = vi.spyOn(repo, "replaceRegistryConstituents");
+    await service.tick();
+    expect(reader.readRegistryGenesis).toHaveBeenCalledWith("0xReg");
+    expect(replace).toHaveBeenCalledWith({
+      vaultAddress: "0xReg",
+      constituents: [
+        { token: "0xA", unitQty: 100n },
+        { token: "0xB", unitQty: 200n },
+      ],
+    });
+  });
+
+  it("does NOT write constituents when a registry vault's genesis read is empty (unbootstrapped/reverting)", async () => {
+    vi.spyOn(repo, "getRegistryVaultsNeedingGenesis").mockResolvedValue(["0xReg"]);
+    reader.readRegistryGenesis = vi.fn(async () => []);
+    const replace = vi.spyOn(repo, "replaceRegistryConstituents");
+    await service.tick();
+    expect(reader.readRegistryGenesis).toHaveBeenCalledWith("0xReg");
+    expect(replace).not.toHaveBeenCalled();
+  });
 });
 
 it("routes managed + committed creation events to the repository", async () => {
@@ -154,14 +243,20 @@ it("routes managed + committed creation events to the repository", async () => {
     applyManagedBasketCreated: vi.fn().mockResolvedValue(undefined),
     applyCommittedBasketCreated: vi.fn().mockResolvedValue(undefined),
     applyRebalanceBasketCreated: vi.fn().mockResolvedValue(undefined),
+    applyRegistryIndexCreated: vi.fn().mockResolvedValue(undefined),
+    applyActivityEvent: vi.fn().mockResolvedValue(undefined),
+    replaceRegistryConstituents: vi.fn().mockResolvedValue(undefined),
     getRebalanceVaultAddresses: vi.fn().mockResolvedValue([]),
+    getRegistryVaultAddresses: vi.fn().mockResolvedValue([]),
+    getAllVaultAddresses: vi.fn().mockResolvedValue([]),
+    getRegistryVaultsNeedingGenesis: vi.fn().mockResolvedValue([]),
   };
   const reader = {
     isReady: () => true,
     getHeadBlock: vi.fn().mockResolvedValue(10n),
     getBasketCreated: vi.fn().mockResolvedValue([]),
     getManagedBasketCreated: vi.fn().mockResolvedValue([
-      { vaultAddress: "0xm", creator: "0xc", manager: "0xmgr", managerFeeBps: 50,
+      { vaultAddress: "0xm", creator: "0xc", manager: "0xmgr", managerFeeBps: 50, platformFeeBps: 15,
         unitSize: 1n, name: "M", symbol: "M", constituents: [], recipeCommitment: "0x1" },
     ]),
     getCommittedBasketCreated: vi.fn().mockResolvedValue([
@@ -169,9 +264,13 @@ it("routes managed + committed creation events to the repository", async () => {
         constituents: [], recipeCommitment: "0x2" },
     ]),
     getRebalanceBasketCreated: vi.fn().mockResolvedValue([]),
+    getRegistryIndexCreated: vi.fn().mockResolvedValue([]),
     getVaultLifecycleLogs: vi.fn().mockResolvedValue({ rebalanced: [], targetChanges: [] }),
+    getRegistryRecipeLogs: vi.fn().mockResolvedValue([]),
+    readRegistryGenesis: vi.fn().mockResolvedValue([]),
     getKeeperPayoutLogs: vi.fn().mockResolvedValue([]),
     getForwardQueueLogs: vi.fn().mockResolvedValue([]),
+    getVaultActivityLogs: vi.fn().mockResolvedValue([]),
   };
   const config = { get: () => 46630 } as unknown as ConstructorParameters<typeof IndexerService>[0];
   const forwardQueues = { pairs: () => [], queueFor: () => undefined };

@@ -32,7 +32,7 @@ const INPUT_CLASS =
   "border border-line rounded px-2 py-1 font-mono text-xs bg-surface2 text-txt placeholder:text-txt3 focus:outline-none focus:border-cyan";
 const SUBLABEL = "text-[10px] uppercase tracking-wider text-txt3 mb-1";
 
-const EXEC_LABELS = ["Manager-only", "Allowlist", "Permissionless"] as const;
+const EXEC_LABELS = ["Manager-only", "Allowlist"] as const;
 
 function parse18(value: string): bigint {
   try {
@@ -79,15 +79,12 @@ export function AuctionPanel({ vaultAddress, manager }: Props) {
   const isManager = managerGate.enabled;
   const onAllowlist = auction?.openAllow === true;
 
-  // canOpen depends on execMode: permissionless → anyone connected on chain;
-  // manager-only → connected manager; allowlist → connected & on the openAllow list.
+  // canOpen depends on execMode: manager-only → connected manager;
+  // allowlist → connected & on the openAllow list. (Permissionless is contract-disabled.)
   const connectedHere = isConnected && !!address && chainId in addresses;
   let canOpen = false;
   let openReason: GateReason = managerGate.reason;
-  if (execMode === 2) {
-    canOpen = connectedHere;
-    openReason = connectedHere ? "ok" : isConnected ? "wrong-chain" : "wallet-disconnected";
-  } else if (execMode === 1) {
+  if (execMode === 1) {
     canOpen = connectedHere && onAllowlist;
     openReason = !connectedHere
       ? isConnected
@@ -218,7 +215,6 @@ export function AuctionPanel({ vaultAddress, manager }: Props) {
           >
             <option value={0}>Manager-only</option>
             <option value={1}>Allowlist</option>
-            <option value={2}>Permissionless</option>
           </select>
         </div>
       )}

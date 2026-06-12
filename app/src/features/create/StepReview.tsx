@@ -1,7 +1,7 @@
 import { useAccount } from "wagmi";
 import type { DeployPreview } from "@meridian/sdk";
 import type { WizardState, WizardAction } from "./types";
-import { isWeightsMode } from "./types";
+import { isWeightsMode, isManagedRebalance } from "./types";
 import { sortedValidConstituents, constituentsOk, hasDuplicateAddresses, weightSum } from "./reducer";
 import { buildDeployRequest } from "./PreviewRail";
 import { useCapabilities } from "../../capabilities/use-capabilities";
@@ -59,7 +59,7 @@ export function StepReview({ state, onBack, preview, userSalt }: Props) {
     (managerOk && Number(state.managerFeeBps) >= 0 && Number(state.managerFeeBps) <= 200);
 
   const rebalanceOk =
-    state.vaultKind !== "rebalance" ||
+    !isManagedRebalance(state.vaultKind) ||
     (managerOk &&
       Number(state.managerFeeBps) >= 0 &&
       Number(state.managerFeeBps) <= 200 &&
@@ -78,7 +78,8 @@ export function StepReview({ state, onBack, preview, userSalt }: Props) {
   const deployEnabled = allChecks && deployGate.enabled;
   const deploying = deployTx.status === "running";
   const deployed = deployTx.status === "success";
-  const isRebalance = state.vaultKind === "rebalance";
+  // Registry shares the curator (schedule-target) surface, so the post-deploy CTA applies to it too.
+  const isRebalance = isManagedRebalance(state.vaultKind);
 
   const deployStatus =
     deployTx.status === "success"

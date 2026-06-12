@@ -49,4 +49,16 @@ describe("AvailabilityService", () => {
     expect(noAcct.find((i) => i.action === "keeperRecord")!).toMatchObject({ enabled: false, reason: "not-authorized" });
     expect(noAcct.find((i) => i.action === "forwardCreate")!).toMatchObject({ enabled: true, reason: "ok" });
   });
+
+  it("registry vault: forward/curator/keeper SUPPORTED; in-kind mint+redeem unsupported (deferred)", async () => {
+    const items = (await svcWith({ vaultAddress: "0xv", frozen: false, manager: "0xMANAGER", vaultType: "Registry" }).availability("0xv", "0xmanager")).items;
+    // Forward + curator + keeper + auction run the rebalance surface — enabled like a rebalance vault.
+    expect(items.find((i) => i.action === "forwardCreate")!).toMatchObject({ enabled: true, reason: "ok" });
+    expect(items.find((i) => i.action === "forwardRedeem")!).toMatchObject({ enabled: true, reason: "ok" });
+    expect(items.find((i) => i.action === "curatorSchedule")!).toMatchObject({ enabled: true, reason: "ok" });
+    expect(items.find((i) => i.action === "keeperSettle")!).toMatchObject({ enabled: true, reason: "ok" });
+    // In-kind create/redeem are a later slice → structurally unsupported for registry.
+    expect(items.find((i) => i.action === "mint")!).toMatchObject({ enabled: false, reason: "unsupported-vault-type" });
+    expect(items.find((i) => i.action === "redeemInKind")!).toMatchObject({ enabled: false, reason: "unsupported-vault-type" });
+  });
 });

@@ -45,6 +45,7 @@ describe("severity + vault-type wire mapping", () => {
     expect(vaultTypeToWire("Managed")).toBe("managed");
     expect(vaultTypeToWire("Committed")).toBe("committed");
     expect(vaultTypeToWire("Rebalance")).toBe("rebalance");
+    expect(vaultTypeToWire("Registry")).toBe("registry");
   });
   it("throws on unknown inputs", () => {
     expect(() => severityToWire("Nope")).toThrow();

@@ -21,6 +21,7 @@ const VAULT_TYPE_LABEL: Record<string, string> = {
   managed: "Managed",
   committed: "Committed",
   rebalance: "Rebalance",
+  registry: "Registry",
 };
 
 interface MergedRow {

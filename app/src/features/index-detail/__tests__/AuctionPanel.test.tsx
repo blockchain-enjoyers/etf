@@ -106,12 +106,6 @@ describe("AuctionPanel — execMode label", () => {
     expect(screen.getByTestId("auction-exec-mode").textContent).toMatch(/allowlist/i);
   });
 
-  it("renders Permissionless label for execMode 2", () => {
-    setAuction({ execMode: 2 });
-    render(<AuctionPanel vaultAddress={VAULT} manager={MANAGER} />, { wrapper: makeWrapper() });
-    expect(screen.getByTestId("auction-exec-mode").textContent).toMatch(/permissionless/i);
-  });
-
   it("renders an em dash when the auction is not deployed", () => {
     setAuction({ deployed: false });
     render(<AuctionPanel vaultAddress={VAULT} manager={MANAGER} />, { wrapper: makeWrapper() });
@@ -223,7 +217,7 @@ describe("AuctionPanel — gate", () => {
 describe("AuctionPanel — bid section", () => {
   it("disables Bid until all entered acquire tokens are filled in", () => {
     // one live acquire amount, token not yet entered
-    setAuction({ execMode: 2, acquireIn: ["123"] });
+    setAuction({ execMode: 1, acquireIn: ["123"] });
     render(<AuctionPanel vaultAddress={VAULT} manager={MANAGER} />, { wrapper: makeWrapper() });
     expect(screen.getByRole("button", { name: /^bid$/i })).toBeDisabled();
   });
@@ -231,7 +225,7 @@ describe("AuctionPanel — bid section", () => {
   it("seeds the bid executor with the entered acquire tokens and runs buildAuctionBidTx", async () => {
     const user = userEvent.setup();
     const TOKEN = "0xcccccccccccccccccccccccccccccccccccccccc";
-    setAuction({ execMode: 2, acquireIn: ["123"] });
+    setAuction({ execMode: 1, acquireIn: ["123"] });
     render(<AuctionPanel vaultAddress={VAULT} manager={MANAGER} />, { wrapper: makeWrapper() });
 
     await user.type(screen.getByRole("textbox", { name: /bid acquire token 1/i }), TOKEN);
@@ -266,15 +260,15 @@ describe("AuctionPanel — manager execMode control", () => {
     const select = screen.getByRole("combobox", { name: /execution mode/i });
     expect(select).toBeInTheDocument();
 
-    await user.selectOptions(select, "2");
+    await user.selectOptions(select, "1");
     expect(mockRun).toHaveBeenCalledOnce();
     const [fetcher] = mockRun.mock.calls[0]!;
     fetcher();
-    expect(api.buildAuctionSetExecModeTx).toHaveBeenCalledWith(VAULT, { mode: 2, account: MANAGER });
+    expect(api.buildAuctionSetExecModeTx).toHaveBeenCalledWith(VAULT, { mode: 1, account: MANAGER });
   });
 
   it("hides execMode selector from non-managers", () => {
-    setAuction({ execMode: 2 });
+    setAuction({ execMode: 1 });
     connectedAddress = OTHER;
     vi.mocked(useAccount).mockReturnValue({ address: OTHER, isConnected: true } as unknown as ReturnType<typeof useAccount>);
     render(<AuctionPanel vaultAddress={VAULT} manager={MANAGER} />, { wrapper: makeWrapper() });

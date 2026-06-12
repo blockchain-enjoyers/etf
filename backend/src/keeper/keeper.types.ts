@@ -1,6 +1,5 @@
 /** pg-boss queue names for keeper jobs (producer role only). */
 export const KEEPER_JOBS = {
-  attestationPush: "attestation-push",
   rebalance: "rebalance",
   settle: "settle",
   forwardRecord: "forward-record",
@@ -8,11 +7,6 @@ export const KEEPER_JOBS = {
 } as const;
 
 export type KeeperJobName = (typeof KEEPER_JOBS)[keyof typeof KEEPER_JOBS];
-
-export interface AttestationPushPayload {
-  vaultAddress: `0x${string}`;
-  attestationId: string;
-}
 
 export interface RebalancePayload {
   vaultAddress: `0x${string}`;

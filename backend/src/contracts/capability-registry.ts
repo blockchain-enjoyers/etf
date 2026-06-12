@@ -14,6 +14,8 @@ export type Capability =
   | "UniversalSignedSource"
   | "UniversalSignedSourceWeekend"
   | "ManagedRebalanceVault"
+  | "RegistryRebalanceVault"
+  | "RegistryCustody"
   | "KeeperModule"
   | "RebalanceAuction"
   | "RebalanceObserver"
@@ -35,6 +37,8 @@ const ALL_CAPABILITIES: readonly Capability[] = [
   "UniversalSignedSource",
   "UniversalSignedSourceWeekend",
   "ManagedRebalanceVault",
+  "RegistryRebalanceVault",
+  "RegistryCustody",
   "KeeperModule",
   "RebalanceAuction",
   "RebalanceObserver",

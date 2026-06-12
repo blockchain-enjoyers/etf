@@ -18,11 +18,12 @@ function makeService(opts: {
   const repo = {} as never;
   const forwardQueues = { queueFor: vi.fn(() => opts.queue) };
   const rebVault = { heldTokens: vi.fn(async () => ["0xt1"]), totalSupply: vi.fn(async () => 1n) };
-  const forward = {} as never;
+  // readTwap resolves the vault's observer off its queue (queue.observer()) before consulting.
+  const forward = { observer: vi.fn(async () => "0xobs" as `0x${string}`) } as never;
   const chain = {
     publicClient: {
-      readContract: vi.fn(async () => {
-        if (opts.gate && "ok" in opts.gate && opts.gate.ok) return opts.gate.navPerShare;
+      simulateContract: vi.fn(async () => {
+        if (opts.gate && "ok" in opts.gate && opts.gate.ok) return { result: opts.gate.navPerShare };
         throw (opts.gate as { err: Error }).err;
       }),
     },

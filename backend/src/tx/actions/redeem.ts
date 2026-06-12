@@ -2,7 +2,7 @@ import { encodeFunctionData } from "viem";
 import { BasketVaultAbi, CommittedVaultAbi } from "@meridian/contracts";
 import type { ActionResult, BuiltStep } from "../action-registry.js";
 
-type VaultType = "Basket" | "Managed" | "Committed" | "Rebalance";
+type VaultType = "Basket" | "Managed" | "Committed" | "Rebalance" | "Registry";
 
 interface BasketRow {
   vaultAddress: string;
@@ -22,6 +22,7 @@ const VAULT_LABEL: Record<VaultType, string> = {
   Managed: "ManagedVault",
   Committed: "CommittedVault",
   Rebalance: "ManagedRebalanceVault",
+  Registry: "RegistryRebalanceVault",
 };
 
 export async function buildRedeem(

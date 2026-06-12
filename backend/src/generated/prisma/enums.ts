@@ -37,7 +37,8 @@ export const VaultType = {
   Basket: 'Basket',
   Managed: 'Managed',
   Committed: 'Committed',
-  Rebalance: 'Rebalance'
+  Rebalance: 'Rebalance',
+  Registry: 'Registry'
 } as const
 
 export type VaultType = (typeof VaultType)[keyof typeof VaultType]
@@ -89,6 +90,19 @@ export const ForwardEventKind = {
 } as const
 
 export type ForwardEventKind = (typeof ForwardEventKind)[keyof typeof ForwardEventKind]
+
+
+export const ActivityKind = {
+  Mint: 'Mint',
+  Redeem: 'Redeem',
+  ForwardCreateRequested: 'ForwardCreateRequested',
+  ForwardRedeemRequested: 'ForwardRedeemRequested',
+  ForwardPartialFill: 'ForwardPartialFill',
+  ForwardSettled: 'ForwardSettled',
+  ForwardCancelled: 'ForwardCancelled'
+} as const
+
+export type ActivityKind = (typeof ActivityKind)[keyof typeof ActivityKind]
 
 
 export const QueueStatus = {

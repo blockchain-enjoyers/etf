@@ -49,6 +49,7 @@ const SEVERITY_VENUE: Record<string, WireMarketStatus> = {
 };
 const VAULT_TYPE_WIRE: Record<string, WireVaultType> = {
   Basket: "basket", Managed: "managed", Committed: "committed", Rebalance: "rebalance",
+  Registry: "registry",
 };
 
 export function severityToWire(s: string): WireOracleSeverity {

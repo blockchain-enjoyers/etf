@@ -34,7 +34,7 @@ describe("buildAuctionSetExecMode", () => {
   it("encodes setExecMode(vault, mode) targeting the auction with no approvals", () => {
     const deps = makeDeps({ addr: AUCTION });
 
-    const result = buildAuctionSetExecMode(deps, VAULT, { mode: 2 });
+    const result = buildAuctionSetExecMode(deps, VAULT, { mode: 1 });
 
     expect(result.steps).toHaveLength(1);
     const call = result.steps[0] as Call;
@@ -46,21 +46,26 @@ describe("buildAuctionSetExecMode", () => {
     const expected = encodeFunctionData({
       abi: RebalanceAuctionAbi,
       functionName: "setExecMode",
-      args: [VAULT as `0x${string}`, 2],
+      args: [VAULT as `0x${string}`, 1],
     });
     expect(call.data).toBe(expected);
     // 0x + 4-byte selector + 2 * 32-byte words (vault, mode) = 2 + 8 + 128 = 138 chars.
     expect(call.data).toHaveLength(138);
   });
 
-  it("encodes each ExecMode enum value distinctly", () => {
+  it("encodes each settable ExecMode value distinctly", () => {
     const deps = makeDeps({ addr: AUCTION });
-    for (const mode of [0, 1, 2]) {
+    for (const mode of [0, 1]) {
       const call = buildAuctionSetExecMode(deps, VAULT, { mode }).steps[0] as Call;
       expect(call.data).toBe(
         encodeFunctionData({ abi: RebalanceAuctionAbi, functionName: "setExecMode", args: [VAULT as `0x${string}`, mode] }),
       );
     }
+  });
+
+  it("rejects PERMISSIONLESS (mode 2 — contract-disabled) before building a reverting tx", () => {
+    const deps = makeDeps({ addr: AUCTION });
+    expect(() => buildAuctionSetExecMode(deps, VAULT, { mode: 2 })).toThrow(/invalid auction exec mode/);
   });
 
   it("throws not-deployed when RebalanceAuction is unregistered", () => {

@@ -71,4 +71,40 @@ export class ManagedRebalanceVaultReader {
       functionName: "targetEffectiveAt",
     });
   }
+
+  async holdingsOf(vault: `0x${string}`, token: `0x${string}`): Promise<bigint> {
+    return this.chain.publicClient.readContract({
+      address: vault,
+      abi: ManagedRebalanceVaultAbi,
+      functionName: "holdingsOf",
+      args: [token],
+    }) as Promise<bigint>;
+  }
+
+  /** Fixed USDG fee FeeCore.create() pulls at settle on a registry vault (0 on the no-op fee seam). */
+  async flatCreateFee(vault: `0x${string}`): Promise<bigint> {
+    return this.chain.publicClient.readContract({
+      address: vault,
+      abi: ManagedRebalanceVaultAbi,
+      functionName: "flatCreateFee",
+    }) as Promise<bigint>;
+  }
+
+  /** Fixed USDG fee deducted from redeem proceeds at settle on a registry vault. */
+  async flatRedeemFee(vault: `0x${string}`): Promise<bigint> {
+    return this.chain.publicClient.readContract({
+      address: vault,
+      abi: ManagedRebalanceVaultAbi,
+      functionName: "flatRedeemFee",
+    }) as Promise<bigint>;
+  }
+
+  /** The USDG fee token the flat create/redeem fees are denominated in. */
+  async feeToken(vault: `0x${string}`): Promise<`0x${string}`> {
+    return this.chain.publicClient.readContract({
+      address: vault,
+      abi: ManagedRebalanceVaultAbi,
+      functionName: "feeToken",
+    });
+  }
 }

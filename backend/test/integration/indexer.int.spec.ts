@@ -25,8 +25,12 @@ const fakeReader: ChainLogReader = {
   getManagedBasketCreated: async () => [],
   getCommittedBasketCreated: async () => [],
   getRebalanceBasketCreated: async () => [],
+  getRegistryIndexCreated: async () => [],
   getVaultLifecycleLogs: async () => ({ rebalanced: [], targetChanges: [] }),
+  getRegistryRecipeLogs: async () => [],
+  readRegistryGenesis: async () => [],
   getKeeperPayoutLogs: async () => [],
+  getForwardQueueLogs: async () => [],
 };
 
 describe("IndexerService (integration)", () => {

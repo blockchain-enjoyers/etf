@@ -257,6 +257,23 @@ describe("MeridianClient new methods", () => {
     expect(p.chainId).toBe(46630);
   });
 
+  it("getSuggestedFunds hits /catalog/suggested-funds and parses the response", async () => {
+    stubFetch(200, {
+      funds: [
+        {
+          id: "sp500", name: "S&P 500", category: "broad market", recommendedVaultKind: "registry",
+          description: "SPY.", sampleHoldings: [{ symbol: "NVDA", weightBps: 842, address: "0xNVDA" }],
+          holdingsCount: 442, resolvableTokens: [],
+        },
+      ],
+    });
+    const r = await makeClient().getSuggestedFunds();
+    expect(r.funds[0]!.id).toBe("sp500");
+    expect(r.funds[0]!.recommendedVaultKind).toBe("registry");
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/catalog/suggested-funds`);
+  });
+
   it("previewDeploy POSTs to /tx/preview-deploy and parses the response", async () => {
     stubFetch(200, {
       unitQty: ["50000000000000000000"],

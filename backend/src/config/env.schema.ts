@@ -13,6 +13,15 @@ export const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   BOOTSTRAP_BASKET_ID: z.string().optional(),
 
+  // --- Suggested-funds catalog (create-flow recommender) ---
+  // Path to the tools/registry artifact. Optional: resolved against a set of repo-relative candidates
+  // when unset, so it works from both src (dev/test) and dist/ (prod).
+  SUGGESTED_FUNDS_PATH: z.string().optional(),
+  // JSON array of lowercased token addresses that actually exist on the target chain. A catalog
+  // constituent is "resolvable" (→ wizard pre-fill) only if its address is in this set. Empty on
+  // testnet (only ~5 demo tokens), so funds are reference-only there.
+  SUGGESTED_FUNDS_TOKENS: z.string().default("[]"),
+
   // --- Chain (Plan B) ---
   MULTICALL3_ADDRESS: z
     .string()
@@ -36,10 +45,7 @@ export const envSchema = z.object({
   SIGNAL_MAX_DIVERGENCE_BPS: z.coerce.number().int().positive().default(100),
   FV_MAX_DRIFT_BPS: z.coerce.number().int().nonnegative().default(50),
 
-  // --- FairValue (Plan D) ---
-  FAIRVALUE_SIGNER_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
-  FAIRVALUE_VERIFYING_CONTRACT: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
-  FAIRVALUE_MAX_AGE_SECONDS: z.coerce.number().int().positive().default(86_400),
+  // --- Keeper ---
   KEEPER_ENABLED: z
     .enum(["true", "false"])
     .default("false")
@@ -51,6 +57,13 @@ export const envSchema = z.object({
     .transform((v) => v === "true"),
 
   NAV_SOURCE: z.enum(["onchain", "offchain"]).default("offchain"),
+
+  // Testnet demo only: force the weekday price leg live so Open (non-estimated) NAV + forward settle
+  // are verifiable outside US market hours. Default false ⇒ honest wall-clock gating (iron rule).
+  MARKET_FORCE_OPEN: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // JSON map { "<vaultAddress>": "<forwardQueueAddress>" }. Empty until L5 is deployed.
   FORWARD_QUEUES: z.string().default("{}"),

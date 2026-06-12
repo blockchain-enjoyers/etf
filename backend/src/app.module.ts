@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule, seconds } from "@nestjs/throttler";
 import { ZodValidationPipe } from "nestjs-zod";
 import { OpenTelemetryModule } from "nestjs-otel";
 import { ApiModule } from "./api/api.module.js";
+import { CatalogModule } from "./catalog/catalog.module.js";
 import { ConfigModule } from "./config/config.module.js";
 import { DemoModule } from "./demo/demo.module.js";
 import { HealthModule } from "./health/health.module.js";
@@ -12,7 +13,6 @@ import { JobsModule } from "./jobs/jobs.module.js";
 import { AppLoggerModule } from "./observability/logger.module.js";
 import { PersistenceModule } from "./persistence/persistence.module.js";
 import { StreamModule } from "./stream/stream.module.js";
-import { FairValueModule } from "./fairvalue/fair-value.module.js";
 import { KeeperModule } from "./keeper/keeper.module.js";
 import { TxModule } from "./tx/tx.module.js";
 
@@ -31,8 +31,8 @@ import { TxModule } from "./tx/tx.module.js";
     ApiModule,
     TxModule,
     DemoModule,
+    CatalogModule,
     // v2
-    FairValueModule,
     KeeperModule,
   ],
   providers: [

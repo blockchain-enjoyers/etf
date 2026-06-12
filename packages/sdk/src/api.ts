@@ -18,12 +18,14 @@ import type {
   ForwardHistory,
   HoldingsResponse,
   AccountHoldingsResponse,
+  ActivityEvent,
   AvailabilityResponse,
   MintQuoteResponse,
   TxPlan,
   AuctionStatus,
   PreviewDeployRequest,
   DeployPreview,
+  SuggestedFundsResponse,
 } from "./dto.js";
 
 export interface MeridianApi {
@@ -44,12 +46,21 @@ export interface MeridianApi {
   getForwardHistory(vaultAddress: string): Promise<ForwardHistory>;
   getHoldings(vaultAddress: string): Promise<HoldingsResponse>;
   getAccountHoldings(account: string): Promise<AccountHoldingsResponse>;
+  getAccountForwardTickets(account: string): Promise<ForwardTicket[]>;
+  getAccountActivity(account: string): Promise<ActivityEvent[]>;
   getAvailability(vaultAddress: string, account?: string): Promise<AvailabilityResponse>;
   getMintQuote(vaultAddress: string, req: { units: string; account?: string; mode?: "permit" | "approve" }): Promise<MintQuoteResponse>;
   buildMintTx(vaultAddress: string, req: { units: string; account: string; mode?: "permit" | "approve" }): Promise<TxPlan>;
   finalizeMintTx(vaultAddress: string, req: { units: string; account: string; permits: unknown[] }): Promise<TxPlan>;
   buildRedeemTx(vaultAddress: string, req: { amount: string; account: string }): Promise<TxPlan>;
   buildDeployTx(req: Record<string, unknown>): Promise<TxPlan>;
+  buildWrapTx(vaultAddress: string, req: { token: string; amount: string; account: string }): Promise<TxPlan>;
+  buildBatchWrapTx(vaultAddress: string, req: { tokens: string[]; amounts: string[]; account: string }): Promise<TxPlan>;
+  buildUnwrapTx(vaultAddress: string, req: { token: string; amount: string; to: string; account: string }): Promise<TxPlan>;
+  buildSetOperatorTx(vaultAddress: string, req: { operator: string; approved: boolean; account: string }): Promise<TxPlan>;
+  buildBootstrapTx(vaultAddress: string, req: { tokens: string[]; unitQty: string[]; unitSize: string; nShares?: string; account: string }): Promise<TxPlan>;
+  buildRegistryCreateTx(vaultAddress: string, req: { nShares: string; account: string }): Promise<TxPlan>;
+  buildRegistryRedeemTx(vaultAddress: string, req: { amount: string; withUnwrap?: boolean; account: string }): Promise<TxPlan>;
   previewDeploy(req: PreviewDeployRequest): Promise<DeployPreview>;
   buildForwardCreateTx(vaultAddress: string, req: { cash: string; account: string }): Promise<TxPlan>;
   buildForwardRedeemTx(vaultAddress: string, req: { shares: string; account: string }): Promise<TxPlan>;
@@ -73,4 +84,5 @@ export interface MeridianApi {
   ): Promise<TxPlan>;
   buildAuctionSetExecModeTx(vaultAddress: string, req: { mode: number; account: string }): Promise<TxPlan>;
   getAuctionStatus(vaultAddress: string, account?: string): Promise<AuctionStatus>;
+  getSuggestedFunds(): Promise<SuggestedFundsResponse>;
 }

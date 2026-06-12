@@ -25,4 +25,15 @@ describe("ManagedRebalanceVaultReader", () => {
     expect(await r.keeperEscrow("0xv")).toBe("0xkeeper");
     expect(await r.targetEffectiveAt("0xv")).toBe(1717000000n);
   });
+
+  it("reads flatCreateFee / flatRedeemFee / feeToken (registry forward fees)", async () => {
+    const r = readerWith({
+      flatCreateFee: 5_000_000n,
+      flatRedeemFee: 3_000_000n,
+      feeToken: "0xusdg",
+    });
+    expect(await r.flatCreateFee("0xv")).toBe(5_000_000n);
+    expect(await r.flatRedeemFee("0xv")).toBe(3_000_000n);
+    expect(await r.feeToken("0xv")).toBe("0xusdg");
+  });
 });

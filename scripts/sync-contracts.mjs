@@ -33,11 +33,15 @@ const EXPOSE = [
   { name: "ForwardCashQueue", sol: "contracts/L5/ForwardCashQueue.sol" },
   { name: "BasketNavObserver", sol: "contracts/L5/BasketNavObserver.sol" },
   { name: "MockAPFiller", sol: "contracts/mock/MockAPFiller.sol" },
+  { name: "RegistryRebalanceVault", sol: "contracts/L3/RegistryRebalanceVault.sol" },
+  { name: "RegistryCustody", sol: "contracts/L1/recipe/RegistryCustody.sol" },
 ];
 
 // Names that appear in deployment config as distinct keys but share an existing ABI (no artifact loaded).
 // These carry only an address entry in addresses.ts — no *Abi export.
-const ADDRESS_ONLY = ["UniversalSignedSourceWeekend", "MockVerifierProxy"];
+// USDG is the fund-creation / flat-fee token: it must land in addresses.ts so the FE tx-guard
+// allowlist accepts the approve(USDG → factory/vault) fee step (deploy.ts / mint.ts).
+const ADDRESS_ONLY = ["UniversalSignedSourceWeekend", "MockVerifierProxy", "USDG"];
 
 // Locked chain ids (kept in sync with addresses.ts CHAIN_IDS).
 const CHAIN_IDS = { robinhoodChainTestnet: 46630, arbitrumSepolia: 421614 };

@@ -396,7 +396,8 @@ export const ModelName = {
   TargetChange: 'TargetChange',
   ForwardTicket: 'ForwardTicket',
   ForwardEvent: 'ForwardEvent',
-  KeeperPayout: 'KeeperPayout'
+  KeeperPayout: 'KeeperPayout',
+  ActivityEvent: 'ActivityEvent'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -412,7 +413,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "basket" | "constituent" | "navSnapshot" | "priceSnapshot" | "tokenMetadata" | "indexerCheckpoint" | "queueEntry" | "fairValueAttestation" | "rebalanceEvent" | "targetChange" | "forwardTicket" | "forwardEvent" | "keeperPayout"
+    modelProps: "basket" | "constituent" | "navSnapshot" | "priceSnapshot" | "tokenMetadata" | "indexerCheckpoint" | "queueEntry" | "fairValueAttestation" | "rebalanceEvent" | "targetChange" | "forwardTicket" | "forwardEvent" | "keeperPayout" | "activityEvent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1378,6 +1379,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ActivityEvent: {
+      payload: Prisma.$ActivityEventPayload<ExtArgs>
+      fields: Prisma.ActivityEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ActivityEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ActivityEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>
+        }
+        findFirst: {
+          args: Prisma.ActivityEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ActivityEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>
+        }
+        findMany: {
+          args: Prisma.ActivityEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>[]
+        }
+        create: {
+          args: Prisma.ActivityEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>
+        }
+        createMany: {
+          args: Prisma.ActivityEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ActivityEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>[]
+        }
+        delete: {
+          args: Prisma.ActivityEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>
+        }
+        update: {
+          args: Prisma.ActivityEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.ActivityEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ActivityEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ActivityEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.ActivityEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ActivityEventPayload>
+        }
+        aggregate: {
+          args: Prisma.ActivityEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateActivityEvent>
+        }
+        groupBy: {
+          args: Prisma.ActivityEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ActivityEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ActivityEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ActivityEventCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1428,6 +1503,7 @@ export const BasketScalarFieldEnum = {
   vaultType: 'vaultType',
   manager: 'manager',
   managerFeeBps: 'managerFeeBps',
+  platformFeeBps: 'platformFeeBps',
   keeperBps: 'keeperBps',
   keeperEscrow: 'keeperEscrow',
   recipeCommitment: 'recipeCommitment',
@@ -1615,6 +1691,22 @@ export const KeeperPayoutScalarFieldEnum = {
 } as const
 
 export type KeeperPayoutScalarFieldEnum = (typeof KeeperPayoutScalarFieldEnum)[keyof typeof KeeperPayoutScalarFieldEnum]
+
+
+export const ActivityEventScalarFieldEnum = {
+  id: 'id',
+  owner: 'owner',
+  vaultAddress: 'vaultAddress',
+  kind: 'kind',
+  payload: 'payload',
+  txHash: 'txHash',
+  logIndex: 'logIndex',
+  blockNumber: 'blockNumber',
+  timestamp: 'timestamp',
+  createdAt: 'createdAt'
+} as const
+
+export type ActivityEventScalarFieldEnum = (typeof ActivityEventScalarFieldEnum)[keyof typeof ActivityEventScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1881,6 +1973,20 @@ export type ListEnumForwardEventKindFieldRefInput<$PrismaModel> = FieldRefInputT
 
 
 /**
+ * Reference to a field of type 'ActivityKind'
+ */
+export type EnumActivityKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ActivityKind'>
+    
+
+
+/**
+ * Reference to a field of type 'ActivityKind[]'
+ */
+export type ListEnumActivityKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ActivityKind[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -2016,6 +2122,7 @@ export type GlobalOmitConfig = {
   forwardTicket?: Prisma.ForwardTicketOmit
   forwardEvent?: Prisma.ForwardEventOmit
   keeperPayout?: Prisma.KeeperPayoutOmit
+  activityEvent?: Prisma.ActivityEventOmit
 }
 
 /* Types for Logging */

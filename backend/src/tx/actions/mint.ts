@@ -1,5 +1,11 @@
-import { encodeFunctionData } from "viem";
-import { BasketVaultAbi, CommittedVaultAbi, ManagedRebalanceVaultAbi } from "@meridian/contracts";
+import { encodeFunctionData, zeroAddress } from "viem";
+import {
+  BasketVaultAbi,
+  CommittedVaultAbi,
+  ManagedRebalanceVaultAbi,
+  ManagedVaultAbi,
+  RegistryRebalanceVaultAbi,
+} from "@meridian/contracts";
 import type { MintQuoteResponse } from "@meridian/sdk";
 import type { ActionResult, BuiltStep, SignStep } from "../action-registry.js";
 import { buildApprovalSteps } from "./approvals.js";
@@ -25,7 +31,7 @@ const PERMIT_ABI = [
 
 const PERMIT_DEADLINE_SECONDS = 3600n; // use-create-permits.ts: deadline = now + 3600s.
 
-type VaultType = "Basket" | "Managed" | "Committed" | "Rebalance";
+type VaultType = "Basket" | "Managed" | "Committed" | "Rebalance" | "Registry";
 
 interface BasketRow {
   vaultAddress: string;
@@ -74,6 +80,43 @@ async function loadBasket(deps: MintDeps, vault: string): Promise<BasketRow> {
   return basket;
 }
 
+interface FeeQuote {
+  feeToken: `0x${string}`;
+  flatCreateFee: bigint;
+}
+
+// FeeCore-bearing vault types expose feeToken()/flatCreateFee(); the fee getters are identical
+// across all three ABIs. Basket/Committed have a no-op fee seam (no getters) → fee 0, no read.
+const FEE_BEARING_ABI: Partial<Record<VaultType, typeof ManagedVaultAbi>> = {
+  Managed: ManagedVaultAbi,
+  Rebalance: ManagedRebalanceVaultAbi as unknown as typeof ManagedVaultAbi,
+  Registry: RegistryRebalanceVaultAbi as unknown as typeof ManagedVaultAbi,
+};
+
+// FeeCore.create() pulls a fixed flatCreateFee in feeToken (USDG) from the minter. Read it so the
+// caller can prepend the matching approve; without it the mint reverts when flatCreateFee > 0.
+async function readFlatCreateFee(deps: MintDeps, vault: string, vaultType: VaultType): Promise<FeeQuote> {
+  const abi = FEE_BEARING_ABI[vaultType];
+  if (!abi) return { feeToken: zeroAddress, flatCreateFee: 0n };
+  // A pre-flat-fee deployment lacks these getters; a revert means "no fee", not a hard error.
+  try {
+    const [feeToken, flatCreateFee] = await Promise.all([
+      deps.publicClient.readContract({ address: vault as `0x${string}`, abi, functionName: "feeToken" }) as Promise<`0x${string}`>,
+      deps.publicClient.readContract({ address: vault as `0x${string}`, abi, functionName: "flatCreateFee" }) as Promise<bigint>,
+    ]);
+    return { feeToken, flatCreateFee };
+  } catch {
+    return { feeToken: zeroAddress, flatCreateFee: 0n };
+  }
+}
+
+// The USDG fee approval prepended ahead of constituent approvals/permits. USDG is not permit-routed,
+// so even the permit path pulls the fee via a plain approve. Empty when there's no fee.
+async function feeApprovalSteps(deps: MintDeps, account: string, vault: string, fee: FeeQuote): Promise<BuiltStep[]> {
+  if (fee.flatCreateFee <= 0n) return [];
+  return buildApprovalSteps(deps, account, vault, [{ token: fee.feeToken, amount: fee.flatCreateFee }], "fee");
+}
+
 // The on-chain pull amounts (the deposit set).
 // non-share-based (OrderRail.tsx:68-71): required_i = constituent.unitQty * units.
 // share-based (OrderRail.tsx:77-94): previewCreate(createArg) returns wei-exact [tokens, amounts].
@@ -115,6 +158,7 @@ const VAULT_LABEL: Record<VaultType, string> = {
   Managed: "ManagedVault",
   Committed: "CommittedVault",
   Rebalance: "ManagedRebalanceVault",
+  Registry: "RegistryRebalanceVault",
 };
 
 export async function quoteMint(
@@ -143,11 +187,31 @@ export async function quoteMint(
   const estTotal = quoteDeposits.reduce((s, d) => s + BigInt(d.valueUsd), 0n);
   const unitsOut = createArgFor(basket, unitsBn);
 
+  const fee = await readFlatCreateFee(deps, vault, basket.vaultType);
+  const feeField = fee.flatCreateFee > 0n ? await quoteFee(deps, fee) : undefined;
+
   return {
     unitsOut: unitsOut.toString(),
     deposits: quoteDeposits,
     estTotalUsd: estTotal.toString(),
     gate: { gated: false, reason: "none" },
+    ...(feeField ? { fee: feeField } : {}),
+  };
+}
+
+// Surface the USDG flatCreateFee in the quote. valueUsd treats USDG as $1 (amount / 10^decimals),
+// scaled to the canonical 18-dec USD string so the FE can fold it into the order total.
+async function quoteFee(deps: MintDeps, fee: FeeQuote): Promise<MintQuoteResponse["fee"]> {
+  const meta = (await deps.meta.getMany([fee.feeToken]))[fee.feeToken.toLowerCase()] ?? {
+    symbol: fee.feeToken.slice(0, 6),
+    decimals: 18,
+  };
+  const valueUsd = (fee.flatCreateFee * 10n ** 18n) / 10n ** BigInt(meta.decimals);
+  return {
+    token: fee.feeToken,
+    symbol: meta.symbol,
+    amount: fee.flatCreateFee.toString(),
+    valueUsd: valueUsd.toString(),
   };
 }
 
@@ -160,6 +224,9 @@ export async function buildMint(
   const unitsBn = BigInt(units);
   const deposits = await computeDeposits(deps, basket, unitsBn);
   const createArg = createArgFor(basket, unitsBn);
+
+  const fee = await readFlatCreateFee(deps, vault, basket.vaultType);
+  const feeApproval = await feeApprovalSteps(deps, account, vault, fee);
 
   const approvals = await buildApprovalSteps(
     deps,
@@ -180,7 +247,7 @@ export async function buildMint(
     needsPriorApproval: true,
   };
 
-  return { steps: [...approvals, call], finalize: null };
+  return { steps: [...feeApproval, ...approvals, call], finalize: null };
 }
 
 function permitDeadline(deps: MintDeps): bigint {
@@ -201,6 +268,10 @@ export async function buildMintPermit(
   // Permit path is non-share-based, so deposits = recipe pulls and createArg = units.
   const deposits = await computeDeposits(deps, basket, unitsBn);
   const deadline = permitDeadline(deps);
+
+  // USDG is not permit-routed; pull the flatCreateFee via a plain approve ahead of the permits.
+  const fee = await readFlatCreateFee(deps, vault, basket.vaultType);
+  const feeApproval = await feeApprovalSteps(deps, account, vault, fee);
 
   const meta = await deps.meta.getMany(deposits.map((d) => d.token));
   const steps: SignStep[] = await Promise.all(
@@ -236,7 +307,7 @@ export async function buildMintPermit(
     }),
   );
 
-  return { steps, finalize: { path: `/baskets/${vault}/tx/mint/finalize` } };
+  return { steps: [...feeApproval, ...steps], finalize: { path: `/baskets/${vault}/tx/mint/finalize` } };
 }
 
 interface PermitPost {

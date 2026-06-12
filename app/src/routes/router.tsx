@@ -3,7 +3,7 @@ import { AppShell } from "./app-shell";
 import { ExploreScreen } from "../features/explore/ExploreScreen";
 import { IndexDetailScreen } from "../features/index-detail/IndexDetailScreen";
 import { PortfolioRoute } from "../features/portfolio/PortfolioScreen";
-import { ActivityScreen } from "../features/activity/ActivityScreen";
+import { ActivityRoute } from "../features/activity/ActivityScreen";
 import { CreateWizard } from "../features/create/CreateWizard";
 import { ErrorState } from "../components/ErrorState";
 
@@ -17,7 +17,7 @@ export const router = createBrowserRouter([
       { path: "explore", element: <ExploreScreen /> },
       { path: "index/:vaultAddress", element: <IndexDetailScreen /> },
       { path: "portfolio", element: <PortfolioRoute /> },
-      { path: "activity", element: <ActivityScreen /> },
+      { path: "activity", element: <ActivityRoute /> },
       { path: "create", element: <CreateWizard /> },
       { path: "*", element: <ErrorState message="Page not found" /> },
     ],

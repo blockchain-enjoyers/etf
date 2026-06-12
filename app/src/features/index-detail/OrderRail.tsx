@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { parseUnits, formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import type { BasketDetail, NavResponse, RebalanceDetail } from "@meridian/sdk";
@@ -14,7 +15,24 @@ import { queryKeys } from "../../lib/query";
 import { useApi } from "../../lib/api";
 import { useCapabilities } from "../../capabilities/use-capabilities";
 import { useMintQuote } from "../../data/useMintQuote";
+import { useForwardQueue } from "../../data/useForwardQueue";
+import { useSettleGateStatus } from "../../data/useSettleGateStatus";
 import { useTxPlan } from "../../wallet/use-tx-plan";
+
+const USDC_DECIMALS = 6;
+
+function parseUsdc(value: string): bigint {
+  try {
+    return parseUnits(value, USDC_DECIMALS);
+  } catch {
+    return 0n;
+  }
+}
+
+/** USDG (6-dec) base-unit amount → "$X.XX" (USDG pegged to $1). */
+function formatUsdgFee(baseUnits: string): string {
+  return `$${Number(formatUnits(BigInt(baseUnits), USDC_DECIMALS)).toFixed(2)}`;
+}
 
 interface Props {
   vaultAddress: string;
@@ -52,6 +70,8 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
   const unitsArg = String(units);
   const quote = useMintQuote(vaultAddress, unitsArg, address);
   const deposits = quote.data?.deposits ?? [];
+  // Flat USDG create fee pulled by FeeCore.create() (managed/rebalance). Absent on the no-op fee seam.
+  const mintFee = quote.data?.fee;
 
   // Constituent tokens are the allowlist the executor checks every approve/permit against.
   // The vault clone is the terminal create-step `to` and isn't in the static address book, so seed it too.
@@ -190,9 +210,22 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
           <span className={ROW_K}>Price basis</span>
           <span className={cn(ROW_V, "text-emerald")}>none (in-kind)</span>
         </div>
+        <div className={ROW}>
+          <span className={ROW_K}>Flow fee</span>
+          <span className={cn(ROW_V, "text-emerald")}>0%</span>
+        </div>
         <div className={cn(ROW, "border-0")}>
-          <span className={ROW_K}>Protocol fee</span>
-          <span className={cn(ROW_V, "text-emerald")}>$0.00</span>
+          <span className={ROW_K}>Create fee</span>
+          <span className={cn(ROW_V, mintFee ? "text-txt" : "text-emerald")}>
+            {mintFee ? (
+              <span className="inline-flex items-center gap-1">
+                {formatUsd(mintFee.valueUsd)}
+                <span className="font-mono text-[9.5px] text-txt3">in {mintFee.symbol}</span>
+              </span>
+            ) : (
+              "$0.00"
+            )}
+          </span>
         </div>
       </div>
 
@@ -244,6 +277,139 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
   );
 }
 
+/**
+ * Registry create rail: a registry vault has no in-kind mint surface (deferred) — create routes to
+ * FORWARD CASH via buildForwardCreateTx. The user pays USDC now and is minted units at the next open
+ * (forward-priced), plus a flat USDG create fee disclosed from the forward-queue `fees` DTO.
+ */
+function RegistryCreatePanel({ vaultAddress, basket }: Props) {
+  const qc = useQueryClient();
+  const api = useApi();
+  const { address } = useAccount();
+  const [amount, setAmount] = useState("");
+
+  const caps = useCapabilities("regular", vaultAddress);
+  const { data: queue } = useForwardQueue(vaultAddress, true);
+  const { data: gate } = useSettleGateStatus(vaultAddress, true);
+  // g0 = "Vault bootstrapped"; a live queue implies a bootstrapped vault, so default true.
+  const g0 = gate?.guards.find((g) => g.id === "g0");
+  const bootstrapped = g0 ? g0.ok : true;
+  const createGate = caps.canForwardCreate(vaultAddress, bootstrapped);
+
+  const fees = queue?.fees ?? null;
+  const cash = parseUsdc(amount);
+  const cashToken = basket.cashToken ?? "";
+  // The plan's approve step targets the cash token, which isn't in the static address book — seed it.
+  const tx = useTxPlan(cashToken ? [cashToken] : []);
+  const running = tx.status === "running";
+
+  // Estimate only (IRON RULE): shares = cash * 1e18 / navPerShare; struck for real at the next open.
+  const navPerShare = gate?.navPerShare ? BigInt(gate.navPerShare) : 0n;
+  const estShares =
+    navPerShare > 0n ? (parseUnits(formatUnits(cash, USDC_DECIMALS), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
+
+  function handleCreate() {
+    if (cash <= 0n) return;
+    void tx
+      .run(() => api.buildForwardCreateTx(vaultAddress, { cash: cash.toString(), account: address! }))
+      .then(() => {
+        qc.invalidateQueries({ queryKey: queryKeys.forwardTickets(vaultAddress) });
+        qc.invalidateQueries({ queryKey: queryKeys.forwardQueue(vaultAddress) });
+      });
+  }
+
+  const currentLabel = tx.steps[tx.currentStep]?.label;
+
+  return (
+    <>
+      <div className={RAIL_SEC}>
+        <div className={LAB}>
+          Cash in
+          <HelpTip>
+            Registry indices create for cash through a forward queue. You deposit USDC now; {basket.symbol} is minted to
+            you priced at the next market open, never at this estimate.
+          </HelpTip>
+        </div>
+        <div className="flex items-stretch border border-line rounded-md overflow-hidden bg-surface">
+          <span className="grid place-items-center px-3 bg-surface2 text-txt3 font-mono text-xs border-r border-line">
+            USDC
+          </span>
+          <input
+            type="text"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="flex-1 bg-transparent font-mono text-sm text-txt placeholder:text-txt3 px-3 py-2.5 focus:outline-none"
+            aria-label="USDC amount"
+          />
+        </div>
+        <div className={cn(ROW, "mt-2.5")}>
+          <span className={ROW_K}>You receive (estimate)</span>
+          <span className={cn(ROW_V, "inline-flex items-center gap-1")}>
+            {navPerShare > 0n ? formatUnits(estShares, 18) : "—"} {basket.symbol}
+            <EstBadge />
+          </span>
+        </div>
+        <div className={ROW}>
+          <span className={ROW_K}>Basis</span>
+          <span className={ROW_V}>forward · next open</span>
+        </div>
+        <div className={cn(ROW, "border-0")}>
+          <span className={ROW_K}>Create fee</span>
+          <span className={cn(ROW_V, fees && BigInt(fees.flatCreateFee) > 0n ? "text-txt" : "text-emerald")}>
+            {fees && BigInt(fees.flatCreateFee) > 0n ? `+ ${formatUsdgFee(fees.flatCreateFee)} USDG` : "$0.00"}
+          </span>
+        </div>
+      </div>
+
+      <div className="px-3.5 py-3">
+        {createGate.enabled ? (
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="primary"
+              full
+              onClick={handleCreate}
+              disabled={running || cash === 0n}
+              aria-label="Queue cash create"
+              className="py-3"
+            >
+              {running ? "Queueing…" : "Queue cash create"}
+            </Button>
+            {tx.total > 0 && (
+              <div className="flex items-center justify-between text-[11px] text-txt3">
+                <span>{currentLabel ?? (tx.status === "success" ? "Confirmed ✓" : "Working…")}</span>
+                <span>
+                  {Math.min(tx.currentStep + (running ? 1 : 0), tx.total)} / {tx.total}
+                </span>
+              </div>
+            )}
+            {tx.status === "success" && (
+              <div className="flex flex-col gap-1 text-xs" aria-label="transaction status">
+                <span className="text-emerald">Confirmed ✓</span>
+              </div>
+            )}
+            {tx.error && (
+              <div className="flex flex-col gap-1 text-xs" aria-label="transaction status">
+                <span className="text-red">Failed: {tx.error}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Button full disabled aria-label="Queue cash create" className="py-3">
+              Queue cash create
+            </Button>
+            <GateBanner gate={createGate} />
+          </div>
+        )}
+        <p className="mt-2.5 text-center text-[10px] leading-relaxed text-txt3">
+          Forward-priced · settles at the next open, not this estimate.
+        </p>
+      </div>
+    </>
+  );
+}
+
 function RedeemPanel({
   basket,
   vaultAddress,
@@ -259,15 +425,23 @@ function RedeemPanel({
   const method = methodProp ?? localMethod;
   const setMethod = onMethodChange ?? setLocalMethod;
 
+  // Registry vaults have no in-kind redeem surface (deferred) — exit is cash-only via the forward queue.
+  const isRegistry = basket.vaultType === "registry";
+
   // No NAV: redeem is oracle-free; default market status (cash copy keys off it).
   const marketStatus = nav?.marketStatus ?? "unknown";
   const caps = useCapabilities(marketStatus, vaultAddress);
   // IRON RULE: in-kind redeem is gated ONLY by wallet/contract presence, never by market state.
   const inKindGate = caps.canRedeemInKind();
-  // Cash redeem routes through the forward queue (rebalance-only); gate on AP/forward presence.
+  // Cash redeem routes through the forward queue (rebalance/registry); gate on AP/forward presence.
   const cashGate = caps.canForwardRedeem();
+  // Registry redeem proceeds are net of a flat USDG redeem fee — disclose it from the queue DTO.
+  const { data: queue } = useForwardQueue(vaultAddress, isRegistry);
+  const redeemFee = queue?.fees ?? null;
 
-  const activeGate = method === "inkind" ? inKindGate : cashGate;
+  // Registry forces cash; everything else honors the selected method.
+  const effectiveMethod: RedeemMethod = isRegistry ? "cash" : method;
+  const activeGate = effectiveMethod === "inkind" ? inKindGate : cashGate;
 
   // Both legs' terminal/approve steps target the vault clone, which isn't in the static address
   // book — seed it. (Forward requestRedeem targets the queue, already in the address book.)
@@ -279,14 +453,14 @@ function RedeemPanel({
     const amountBigInt = BigInt(Math.round(parseFloat(amount) * 1e18));
     if (amountBigInt <= 0n) return;
     const fetcher =
-      method === "cash"
+      effectiveMethod === "cash"
         ? () => api.buildForwardRedeemTx(vaultAddress, { account: address!, shares: amountBigInt.toString() })
         : () => api.buildRedeemTx(vaultAddress, { account: address!, amount: amountBigInt.toString() });
     void tx.run(fetcher).then(() => {
       qc.invalidateQueries({ queryKey: queryKeys.nav(vaultAddress) });
       qc.invalidateQueries({ queryKey: queryKeys.basket(vaultAddress) });
       qc.invalidateQueries({ queryKey: queryKeys.rebalance(vaultAddress) });
-      if (method === "cash") {
+      if (effectiveMethod === "cash") {
         qc.invalidateQueries({ queryKey: queryKeys.forwardTickets(vaultAddress) });
         qc.invalidateQueries({ queryKey: queryKeys.forwardQueue(vaultAddress) });
       }
@@ -315,9 +489,13 @@ function RedeemPanel({
         : "Settle for cash at current NAV.",
     },
   ];
-  // Cash redeem is forward-queue only → offered for rebalance vaults; static types are in-kind only.
-  const redeemOptions =
-    basket.vaultType === "rebalance" ? allRedeemOptions : allRedeemOptions.filter((o) => o.value === "inkind");
+  // Cash redeem is forward-queue only. Registry is cash-ONLY (no in-kind surface); rebalance offers
+  // both; static types are in-kind only.
+  const redeemOptions = isRegistry
+    ? allRedeemOptions.filter((o) => o.value === "cash")
+    : basket.vaultType === "rebalance"
+      ? allRedeemOptions
+      : allRedeemOptions.filter((o) => o.value === "inkind");
 
   const currentLabel = tx.steps[tx.currentStep]?.label;
 
@@ -338,10 +516,27 @@ function RedeemPanel({
         </div>
       </div>
 
-      <div className={RAIL_SEC}>
-        <div className={LAB}>Method</div>
-        <RadioCards options={redeemOptions} value={method} onValueChange={(v) => setMethod(v as RedeemMethod)} />
-      </div>
+      {isRegistry ? (
+        <div className={cn(RAIL_SEC, "text-[11px]")}>
+          <div className={ROW}>
+            <span className={ROW_K}>Method</span>
+            <span className={cn(ROW_V, "text-txt2")}>cash · forward queue</span>
+          </div>
+          <div className={cn(ROW, "border-0")}>
+            <span className={ROW_K}>Redeem fee</span>
+            <span className={cn(ROW_V, redeemFee && BigInt(redeemFee.flatRedeemFee) > 0n ? "text-txt" : "text-emerald")}>
+              {redeemFee && BigInt(redeemFee.flatRedeemFee) > 0n
+                ? `net − ${formatUsdgFee(redeemFee.flatRedeemFee)} USDG`
+                : "$0.00"}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className={RAIL_SEC}>
+          <div className={LAB}>Method</div>
+          <RadioCards options={redeemOptions} value={method} onValueChange={(v) => setMethod(v as RedeemMethod)} />
+        </div>
+      )}
 
       <div className="px-3.5 py-3">
         {activeGate.enabled ? (
@@ -353,12 +548,12 @@ function RedeemPanel({
             aria-label="Redeem basket tokens"
             className="py-3"
           >
-            {running ? "Redeeming…" : method === "inkind" ? "Redeem in-kind" : "Queue cash redeem"}
+            {running ? "Redeeming…" : effectiveMethod === "inkind" ? "Redeem in-kind" : "Queue cash redeem"}
           </Button>
         ) : (
           <div className="flex flex-col gap-2">
             <Button full disabled aria-label="Redeem basket tokens" className="py-3">
-              {method === "inkind" ? "Redeem in-kind" : "Queue cash redeem"}
+              {effectiveMethod === "inkind" ? "Redeem in-kind" : "Queue cash redeem"}
             </Button>
             <GateBanner gate={activeGate} />
           </div>
@@ -410,6 +605,8 @@ export function OrderRail({
   const [localDir, setLocalDir] = useState<Direction>("mint");
   const direction = directionProp ?? localDir;
   const setDirection = onDirectionChange ?? setLocalDir;
+  // Registry create/redeem route to forward cash (no in-kind surface yet).
+  const isRegistry = basket.vaultType === "registry";
   return (
     <aside
       className="w-[332px] shrink-0 flex flex-col overflow-y-auto border-l border-line bg-bg2"
@@ -419,7 +616,7 @@ export function OrderRail({
         <span className="text-[12px] font-bold tracking-[0.03em]">ORDER RAIL</span>
         <span className="font-mono text-[10px] text-txt3">{basket.symbol}</span>
         <span className="ml-auto font-mono text-[8.5px] tracking-[0.08em] uppercase px-1.5 py-0.5 rounded bg-cyan/[0.12] text-cyan">
-          In-kind mint
+          {isRegistry ? "Forward cash" : "In-kind mint"}
         </span>
       </div>
 
@@ -442,9 +639,12 @@ export function OrderRail({
         </div>
       </div>
 
-      {direction === "mint" && (
-        <CreatePanel vaultAddress={vaultAddress} basket={basket} nav={nav} rebalance={rebalance} />
-      )}
+      {direction === "mint" &&
+        (isRegistry ? (
+          <RegistryCreatePanel vaultAddress={vaultAddress} basket={basket} nav={nav} rebalance={rebalance} />
+        ) : (
+          <CreatePanel vaultAddress={vaultAddress} basket={basket} nav={nav} rebalance={rebalance} />
+        ))}
       {direction === "sell" && (
         <div className="px-3.5 py-4 text-[11.5px] text-txt2 leading-relaxed">
           Sell {basket.symbol} on the open market via a DEX. Market trading isn&apos;t part of this demo — use{" "}

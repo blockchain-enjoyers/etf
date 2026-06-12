@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { decodeEventLog, type Log } from "viem";
+import { BasketVaultAbi, ManagedRebalanceVaultAbi, ManagedVaultAbi, RegistryRebalanceVaultAbi } from "@meridian/contracts";
+import { decodeEventLog, getAddress, type Log } from "viem";
 import { ChainService } from "../chain/chain.service.js";
 import { ConfigService } from "../config/config.service.js";
 import { CloneFactoryReader } from "../contracts/clone-factory.reader.js";
@@ -9,10 +10,13 @@ import {
   type CommittedBasketCreatedEvent,
   type ManagedBasketCreatedEvent,
   type RebalanceBasketCreatedEvent,
+  type RegistryIndexCreatedEvent,
+  type RegistryConstituentsUpdate,
   type RebalancedEvent,
   type TargetChangeEvent,
   type KeeperPayoutEvent,
   type ForwardTicketEvent,
+  type ActivityEventRecord,
   IndexerRepository,
   recipeCommitment,
 } from "./indexer.repository.js";
@@ -38,11 +42,25 @@ export abstract class ChainLogReader {
     fromBlock: bigint,
     toBlock: bigint,
   ): Promise<RebalanceBasketCreatedEvent[]>;
+  abstract getRegistryIndexCreated(
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<RegistryIndexCreatedEvent[]>;
   abstract getVaultLifecycleLogs(
     addresses: `0x${string}`[],
     fromBlock: bigint,
     toBlock: bigint,
   ): Promise<{ rebalanced: RebalancedEvent[]; targetChanges: TargetChangeEvent[] }>;
+  /** RootScheduled recipe logs for registry vaults — the full target recipe to write as constituents. */
+  abstract getRegistryRecipeLogs(
+    addresses: `0x${string}`[],
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<RegistryConstituentsUpdate[]>;
+  /** Post-bootstrap genesis recipe (heldTokens + holdingsOf); empty if unbootstrapped or a read reverts. */
+  abstract readRegistryGenesis(
+    vault: `0x${string}`,
+  ): Promise<{ token: string; unitQty: bigint }[]>;
   abstract getKeeperPayoutLogs(
     fromBlock: bigint,
     toBlock: bigint,
@@ -53,6 +71,12 @@ export abstract class ChainLogReader {
     fromBlock: bigint,
     toBlock: bigint,
   ): Promise<ForwardTicketEvent[]>;
+  /** In-kind mint/redeem (vault Created/Redeemed) across all given vaults — the account activity feed. */
+  abstract getVaultActivityLogs(
+    addresses: `0x${string}`[],
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<ActivityEventRecord[]>;
 }
 
 @Injectable()
@@ -68,6 +92,25 @@ export class ViemChainLogReader extends ChainLogReader {
   ) {
     super();
   }
+
+  // Registry recipe events live ONLY on RegistryRebalanceVaultAbi (RootCommitment is registry-only;
+  // ManagedRebalanceVaultAbi has TargetScheduled instead), so they are decoded with that ABI, not
+  // this.rebVault.abi.
+  private readonly rootScheduledEvent = RegistryRebalanceVaultAbi.find(
+    (e): e is Extract<(typeof RegistryRebalanceVaultAbi)[number], { type: "event"; name: "RootScheduled" }> =>
+      e.type === "event" && e.name === "RootScheduled",
+  )!;
+
+  // In-kind mint/redeem events share one signature across every vault type, so the basic vault ABI
+  // decodes them for the whole address set.
+  private readonly createdEvent = BasketVaultAbi.find(
+    (e): e is Extract<(typeof BasketVaultAbi)[number], { type: "event"; name: "Created" }> =>
+      e.type === "event" && e.name === "Created",
+  )!;
+  private readonly redeemedEvent = BasketVaultAbi.find(
+    (e): e is Extract<(typeof BasketVaultAbi)[number], { type: "event"; name: "Redeemed" }> =>
+      e.type === "event" && e.name === "Redeemed",
+  )!;
 
   isReady(): boolean {
     return this.factory.address !== undefined;
@@ -150,10 +193,11 @@ export class ViemChainLogReader extends ChainLogReader {
       const a = this.decode(log);
       const vaultAddress = a["vault"] as `0x${string}`;
       const constituents = await this.vault.getConstituents(vaultAddress);
-      const [unitSize, name, symbol] = await Promise.all([
+      const [unitSize, name, symbol, platformFeeBps] = await Promise.all([
         this.vault.unitSize(vaultAddress),
         this.vault.name(vaultAddress),
         this.vault.symbol(vaultAddress),
+        this.tryPlatformFeeBps(vaultAddress, ManagedVaultAbi),
       ]);
       const tokens = constituents.map((c) => c.token);
       const unitQty = constituents.map((c) => c.unitQty);
@@ -162,6 +206,7 @@ export class ViemChainLogReader extends ChainLogReader {
         creator: a["creator"] as string,
         manager: a["manager"] as string,
         managerFeeBps: Number(a["managerFeeBps"] as bigint | number),
+        platformFeeBps,
         unitSize,
         name,
         symbol,
@@ -190,14 +235,16 @@ export class ViemChainLogReader extends ChainLogReader {
       const a = this.decode(log);
       const vaultAddress = a["vault"] as `0x${string}`;
       const constituents = await this.vault.getConstituents(vaultAddress);
-      const [unitSize, name, symbol, managerFeeBps, keeperBps, keeperEscrow] = await Promise.all([
-        this.vault.unitSize(vaultAddress),
-        this.vault.name(vaultAddress),
-        this.vault.symbol(vaultAddress),
-        this.rebVault.managerFeeBps(vaultAddress),
-        this.rebVault.keeperBps(vaultAddress),
-        this.rebVault.keeperEscrow(vaultAddress),
-      ]);
+      const [unitSize, name, symbol, managerFeeBps, keeperBps, keeperEscrow, platformFeeBps] =
+        await Promise.all([
+          this.vault.unitSize(vaultAddress),
+          this.vault.name(vaultAddress),
+          this.vault.symbol(vaultAddress),
+          this.rebVault.managerFeeBps(vaultAddress),
+          this.rebVault.keeperBps(vaultAddress),
+          this.rebVault.keeperEscrow(vaultAddress),
+          this.tryPlatformFeeBps(vaultAddress, ManagedRebalanceVaultAbi),
+        ]);
       const tokens = constituents.map((c) => c.token);
       const unitQty = constituents.map((c) => c.unitQty);
       out.push({
@@ -205,6 +252,7 @@ export class ViemChainLogReader extends ChainLogReader {
         creator: a["creator"] as string,
         manager: a["manager"] as string,
         managerFeeBps,
+        platformFeeBps,
         keeperBps,
         keeperEscrow,
         unitSize,
@@ -215,6 +263,73 @@ export class ViemChainLogReader extends ChainLogReader {
       });
     }
     return out;
+  }
+
+  // RegistryIndexCreated (5th type): manager from the EVENT; the rest from RegistryRebalanceVault
+  // reads. Constituents stay EMPTY (the vault is not bootstrapped at creation — a later slice fills
+  // them). recipeCommitment = the genesis Merkle root recipeRoot(). EVERY read is wrapped (try/catch
+  // → null/default) so one reverting getter can never freeze the indexer checkpoint (known prior bug).
+  async getRegistryIndexCreated(
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<RegistryIndexCreatedEvent[]> {
+    const address = this.factory.address;
+    if (!address) return [];
+    const logs = await this.chain.publicClient.getLogs({
+      address,
+      event: this.factory.registryIndexCreatedEvent,
+      fromBlock,
+      toBlock,
+    });
+    const out: RegistryIndexCreatedEvent[] = [];
+    for (const log of logs) {
+      const a = this.decode(log);
+      const vaultAddress = a["vault"] as `0x${string}`;
+      const [unitSize, name, symbol, managerFeeBps, keeperBps, keeperEscrow, platformFeeBps, recipeRoot] =
+        await Promise.all([
+          this.tryRegistryRead<bigint>(vaultAddress, "unitSize"),
+          this.tryRegistryRead<string>(vaultAddress, "name"),
+          this.tryRegistryRead<string>(vaultAddress, "symbol"),
+          this.tryRegistryRead<number>(vaultAddress, "managerFeeBps"),
+          this.tryRegistryRead<number>(vaultAddress, "keeperBps"),
+          this.tryRegistryRead<`0x${string}`>(vaultAddress, "keeperEscrow"),
+          this.tryRegistryRead<number>(vaultAddress, "platformFeeBps"),
+          this.tryRegistryRead<`0x${string}`>(vaultAddress, "recipeRoot"),
+        ]);
+      out.push({
+        vaultAddress,
+        creator: a["creator"] as string,
+        manager: a["manager"] as string,
+        managerFeeBps: managerFeeBps == null ? 0 : Number(managerFeeBps),
+        platformFeeBps: platformFeeBps == null ? null : Number(platformFeeBps),
+        keeperBps: keeperBps == null ? 0 : Number(keeperBps),
+        keeperEscrow: keeperEscrow ?? "0x0000000000000000000000000000000000000000",
+        unitSize: unitSize ?? 0n,
+        name: name ?? "",
+        symbol: symbol ?? "",
+        constituents: [], // EMPTY — vault not bootstrapped at creation (populated in a later slice).
+        recipeCommitment: recipeRoot ?? "0x0000000000000000000000000000000000000000000000000000000000000000",
+      });
+    }
+    return out;
+  }
+
+  /** Single RegistryRebalanceVault getter, RESILIENT: returns null on revert so the tick never aborts. */
+  private async tryRegistryRead<T>(
+    vault: `0x${string}`,
+    functionName:
+      | "unitSize" | "name" | "symbol" | "managerFeeBps"
+      | "keeperBps" | "keeperEscrow" | "platformFeeBps" | "recipeRoot",
+  ): Promise<T | null> {
+    try {
+      return (await this.chain.publicClient.readContract({
+        address: vault,
+        abi: RegistryRebalanceVaultAbi,
+        functionName,
+      })) as T;
+    } catch {
+      return null;
+    }
   }
 
   private readonly blockTsCache = new Map<bigint, number>();
@@ -285,6 +400,86 @@ export class ViemChainLogReader extends ChainLogReader {
       }
     }
     return { rebalanced, targetChanges };
+  }
+
+  // RootScheduled(newRoot, effectiveAt, tokens[], unitQty[], unitSize) carries the FULL recipe for data
+  // availability, so a registry vault's constituents are reconstructable from logs alone. We index the
+  // SCHEDULED recipe as the constituent set (the curator-published target); the live-held set is read
+  // separately by the holdings API from heldTokens/holdingsOf. RootActivated carries no recipe (just the
+  // root flip) so it is a no-op for constituents. EVERY decode/casing mirrors getVaultLifecycleLogs.
+  async getRegistryRecipeLogs(
+    addresses: `0x${string}`[],
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<RegistryConstituentsUpdate[]> {
+    if (addresses.length === 0) return [];
+    const set = new Set(addresses.map((a) => a.toLowerCase()));
+    // Key rows by the Basket-stored (checksummed) address, not the raw lowercase `log.address`, or the
+    // Constituent FK to Basket.vaultAddress violates / orphans on a case mismatch (the prior bug).
+    const byCase = new Map(addresses.map((a) => [a.toLowerCase(), a]));
+    // Last-write-wins within the range: a vault may schedule twice in one window; keep the latest by
+    // (blockNumber, logIndex) so the constituent set reflects the most recent recipe.
+    const latest = new Map<string, { ord: bigint; update: RegistryConstituentsUpdate }>();
+
+    const logs = await this.chain.publicClient.getLogs({
+      event: this.rootScheduledEvent,
+      fromBlock,
+      toBlock,
+    });
+    for (const log of logs) {
+      if (!set.has(log.address.toLowerCase())) continue;
+      const a = this.decodeWith(RegistryRebalanceVaultAbi, log);
+      const tokens = (a["tokens"] as readonly string[]).map(String);
+      const unitQty = a["unitQty"] as readonly bigint[];
+      const update: RegistryConstituentsUpdate = {
+        vaultAddress: byCase.get(log.address.toLowerCase()) ?? log.address,
+        constituents: tokens.map((token, i) => ({ token, unitQty: unitQty[i]! })),
+      };
+      const ord = (log.blockNumber! << 32n) + BigInt(log.logIndex!);
+      const key = log.address.toLowerCase();
+      const prev = latest.get(key);
+      if (!prev || ord > prev.ord) latest.set(key, { ord, update });
+    }
+    return [...latest.values()].map((v) => v.update);
+  }
+
+  // Genesis recipe: read the bootstrapped vault's custody set (heldTokens) and per-token claim backing
+  // (holdingsOf). RESILIENT — a revert (e.g. not yet bootstrapped, or a pre-seam impl) yields [] so the
+  // caller skips and the tick NEVER aborts (a throw here freezes the checkpoint — the known prior bug).
+  // holdingsOf is read via multicall(allowFailure) and any failing token is treated as 0 / dropped.
+  async readRegistryGenesis(vault: `0x${string}`): Promise<{ token: string; unitQty: bigint }[]> {
+    let held: readonly `0x${string}`[];
+    try {
+      held = (await this.chain.publicClient.readContract({
+        address: vault,
+        abi: RegistryRebalanceVaultAbi,
+        functionName: "heldTokens",
+      })) as readonly `0x${string}`[];
+    } catch {
+      return [];
+    }
+    if (held.length === 0) return [];
+    try {
+      const results = await this.chain.publicClient.multicall({
+        allowFailure: true,
+        contracts: held.map((token) => ({
+          address: vault,
+          abi: RegistryRebalanceVaultAbi,
+          functionName: "holdingsOf" as const,
+          args: [token],
+        })),
+      });
+      const out: { token: string; unitQty: bigint }[] = [];
+      for (let i = 0; i < held.length; i++) {
+        const r = results[i];
+        // Drop a token whose backing read failed: a partial genesis is better than a throw, and the
+        // next tick re-reads (the vault stays in the needs-genesis set until at least one token writes).
+        if (r?.status === "success") out.push({ token: held[i]!, unitQty: r.result as bigint });
+      }
+      return out;
+    } catch {
+      return [];
+    }
   }
 
   async getKeeperPayoutLogs(fromBlock: bigint, toBlock: bigint): Promise<KeeperPayoutEvent[]> {
@@ -372,6 +567,53 @@ export class ViemChainLogReader extends ChainLogReader {
     return out;
   }
 
+  async getVaultActivityLogs(
+    addresses: `0x${string}`[],
+    fromBlock: bigint,
+    toBlock: bigint,
+  ): Promise<ActivityEventRecord[]> {
+    if (addresses.length === 0) return [];
+    const out: ActivityEventRecord[] = [];
+
+    const mintLogs = (await this.chain.publicClient.getLogs({
+      address: addresses,
+      event: this.createdEvent,
+      fromBlock,
+      toBlock,
+    } as never)) as Log[];
+    for (const log of mintLogs) {
+      const a = ((log as { args?: Record<string, unknown> }).args ?? {}) as Record<string, unknown>;
+      out.push({
+        owner: a["creator"] as string,
+        vaultAddress: getAddress(log.address),
+        kind: "Mint",
+        payload: { nUnits: (a["nUnits"] as bigint).toString(), minted: (a["minted"] as bigint).toString() },
+        txHash: log.transactionHash!, logIndex: log.logIndex!, blockNumber: log.blockNumber!,
+        timestampMs: await this.tsOf(log.blockNumber!),
+      });
+    }
+
+    const redeemLogs = (await this.chain.publicClient.getLogs({
+      address: addresses,
+      event: this.redeemedEvent,
+      fromBlock,
+      toBlock,
+    } as never)) as Log[];
+    for (const log of redeemLogs) {
+      const a = ((log as { args?: Record<string, unknown> }).args ?? {}) as Record<string, unknown>;
+      out.push({
+        owner: a["redeemer"] as string,
+        vaultAddress: getAddress(log.address),
+        kind: "Redeem",
+        payload: { amount: (a["amount"] as bigint).toString() },
+        txHash: log.transactionHash!, logIndex: log.logIndex!, blockNumber: log.blockNumber!,
+        timestampMs: await this.tsOf(log.blockNumber!),
+      });
+    }
+
+    return out;
+  }
+
   /** Best-effort read of the (possibly refreshed) cutoff for a ticket; falls back to now+0 on failure. */
   private async forwardCutoffMs(queue: `0x${string}`, ticketId: number): Promise<number> {
     try {
@@ -381,6 +623,25 @@ export class ViemChainLogReader extends ChainLogReader {
       return Number(t[3]) * 1000;
     } catch {
       return 0;
+    }
+  }
+
+  // Meridian's own AUM fee. Currently-deployed managed/rebalance impls predate platformFeeBps(),
+  // so a live read reverts — treat a missing/reverting getter as null and NEVER let it throw, or
+  // the indexer tick aborts and the checkpoint freezes (no new vaults ever index).
+  private async tryPlatformFeeBps(
+    vault: `0x${string}`,
+    abi: typeof ManagedVaultAbi | typeof ManagedRebalanceVaultAbi,
+  ): Promise<number | null> {
+    try {
+      const result = await this.chain.publicClient.readContract({
+        address: vault,
+        abi,
+        functionName: "platformFeeBps",
+      });
+      return Number(result);
+    } catch {
+      return null;
     }
   }
 
@@ -404,7 +665,7 @@ export class IndexerService {
   private readonly logger = new Logger(IndexerService.name);
   private readonly chainId: number;
   private readonly startBlock: bigint;
-  private static readonly MAX_RANGE = 2_000n;
+  private static readonly MAX_RANGE = 9_000n;
 
   constructor(
     private readonly config: ConfigService,
@@ -432,16 +693,18 @@ export class IndexerService {
     const from = last + 1n;
     const to = head - from > IndexerService.MAX_RANGE ? from + IndexerService.MAX_RANGE : head;
 
-    const [basic, managed, committed, rebalance] = await Promise.all([
+    const [basic, managed, committed, rebalance, registry] = await Promise.all([
       this.reader.getBasketCreated(from, to),
       this.reader.getManagedBasketCreated(from, to),
       this.reader.getCommittedBasketCreated(from, to),
       this.reader.getRebalanceBasketCreated(from, to),
+      this.reader.getRegistryIndexCreated(from, to),
     ]);
     for (const e of basic) await this.repo.applyBasketCreated(e);
     for (const e of managed) await this.repo.applyManagedBasketCreated(e);
     for (const e of committed) await this.repo.applyCommittedBasketCreated(e);
     for (const e of rebalance) await this.repo.applyRebalanceBasketCreated(e);
+    for (const e of registry) await this.repo.applyRegistryIndexCreated(e);
 
     const rebAddresses = (await this.repo.getRebalanceVaultAddresses()) as `0x${string}`[];
     let lifecycleCount = 0;
@@ -458,6 +721,31 @@ export class IndexerService {
       lifecycleCount = rebalanced.length + targetChanges.length + payouts.length;
     }
 
+    // Registry constituents: (1) RootScheduled recipe logs in this range replace the target set; (2) any
+    // registry vault still lacking constituents is populated from its post-bootstrap genesis read. Both
+    // skip an EMPTY set so a malformed/empty recipe or an unbootstrapped/reverting read never wipes rows.
+    let registryConstituentCount = 0;
+    const regAddresses = (await this.repo.getRegistryVaultAddresses()) as `0x${string}`[];
+    if (regAddresses.length > 0) {
+      const recipeUpdates = await this.reader.getRegistryRecipeLogs(regAddresses, from, to);
+      for (const u of recipeUpdates) {
+        if (u.constituents.length === 0) continue;
+        await this.repo.replaceRegistryConstituents(u);
+        registryConstituentCount++;
+      }
+    }
+    // Genesis trigger (b): re-check registry vaults with empty constituents each tick and populate once
+    // bootstrapped (heldTokens non-empty). Chosen over a bootstrap-event trigger because `Created` is
+    // emitted by create/settleCreate too (not bootstrap-specific) and carries NO recipe, so the on-chain
+    // heldTokens/holdingsOf read is required either way; this form is self-healing (retries if the
+    // indexer was down at the bootstrap block) and bounded (a vault leaves the set once populated).
+    for (const vault of (await this.repo.getRegistryVaultsNeedingGenesis()) as `0x${string}`[]) {
+      const constituents = await this.reader.readRegistryGenesis(vault);
+      if (constituents.length === 0) continue;
+      await this.repo.replaceRegistryConstituents({ vaultAddress: vault, constituents });
+      registryConstituentCount++;
+    }
+
     let forwardCount = 0;
     for (const { vault, queue } of this.forwardQueues.pairs()) {
       const evs = await this.reader.getForwardQueueLogs(queue, vault, from, to);
@@ -465,9 +753,25 @@ export class IndexerService {
       forwardCount += evs.length;
     }
 
+    // In-kind mint/redeem → per-account activity feed (every vault type emits Created/Redeemed).
+    const allVaults = (await this.repo.getAllVaultAddresses()) as `0x${string}`[];
+    const activity = await this.reader.getVaultActivityLogs(allVaults, from, to);
+    let activityCount = 0;
+    for (const e of activity) {
+      // Non-critical feed: a single bad row must never freeze the checkpoint (which would also stall
+      // NAV/forward indexing). Log and continue.
+      try {
+        await this.repo.applyActivityEvent(e);
+        activityCount++;
+      } catch (err) {
+        this.logger.warn(`activity event skipped (${e.txHash}:${e.logIndex}): ${(err as Error).message}`);
+      }
+    }
+
     await this.repo.setCheckpoint(this.chainId, to);
     const n =
-      basic.length + managed.length + committed.length + rebalance.length + lifecycleCount + forwardCount;
+      basic.length + managed.length + committed.length + rebalance.length + registry.length +
+      lifecycleCount + registryConstituentCount + forwardCount + activityCount;
     this.logger.debug(`indexer tick (${from}, ${to}] -> ${n} events`);
     return n;
   }

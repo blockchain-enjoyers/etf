@@ -6,7 +6,7 @@ import { useStatusView } from "../../status/StatusViewContext";
 import { useDeployPreview } from "../../data/useDeployPreview";
 import { wizardReducer, initialState, sortedValidConstituents } from "./reducer";
 import type { WizardState } from "./types";
-import { isWeightsMode } from "./types";
+import { isWeightsMode, isManagedRebalance } from "./types";
 import { randomSalt } from "./salt";
 import { StepBasics } from "./StepBasics";
 import { StepType } from "./StepType";
@@ -39,13 +39,14 @@ export function toPreviewRequest(
     unitSize: state.creationUnitSize || "1",
     composition,
     manager: state.manager.trim() || undefined,
+    // Registry shares rebalance's economics; only vaultKind differs (→ createRegistryIndex preview).
     managerFeeBps:
-      state.vaultKind === "managed" || state.vaultKind === "rebalance"
+      state.vaultKind === "managed" || isManagedRebalance(state.vaultKind)
         ? Number(state.managerFeeBps || "0")
         : undefined,
-    keeperBps: state.vaultKind === "rebalance" ? Number(state.keeperBps || "0") : undefined,
+    keeperBps: isManagedRebalance(state.vaultKind) ? Number(state.keeperBps || "0") : undefined,
     keeperEscrow:
-      state.vaultKind === "rebalance" && state.keeperEscrow.trim()
+      isManagedRebalance(state.vaultKind) && state.keeperEscrow.trim()
         ? state.keeperEscrow.trim().toLowerCase()
         : undefined,
     userSalt,

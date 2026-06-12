@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { CreateWizard } from "./CreateWizard";
+import { CreateWizard, toPreviewRequest } from "./CreateWizard";
+import { initialState } from "./reducer";
+import type { WizardState } from "./types";
 import { ApiContext } from "../../lib/api";
 import type { MeridianApi } from "@meridian/sdk";
 
@@ -22,7 +24,11 @@ import * as capsModule from "../../capabilities/use-capabilities";
 
 const mockUseCapabilities = vi.mocked(capsModule.useCapabilities);
 
-const api = { buildDeployTx: vi.fn(), previewDeploy: vi.fn() } as unknown as MeridianApi;
+const api = {
+  buildDeployTx: vi.fn(),
+  previewDeploy: vi.fn(),
+  getSuggestedFunds: vi.fn(async () => ({ funds: [] })),
+} as unknown as MeridianApi;
 
 function renderWizard() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -126,5 +132,26 @@ describe("CreateWizard — navigation smoke test", () => {
     renderWizard();
     const rail = screen.getByRole("complementary", { name: /deploy preview/i });
     expect(within(rail).getByRole("button", { name: /review.*deploy/i })).toBeDisabled();
+  });
+});
+
+describe("toPreviewRequest", () => {
+  function regState(): WizardState {
+    return {
+      ...initialState(),
+      vaultKind: "registry",
+      name: "SP", symbol: "SP500",
+      managerFeeBps: "30", keeperBps: "1500",
+      constituents: [{ id: "0", token: "0x" + "1".repeat(40), amount: "100" }],
+      valuePerUnitUsd: "1000",
+    };
+  }
+
+  it("registry preview uses weights composition + carries vaultKind:'registry' with keeper fields", () => {
+    const req = toPreviewRequest(regState(), "0x" + "a".repeat(40), ("0x" + "0".repeat(64)) as `0x${string}`);
+    expect(req.vaultKind).toBe("registry");
+    expect(req.composition.mode).toBe("weights");
+    expect(req.managerFeeBps).toBe(30);
+    expect(req.keeperBps).toBe(1500);
   });
 });

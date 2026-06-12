@@ -24,7 +24,12 @@ export function StepType({ state, dispatch, onBack, onNext }: Props) {
 
       <VaultKindPicker value={state.vaultKind} onChange={(value) => dispatch({ type: "SET_VAULT_KIND", value })} />
 
-      <HowToChooseModal open={helpOpen} onClose={() => setHelpOpen(false)} onPick={(value) => dispatch({ type: "SET_VAULT_KIND", value })} />
+      <HowToChooseModal
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onPick={(value) => dispatch({ type: "SET_VAULT_KIND", value })}
+        onUseTemplate={(vaultKind, rows) => dispatch({ type: "LOAD_TEMPLATE", vaultKind, rows })}
+      />
 
       <div className="flex items-center gap-3 pt-3 border-t border-line">
         <Button variant="default" onClick={onBack}>← Back</Button>

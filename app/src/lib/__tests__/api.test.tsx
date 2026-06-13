@@ -49,6 +49,11 @@ const stubApi: MeridianApi = {
   buildAuctionSetExecModeTx: vi.fn(),
   getAuctionStatus: vi.fn(),
   getSuggestedFunds: vi.fn(),
+  enableCashSettlement: vi.fn(),
+  getForwardEnableStatus: vi.fn(),
+  getConstituentPrices: vi.fn(),
+  tamperScene: vi.fn(),
+  getScene: vi.fn(),
 };
 
 function Consumer() {

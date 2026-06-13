@@ -10,6 +10,7 @@ import { HelpPopover } from "../../components/HelpPopover";
 import { CREATE_HELP } from "./help-content";
 import { Button } from "../../components/Button";
 import { cn } from "../../lib/cn";
+import { TokenPicker } from "./TokenPicker";
 
 interface PreviewRow { token: string; qty: string; weightBps: number; valueUsd?: string }
 interface Props {
@@ -51,7 +52,13 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
         right={<Chip variant="info">{weights ? "target weights" : "quantities"}</Chip>}
         bodyClassName="p-0"
       >
-        <table className="w-full text-[11.5px]">
+        <table className="w-full table-fixed text-[11.5px]">
+          <colgroup>
+            <col style={{ width: "48%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "8%" }} />
+          </colgroup>
           <thead>
             <tr className="text-[9px] uppercase tracking-wider text-txt3">
               <th className="text-left font-semibold px-3 py-2 border-b border-line">
@@ -76,18 +83,19 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
               return (
                 <tr key={c.id} className="border-b border-line-soft last:border-b-0">
                   <td className="px-3 py-2 align-top">
-                    <input
-                      aria-label={`Asset ${idx + 1} token`}
-                      className={cn(inputCls, "w-full")}
-                      placeholder="0x… token address"
+                    <TokenPicker
+                      id={`asset-${idx}-token`}
                       value={c.token}
-                      onChange={(e) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "token", value: e.target.value })}
+                      onChange={(token) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "token", value: token })}
                     />
-                    {hint && <span className={cn("block pl-0.5 mt-0.5 text-[10px]", hint.ok ? "text-emerald" : "text-amber")}>{hint.text}</span>}
+                    {/* Always rendered (fixed height) so the row doesn't jump as the hint appears/clears. */}
+                    <span className={cn("block pl-0.5 mt-0.5 text-[10px] min-h-[13px]", hint?.ok ? "text-emerald" : "text-amber")}>{hint?.text ?? " "}</span>
                   </td>
                   <td className="px-3 py-2 text-right align-top">
                     <input
                       aria-label={`Asset ${idx + 1} amount`}
+                      autoComplete="off"
+                      spellCheck={false}
                       className={cn(inputCls, "w-20 text-right")}
                       placeholder="0.00"
                       type="number"
@@ -97,7 +105,7 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
                       onChange={(e) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "amount", value: e.target.value })}
                     />
                   </td>
-                  <td className={cn("px-3 py-2 text-right align-top font-mono", missing ? "text-amber" : "text-txt2")}>{derived}</td>
+                  <td className={cn("px-3 py-2 text-right align-top font-mono tabular-nums whitespace-nowrap overflow-hidden text-ellipsis", missing ? "text-amber" : "text-txt2")}>{derived}</td>
                   <td className="px-3 py-2 align-top text-right">
                     <button
                       aria-label={`Remove asset ${idx + 1}`}
@@ -135,6 +143,8 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
             </div>
             <input
               id="value-per-unit"
+              autoComplete="off"
+              spellCheck={false}
               className={cn(inputCls, "w-40")}
               type="number"
               min="0"

@@ -419,3 +419,24 @@ describe("MeridianClient price-safety panel endpoints", () => {
     expect(out.mockPrice).toBe("100");
   });
 });
+
+describe("MeridianClient token search + resolve", () => {
+  it("searchTokens GETs /tokens/search?q= (encoded) and parses the array", async () => {
+    stubFetch(200, [{ token: "0xnvda", symbol: "NVDA", name: "NVIDIA Corporation" }]);
+    const out = await makeClient().searchTokens("NV DA");
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/tokens/search?q=NV%20DA`);
+    expect(out[0]!.symbol).toBe("NVDA");
+    expect(out[0]!.name).toBe("NVIDIA Corporation");
+  });
+
+  it("resolveTokens POSTs /tokens/resolve with addresses and parses", async () => {
+    stubFetch(200, [{ token: "0xnvda", symbol: "NVDA", name: "NVIDIA Corporation" }]);
+    const out = await makeClient().resolveTokens(["0xnvda"]);
+    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/tokens/resolve`);
+    expect((init as RequestInit).method).toBe("POST");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ addresses: ["0xnvda"] });
+    expect(out[0]!.symbol).toBe("NVDA");
+  });
+});

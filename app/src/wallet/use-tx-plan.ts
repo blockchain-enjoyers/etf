@@ -3,7 +3,7 @@ import { useSendTransaction, useSignTypedData, usePublicClient } from "wagmi";
 import { parseSignature } from "viem";
 import { assertTxPlanSafe, type TxPlan, type TxStep } from "@meridian/sdk";
 import { addresses } from "@meridian/contracts";
-import { APP_CHAIN_ID } from "../lib/wagmi";
+import { APP_CHAIN_ID, FIXTURES } from "../lib/wagmi";
 
 /** Permit element posted to the finalize endpoint — matches SDK mintFinalizeRequestSchema. */
 export type PermitPost = {
@@ -38,6 +38,7 @@ export function useTxPlan(constituentTokens: string[] = []) {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [steps, setSteps] = useState<TxStep[]>([]);
+  const [hash, setHash] = useState<`0x${string}` | null>(null);
 
   const run = useCallback(
     async (
@@ -49,6 +50,31 @@ export function useTxPlan(constituentTokens: string[] = []) {
       setCurrentStep(0);
       setTotal(0);
       setSteps([]);
+      setHash(null);
+
+      // Fixtures mode: simulate the plan to success with no chain/RPC calls.
+      if (FIXTURES) {
+        let plan: TxPlan;
+        try {
+          plan = await fetcher();
+        } catch (e) {
+          setStatus("error");
+          setError(e instanceof Error ? e.message : String(e));
+          return;
+        }
+        setSteps(plan.steps);
+        setTotal(plan.steps.length);
+        for (let i = 0; i < plan.steps.length; i++) {
+          setCurrentStep(i + 1);
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        const rnd = crypto.getRandomValues(new Uint8Array(32));
+        const mockHash = "0x" + Array.from(rnd, (b) => b.toString(16).padStart(2, "0")).join("");
+        setHash(mockHash as `0x${string}`);
+        setStatus("success");
+        return;
+      }
+
       const ctx = { addressBook: addressBook(), constituentTokens };
       const permits: PermitPost[] = [];
 
@@ -85,12 +111,13 @@ export function useTxPlan(constituentTokens: string[] = []) {
           });
           return;
         }
-        const hash = await sendTransactionAsync({
+        const sent = await sendTransactionAsync({
           to: step.to as `0x${string}`,
           data: step.data as `0x${string}`,
           value: BigInt(step.value),
         });
-        await publicClient?.waitForTransactionReceipt({ hash });
+        setHash(sent);
+        await publicClient?.waitForTransactionReceipt({ hash: sent });
       };
 
       try {
@@ -133,5 +160,5 @@ export function useTxPlan(constituentTokens: string[] = []) {
     [constituentTokens, sendTransactionAsync, signTypedDataAsync, publicClient],
   );
 
-  return { run, status, currentStep, total, error, steps };
+  return { run, status, currentStep, total, error, steps, hash };
 }

@@ -670,3 +670,9 @@ export const sceneTamperSchema = z.object({ token: z.string(), price: z.string()
 export type SceneTamper = z.infer<typeof sceneTamperSchema>;
 export const sceneReadSchema = z.object({ token: z.string(), mockPrice: z.string() });
 export type SceneRead = z.infer<typeof sceneReadSchema>;
+
+// --- Token search + resolve (create-wizard catalog) ---
+export const tokenInfoSchema = z.object({ token: z.string(), symbol: z.string(), name: z.string().nullable() });
+export type TokenInfo = z.infer<typeof tokenInfoSchema>;
+export const tokenInfoListSchema = z.array(tokenInfoSchema);
+export const resolveTokensRequestSchema = z.object({ addresses: z.array(z.string()) });

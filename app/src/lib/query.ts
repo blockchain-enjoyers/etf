@@ -26,6 +26,8 @@ export const queryKeys = {
   constituentPrices: (v: string) => ["constituentPrices", v] as const,
   deployPreview: (key: string) => ["deployPreview", key] as const,
   suggestedFunds: ["suggestedFunds"] as const,
+  tokenSearch: (q: string) => ["tokenSearch", q] as const,
+  tokenResolve: (addr: string) => ["tokenResolve", addr] as const,
 };
 
 export function makeQueryClient(): QueryClient {

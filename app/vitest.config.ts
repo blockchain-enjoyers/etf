@@ -25,6 +25,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Neutralize the dev .env: unit tests always exercise the real (non-fixtures) paths.
+    env: { VITE_USE_FIXTURES: "false", VITE_DEMO_MODE: "false" },
     setupFiles: ["./src/test/setup.ts"],
     // Each file gets a fresh module registry; no in-worker concurrency.
     // Prevents vi.mock factories leaking across files (deterministic green run).

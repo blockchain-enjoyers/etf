@@ -5,6 +5,10 @@ import { StepConstituents } from "./StepConstituents";
 import { initialState } from "./reducer";
 import type { WizardState } from "./types";
 
+vi.mock("./TokenPicker", () => ({
+  TokenPicker: ({ value }: { value: string }) => <input data-testid="token" defaultValue={value} />,
+}));
+
 function state(over: Partial<WizardState> = {}): WizardState {
   return { ...initialState(), ...over };
 }

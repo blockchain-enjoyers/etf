@@ -31,6 +31,7 @@ import type {
   ConstituentPrice,
   SceneTamper,
   SceneRead,
+  TokenInfo,
 } from "./dto.js";
 
 export interface MeridianApi {
@@ -95,4 +96,6 @@ export interface MeridianApi {
   getConstituentPrices(vault: string): Promise<ConstituentPrice[]>;
   tamperScene(body: SceneTamper): Promise<{ txHash: string }>;
   getScene(token: string): Promise<SceneRead>;
+  searchTokens(q: string): Promise<TokenInfo[]>;
+  resolveTokens(addresses: string[]): Promise<TokenInfo[]>;
 }

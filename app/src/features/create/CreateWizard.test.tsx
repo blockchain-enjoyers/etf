@@ -92,7 +92,7 @@ describe("CreateWizard — navigation smoke test", () => {
     const stepper = screen.getByRole("navigation", { name: /progress/i });
     await user.click(within(stepper).getByRole("button", { name: /Constituents/i }));
 
-    expect(screen.getByLabelText("Asset 1 token")).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/search token name or ticker/i).length).toBeGreaterThan(0);
   });
 
   it("jumps to a step when its stepper button is clicked (GO_STEP)", async () => {

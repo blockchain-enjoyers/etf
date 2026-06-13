@@ -30,6 +30,8 @@ export function StepBasics({ state, dispatch, onNext }: Props) {
             </div>
             <input
               id="idx-name"
+              autoComplete="off"
+              spellCheck={false}
               className={inputCls}
               placeholder="e.g. Tech Top 5"
               value={state.name}
@@ -44,6 +46,8 @@ export function StepBasics({ state, dispatch, onNext }: Props) {
             </div>
             <input
               id="idx-symbol"
+              autoComplete="off"
+              spellCheck={false}
               className={inputCls}
               placeholder="e.g. TECH5"
               value={state.symbol}

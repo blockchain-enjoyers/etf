@@ -14,6 +14,7 @@ import { Chip } from "../../components/Chip";
 import { KV } from "../../components/KV";
 import { HelpTip } from "../../components/HelpTip";
 import { Button } from "../../components/Button";
+import { DeploySuccess } from "./DeploySuccess";
 
 interface Props {
   state: WizardState;
@@ -260,6 +261,15 @@ export function PreviewRail({ state, preview, userSalt }: Props) {
           </div>
         )}
       </div>
+
+      {tx.status === "success" && preview?.predictedVault && (
+        <DeploySuccess
+          vaultAddress={preview.predictedVault}
+          txHash={tx.hash}
+          symbol={state.symbol}
+          name={state.name}
+        />
+      )}
     </aside>
   );
 }

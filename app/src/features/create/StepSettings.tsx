@@ -32,14 +32,14 @@ export function StepSettings({ state, dispatch, onBack, onNext }: Props) {
                 <label className={labelCls} htmlFor="manager">Manager address</label>
                 <HelpPopover brief="Controls manager-only tools. Blank defaults to your wallet." />
               </div>
-              <input id="manager" className={inputCls} placeholder="0x… (defaults to your wallet)" value={state.manager} onChange={(e) => dispatch({ type: "SET_MANAGER", value: e.target.value })} />
+              <input id="manager" autoComplete="off" spellCheck={false} className={inputCls} placeholder="0x… (defaults to your wallet)" value={state.manager} onChange={(e) => dispatch({ type: "SET_MANAGER", value: e.target.value })} />
             </div>
             <div>
               <div className={labelRowCls}>
                 <label className={labelCls} htmlFor="manager-fee">Manager fee (bps, max 200 = 2%/yr)</label>
                 <HelpPopover {...CREATE_HELP.managerFee} />
               </div>
-              <input id="manager-fee" className={inputCls} type="number" min="0" max="200" value={state.managerFeeBps} onChange={(e) => dispatch({ type: "SET_MANAGER_FEE_BPS", value: e.target.value })} />
+              <input id="manager-fee" autoComplete="off" spellCheck={false} className={inputCls} type="number" min="0" max="200" value={state.managerFeeBps} onChange={(e) => dispatch({ type: "SET_MANAGER_FEE_BPS", value: e.target.value })} />
             </div>
             {isRebalance && (
               <>
@@ -48,14 +48,14 @@ export function StepSettings({ state, dispatch, onBack, onNext }: Props) {
                     <label className={labelCls} htmlFor="keeper-bps">Keeper cut (bps of fee, max 2000 = 20%)</label>
                     <HelpPopover {...CREATE_HELP.keeperCut} />
                   </div>
-                  <input id="keeper-bps" className={inputCls} type="number" min="0" max="2000" value={state.keeperBps} onChange={(e) => dispatch({ type: "SET_KEEPER_BPS", value: e.target.value })} />
+                  <input id="keeper-bps" autoComplete="off" spellCheck={false} className={inputCls} type="number" min="0" max="2000" value={state.keeperBps} onChange={(e) => dispatch({ type: "SET_KEEPER_BPS", value: e.target.value })} />
                 </div>
                 <div>
                   <div className={labelRowCls}>
                     <label className={labelCls} htmlFor="keeper-escrow">Keeper escrow (advanced)</label>
                     <HelpPopover {...CREATE_HELP.keeperEscrow} />
                   </div>
-                  <input id="keeper-escrow" className={inputCls} placeholder="defaults to the KeeperModule" value={state.keeperEscrow} onChange={(e) => dispatch({ type: "SET_KEEPER_ESCROW", value: e.target.value })} />
+                  <input id="keeper-escrow" autoComplete="off" spellCheck={false} className={inputCls} placeholder="defaults to the KeeperModule" value={state.keeperEscrow} onChange={(e) => dispatch({ type: "SET_KEEPER_ESCROW", value: e.target.value })} />
                 </div>
               </>
             )}
@@ -68,7 +68,7 @@ export function StepSettings({ state, dispatch, onBack, onNext }: Props) {
           <label className={labelCls} htmlFor="creation-unit">Creation unit size (tokens)</label>
           <HelpPopover {...CREATE_HELP.creationUnit} />
         </div>
-        <input id="creation-unit" className={inputCls} type="number" min="1" value={state.creationUnitSize} onChange={(e) => dispatch({ type: "SET_CREATION_UNIT", value: e.target.value })} />
+        <input id="creation-unit" autoComplete="off" spellCheck={false} className={inputCls} type="number" min="1" value={state.creationUnitSize} onChange={(e) => dispatch({ type: "SET_CREATION_UNIT", value: e.target.value })} />
         <p className="text-[10px] text-txt3 mt-1.5">Minimum basket tokens minted or redeemed per transaction.</p>
       </Module>
 

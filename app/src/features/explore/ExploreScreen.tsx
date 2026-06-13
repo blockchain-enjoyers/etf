@@ -69,8 +69,8 @@ function compareRows(a: MergedRow, b: MergedRow, key: SortKey, dir: SortDir): nu
 }
 
 const TH_CLASS =
-  "text-left text-txt3 font-semibold text-[9px] uppercase tracking-[0.1em] px-2.5 py-1.5 border-b border-line whitespace-nowrap";
-const TD_CLASS = "px-2.5 py-2 border-b border-line-soft font-mono tabular-nums";
+  "text-left text-txt3 font-semibold text-[9px] uppercase tracking-[0.1em] px-4 py-1.5 border-b border-line whitespace-nowrap";
+const TD_CLASS = "px-4 py-2 border-b border-line-soft font-mono tabular-nums";
 
 function SortableHeader({
   label,
@@ -78,17 +78,19 @@ function SortableHeader({
   current,
   dir,
   onSort,
+  align = "left",
 }: {
   label: string;
   sortKey: SortKey;
   current: SortKey;
   dir: SortDir;
   onSort: (k: SortKey) => void;
+  align?: "left" | "right";
 }) {
   const active = current === sortKey;
   return (
     <th
-      className={cn(TH_CLASS, "cursor-pointer select-none hover:text-txt2")}
+      className={cn(TH_CLASS, align === "right" && "text-right", "cursor-pointer select-none hover:text-txt2")}
       onClick={() => onSort(sortKey)}
       aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
     >
@@ -177,6 +179,8 @@ export function ExploreScreen() {
         <div className="flex-1" />
         <input
           type="search"
+          autoComplete="off"
+          spellCheck={false}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="🔍 search…"
@@ -190,7 +194,7 @@ export function ExploreScreen() {
         </div>
       ) : (
         <div className="overflow-auto flex-1">
-          <table className="w-full border-collapse text-[11.5px]">
+          <table className="w-full table-fixed border-collapse text-[11.5px]">
             <thead>
               <tr>
                 <SortableHeader
@@ -246,14 +250,13 @@ export function ExploreScreen() {
                     className="hover:bg-surface2 cursor-pointer transition-colors"
                   >
                     <td className={cn(TD_CLASS, "font-bold text-txt")}>{row.symbol}</td>
-                    <td className={cn(TD_CLASS, "font-sans text-txt2")}>{row.name}</td>
-                    <td className={cn(TD_CLASS, "text-right", row.nav == null && "text-txt3")}>
+                    <td className={cn(TD_CLASS, "font-sans text-txt2 truncate")}>{row.name}</td>
+                    <td className={cn(TD_CLASS, row.nav == null && "text-txt3")}>
                       {row.nav == null ? "—" : formatUsd(row.nav)}
                     </td>
                     <td
                       className={cn(
                         TD_CLASS,
-                        "text-right",
                         row.change24hBps == null
                           ? "text-txt3"
                           : row.change24hBps >= 0

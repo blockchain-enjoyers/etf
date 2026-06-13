@@ -9,6 +9,7 @@ import { ForwardService } from "./forward.service.js";
 import { HoldingsService } from "./holdings.service.js";
 import { RebalanceService } from "./rebalance.service.js";
 import { ConstituentPricesController } from "./constituent-prices.controller.js";
+import { TokensController } from "./tokens.controller.js";
 import { AggSourcePayloads } from "./agg-source-payloads.js";
 import { SceneOracleConfig } from "../demo/scene-oracle.config.js";
 import { AccountsController } from "./accounts.controller.js";
@@ -27,7 +28,7 @@ import { ForwardEnableAuthService } from "./forward-enable-auth.service.js";
  */
 @Module({
   imports: [CapabilitiesModule, JobsModule],
-  controllers: [BasketsController, FeedController, AccountsController, ForwardEnableController, ConstituentPricesController],
+  controllers: [BasketsController, FeedController, AccountsController, ForwardEnableController, ConstituentPricesController, TokensController],
   providers: [AvailabilityService, RebalanceService, ForwardService, HoldingsService, AggSourcePayloads, SceneOracleConfig, IndexerRepository, PositionService, ActivityService, ForwardEnableService, ForwardEnableAuthService],
   exports: [AvailabilityService],
 })

@@ -27,6 +27,8 @@ import {
   previewDeployResponseSchema,
   constituentPricesSchema,
   sceneReadSchema,
+  tokenInfoListSchema,
+  type TokenInfo,
   type ConstituentPrice,
   type SceneTamper,
   type SceneRead,
@@ -506,5 +508,19 @@ export class MeridianClient implements MeridianApi {
   async getScene(token: string): Promise<SceneRead> {
     const res = await fetch(`${this.baseUrl}/demo/scene?token=${token}`);
     return parseResponse(res, sceneReadSchema);
+  }
+
+  async searchTokens(q: string): Promise<TokenInfo[]> {
+    const res = await fetch(`${this.baseUrl}/tokens/search?q=${encodeURIComponent(q)}`);
+    return parseResponse(res, tokenInfoListSchema);
+  }
+
+  async resolveTokens(addresses: string[]): Promise<TokenInfo[]> {
+    const res = await fetch(`${this.baseUrl}/tokens/resolve`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addresses }),
+    });
+    return parseResponse(res, tokenInfoListSchema);
   }
 }

@@ -54,6 +54,8 @@ const stubApi: MeridianApi = {
   getConstituentPrices: vi.fn(),
   tamperScene: vi.fn(),
   getScene: vi.fn(),
+  searchTokens: vi.fn(),
+  resolveTokens: vi.fn(),
 };
 
 function Consumer() {

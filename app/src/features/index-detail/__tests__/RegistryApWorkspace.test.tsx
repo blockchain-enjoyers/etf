@@ -42,6 +42,7 @@ vi.mock("wagmi", () => ({
 // 46630 (Robinhood Chain testnet) carries a CloneFactory in the static address book → "wired".
 vi.mock("@meridian/contracts", () => ({
   addresses: { 46630: { CloneFactory: "0xfactory" } },
+  demoTokens: [], // FixtureApi (loaded transitively via lib/api) imports this.
 }));
 
 import { RegistryApWorkspace } from "../workspaces/RegistryApWorkspace";

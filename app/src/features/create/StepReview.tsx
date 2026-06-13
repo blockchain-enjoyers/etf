@@ -4,6 +4,7 @@ import type { WizardState, WizardAction } from "./types";
 import { isWeightsMode, isManagedRebalance } from "./types";
 import { sortedValidConstituents, constituentsOk, hasDuplicateAddresses, weightSum } from "./reducer";
 import { buildDeployRequest } from "./PreviewRail";
+import { DeploySuccess } from "./DeploySuccess";
 import { useCapabilities } from "../../capabilities/use-capabilities";
 import { useAvailability } from "../../data/useAvailability";
 import { useApi } from "../../lib/api";
@@ -254,6 +255,15 @@ export function StepReview({ state, onBack, preview, userSalt }: Props) {
           ← Back
         </Button>
       </div>
+
+      {deployed && predicted && (
+        <DeploySuccess
+          vaultAddress={predicted}
+          txHash={deployTx.hash}
+          symbol={state.symbol}
+          name={state.name}
+        />
+      )}
     </div>
   );
 }

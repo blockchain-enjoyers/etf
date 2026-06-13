@@ -10,6 +10,8 @@ import type { MeridianApi, DeployPreview } from "@meridian/sdk";
 vi.mock("wagmi", () => ({ useAccount: vi.fn(() => ({ address: "0x" + "a".repeat(40), isConnected: true })) }));
 vi.mock("../../capabilities/use-capabilities", () => ({ useCapabilities: vi.fn() }));
 vi.mock("../../data/useAvailability", () => ({ useAvailability: vi.fn() }));
+// DeploySuccess needs router/query/api providers; stub it so these tests focus on StepReview's own CTA.
+vi.mock("./DeploySuccess", () => ({ DeploySuccess: () => null }));
 
 const deployRun = vi.fn();
 const scheduleRun = vi.fn();

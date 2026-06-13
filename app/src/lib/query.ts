@@ -14,6 +14,7 @@ export const queryKeys = {
   forwardTickets: (vaultAddress: string) => ["forwardTickets", vaultAddress] as const,
   forwardQueue: (vaultAddress: string) => ["forwardQueue", vaultAddress] as const,
   forwardGate: (vaultAddress: string) => ["forwardGate", vaultAddress] as const,
+  forwardEnableStatus: (vaultAddress: string) => ["forwardEnableStatus", vaultAddress] as const,
   forwardHistory: (vaultAddress: string) => ["forwardHistory", vaultAddress] as const,
   holdings: (vault: string) => ["holdings", vault] as const,
   accountHoldings: (account: string) => ["accountHoldings", account] as const,
@@ -22,6 +23,7 @@ export const queryKeys = {
   availability: (vault: string, account?: string) => ["availability", vault, account ?? null] as const,
   auctionStatus: (vault: string, account?: string) => ["auctionStatus", vault, account ?? null] as const,
   mintQuote: (vault: string, units: string, account?: string) => ["mintQuote", vault, units, account ?? null] as const,
+  constituentPrices: (v: string) => ["constituentPrices", v] as const,
   deployPreview: (key: string) => ["deployPreview", key] as const,
   suggestedFunds: ["suggestedFunds"] as const,
 };

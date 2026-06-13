@@ -352,4 +352,70 @@ describe("MeridianClient forward-cash endpoints", () => {
     expect(url).toBe(`${BASE}/baskets/0xv/forward/history`);
     expect(out.items).toHaveLength(0);
   });
+
+  it("enableCashSettlement POSTs to /forward/enable and returns pending", async () => {
+    stubFetch(200, { status: "pending" });
+    const body = {
+      params: {
+        minPrints: 2,
+        twapWindowSec: 600,
+        twapBandBps: 200,
+        pegBandBps: 200,
+        pegMaxAgeSec: 3600,
+        cutoffDelaySec: 600,
+        spreadBps: 0,
+        capacityBps: 0,
+        keeperTip: "0",
+        keeperBps: 0,
+      },
+      nonce: "1",
+      expiry: 9999,
+      signature: "0xsig",
+    };
+    const out = await makeClient().enableCashSettlement("0xv", body);
+    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/baskets/0xv/forward/enable`);
+    expect((init as RequestInit).method).toBe("POST");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual(body);
+    expect(out.status).toBe("pending");
+  });
+
+  it("getForwardEnableStatus GETs /forward/enable/status and parses", async () => {
+    stubFetch(200, { status: "live", queueAddress: "0xq" });
+    const out = await makeClient().getForwardEnableStatus("0xv");
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/baskets/0xv/forward/enable/status`);
+    expect(out.status).toBe("live");
+    expect(out.queueAddress).toBe("0xq");
+  });
+});
+
+describe("MeridianClient price-safety panel endpoints", () => {
+  it("getConstituentPrices GETs /baskets/:id/constituent-prices and parses the array", async () => {
+    stubFetch(200, [{ token: "0xt", price: "100", sourceCount: 3 }]);
+    const out = await makeClient().getConstituentPrices("0xv");
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/baskets/0xv/constituent-prices`);
+    expect(out[0]!.sourceCount).toBe(3);
+    expect(out[0]!.price).toBe("100");
+  });
+
+  it("tamperScene POSTs to /demo/scene/tamper with the body and returns txHash", async () => {
+    stubFetch(200, { txHash: "0xhash" });
+    const body = { token: "0xt", price: "50" };
+    const out = await makeClient().tamperScene(body);
+    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/demo/scene/tamper`);
+    expect((init as RequestInit).method).toBe("POST");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual(body);
+    expect(out.txHash).toBe("0xhash");
+  });
+
+  it("getScene GETs /demo/scene?token= and parses", async () => {
+    stubFetch(200, { token: "0xt", mockPrice: "100" });
+    const out = await makeClient().getScene("0xt");
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(url).toBe(`${BASE}/demo/scene?token=0xt`);
+    expect(out.mockPrice).toBe("100");
+  });
 });

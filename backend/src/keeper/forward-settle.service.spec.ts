@@ -22,7 +22,7 @@ function svc(opts: {
       (opts.pending ?? []).map((p) => ({ ticketId: p.id, cutoff: new Date(p.cutoffMs) })),
     ),
   };
-  const forwardQueues = { pairs: () => [{ vault: "0xv", queue: "0xq" }] };
+  const forwardQueues = { pairs: () => [{ vault: "0xv", queue: "0xq" }], refresh: vi.fn(async () => {}) };
   const writer = {
     settle: vi.fn(async () => {
       if (opts.writerThrows) throw opts.writerThrows;

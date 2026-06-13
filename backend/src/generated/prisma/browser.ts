@@ -88,3 +88,13 @@ export type KeeperPayout = Prisma.KeeperPayoutModel
  * denormalized for an owner-scoped, time-ordered query. Idempotent on (txHash, logIndex).
  */
 export type ActivityEvent = Prisma.ActivityEventModel
+/**
+ * Model ForwardQueueConfig
+ * 
+ */
+export type ForwardQueueConfig = Prisma.ForwardQueueConfigModel
+/**
+ * Model ForwardEnableNonce
+ * 
+ */
+export type ForwardEnableNonce = Prisma.ForwardEnableNonceModel

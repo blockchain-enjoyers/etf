@@ -64,7 +64,9 @@ export const ModelName = {
   ForwardTicket: 'ForwardTicket',
   ForwardEvent: 'ForwardEvent',
   KeeperPayout: 'KeeperPayout',
-  ActivityEvent: 'ActivityEvent'
+  ActivityEvent: 'ActivityEvent',
+  ForwardQueueConfig: 'ForwardQueueConfig',
+  ForwardEnableNonce: 'ForwardEnableNonce'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -298,6 +300,31 @@ export const ActivityEventScalarFieldEnum = {
 } as const
 
 export type ActivityEventScalarFieldEnum = (typeof ActivityEventScalarFieldEnum)[keyof typeof ActivityEventScalarFieldEnum]
+
+
+export const ForwardQueueConfigScalarFieldEnum = {
+  vaultAddress: 'vaultAddress',
+  queueAddress: 'queueAddress',
+  requestedBy: 'requestedBy',
+  status: 'status',
+  params: 'params',
+  step: 'step',
+  txHashes: 'txHashes',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ForwardQueueConfigScalarFieldEnum = (typeof ForwardQueueConfigScalarFieldEnum)[keyof typeof ForwardQueueConfigScalarFieldEnum]
+
+
+export const ForwardEnableNonceScalarFieldEnum = {
+  vaultAddress: 'vaultAddress',
+  nonce: 'nonce',
+  usedAt: 'usedAt'
+} as const
+
+export type ForwardEnableNonceScalarFieldEnum = (typeof ForwardEnableNonceScalarFieldEnum)[keyof typeof ForwardEnableNonceScalarFieldEnum]
 
 
 export const SortOrder = {

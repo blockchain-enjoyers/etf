@@ -107,4 +107,13 @@ export class ManagedRebalanceVaultReader {
       functionName: "feeToken",
     });
   }
+
+  /** The vault manager (FeeCore.manager) authorized to enable cash settlement. */
+  async manager(vault: `0x${string}`): Promise<`0x${string}`> {
+    return this.chain.publicClient.readContract({
+      address: vault,
+      abi: ManagedRebalanceVaultAbi,
+      functionName: "manager",
+    });
+  }
 }

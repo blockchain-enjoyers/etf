@@ -646,3 +646,27 @@ export const suggestedFundsResponseSchema = z.object({
   funds: z.array(suggestedFundSchema),
 });
 export type SuggestedFundsResponse = z.infer<typeof suggestedFundsResponseSchema>;
+
+// --- Forward cash-settlement enable (manager-signed) ---
+export const enableParamsSchema = z.object({
+  minPrints: z.number().int(), twapWindowSec: z.number().int(), twapBandBps: z.number().int(), pegBandBps: z.number().int(),
+  pegMaxAgeSec: z.number().int(), cutoffDelaySec: z.number().int(), spreadBps: z.number().int(), capacityBps: z.number().int(),
+  keeperTip: baseUnitString, keeperBps: z.number().int(),
+});
+export type EnableParams = z.infer<typeof enableParamsSchema>;
+export const enableRequestSchema = z.object({ params: enableParamsSchema, nonce: z.string(), expiry: z.number().int(), signature: z.string() });
+export type EnableRequest = z.infer<typeof enableRequestSchema>;
+export const forwardEnableStatusSchema = z.object({
+  status: z.enum(["none", "pending", "wiring", "live", "failed"]),
+  step: z.string().optional(), queueAddress: z.string().optional(), error: z.string().optional(),
+});
+export type ForwardEnableStatus = z.infer<typeof forwardEnableStatusSchema>;
+
+// --- Judge price-safety panel: read-only seed prices for the FE sim ---
+export const constituentPriceSchema = z.object({ token: z.string(), price: z.string(), sourceCount: z.number().int() });
+export const constituentPricesSchema = z.array(constituentPriceSchema);
+export type ConstituentPrice = z.infer<typeof constituentPriceSchema>;
+export const sceneTamperSchema = z.object({ token: z.string(), price: z.string() });
+export type SceneTamper = z.infer<typeof sceneTamperSchema>;
+export const sceneReadSchema = z.object({ token: z.string(), mockPrice: z.string() });
+export type SceneRead = z.infer<typeof sceneReadSchema>;

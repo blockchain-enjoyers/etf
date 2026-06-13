@@ -68,6 +68,13 @@ enum ForwardEventKind {
   PartialFill
 }
 
+enum ForwardEnableStatus {
+  Pending
+  Wiring
+  Live
+  Failed
+}
+
 enum ActivityKind {
   Mint
   Redeem
@@ -314,4 +321,27 @@ model ActivityEvent {
 
   @@unique([txHash, logIndex])
   @@index([owner, timestamp(sort: Desc)])
+}
+
+model ForwardQueueConfig {
+  vaultAddress String              @id
+  queueAddress String?
+  requestedBy  String
+  status       ForwardEnableStatus @default(Pending)
+  params       Json
+  step         String?
+  txHashes     Json                @default("[]")
+  error        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([status])
+}
+
+model ForwardEnableNonce {
+  vaultAddress String
+  nonce        String
+  usedAt       DateTime @default(now())
+
+  @@id([vaultAddress, nonce])
 }

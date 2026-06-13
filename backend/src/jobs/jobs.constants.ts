@@ -3,6 +3,7 @@ export const JOB_SIGNAL_POLL = "signal-poll" as const;
 export const JOB_NAV_COMPUTE = "nav-compute" as const;
 export const JOB_INDEXER_TICK = "indexer-tick" as const;
 export const JOB_TWAP_RECORD = "twap-record" as const;
+export const JOB_FORWARD_ENABLE = "forward-enable" as const;
 
 /** Postgres LISTEN/NOTIFY channel for cross-replica SSE fan-out. */
 export const NAV_UPDATE_CHANNEL = "nav_update" as const;

@@ -23,6 +23,7 @@ export class ForwardRecordService {
   ) {}
 
   async run(): Promise<KeeperResult> {
+    await this.forwardQueues.refresh();
     if (!this.config.get("FORWARD_OPERATOR_ENABLED")) {
       return { status: "noop", detail: "forward operator disabled" };
     }

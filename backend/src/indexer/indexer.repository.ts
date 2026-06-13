@@ -522,4 +522,33 @@ export class IndexerRepository {
       update: { lastProcessedBlock: block },
     });
   }
+
+  async upsertForwardQueueConfig(e: { vaultAddress: string; requestedBy: string; params: unknown }): Promise<void> {
+    await this.prisma.forwardQueueConfig.upsert({
+      where: { vaultAddress: e.vaultAddress },
+      create: { vaultAddress: e.vaultAddress, requestedBy: e.requestedBy, params: e.params as object, status: "Pending" },
+      update: { requestedBy: e.requestedBy, params: e.params as object, status: "Pending", error: null, step: null },
+    });
+  }
+
+  async getForwardQueueConfig(vault: string) {
+    return this.prisma.forwardQueueConfig.findUnique({ where: { vaultAddress: vault } });
+  }
+
+  async setForwardQueueStatus(vault: string, status: "Pending" | "Wiring" | "Live" | "Failed", data: { queueAddress?: string; step?: string; error?: string | null; txHashes?: string[] } = {}): Promise<void> {
+    await this.prisma.forwardQueueConfig.update({ where: { vaultAddress: vault }, data: { status, ...data } });
+  }
+
+  async getLiveForwardQueues(): Promise<{ vault: string; queue: string }[]> {
+    const rows = await this.prisma.forwardQueueConfig.findMany({ where: { status: "Live" } });
+    return rows.filter((r) => r.queueAddress).map((r) => ({ vault: r.vaultAddress, queue: r.queueAddress! }));
+  }
+
+  async markNonceUsed(vault: string, nonce: string): Promise<void> {
+    await this.prisma.forwardEnableNonce.create({ data: { vaultAddress: vault, nonce } });
+  }
+
+  async isNonceUsed(vault: string, nonce: string): Promise<boolean> {
+    return (await this.prisma.forwardEnableNonce.findUnique({ where: { vaultAddress_nonce: { vaultAddress: vault, nonce } } })) !== null;
+  }
 }

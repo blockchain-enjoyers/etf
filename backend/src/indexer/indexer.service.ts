@@ -747,6 +747,7 @@ export class IndexerService {
     }
 
     let forwardCount = 0;
+    await this.forwardQueues.refresh();
     for (const { vault, queue } of this.forwardQueues.pairs()) {
       const evs = await this.reader.getForwardQueueLogs(queue, vault, from, to);
       for (const e of evs) await this.repo.applyForwardEvent(e);

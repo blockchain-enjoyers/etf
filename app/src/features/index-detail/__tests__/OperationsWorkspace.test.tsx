@@ -8,11 +8,16 @@ const mockUseRebalanceDetail = vi.fn();
 const mockUseForwardTickets = vi.fn();
 const mockUseSettleGateStatus = vi.fn();
 const mockUseKeeperStatus = vi.fn();
+const mockUseForwardQueue = vi.fn();
 
 vi.mock("../../../data/useRebalanceDetail", () => ({ useRebalanceDetail: () => mockUseRebalanceDetail() }));
 vi.mock("../../../data/useForwardTickets", () => ({ useForwardTickets: () => mockUseForwardTickets() }));
 vi.mock("../../../data/useSettleGateStatus", () => ({ useSettleGateStatus: () => mockUseSettleGateStatus() }));
 vi.mock("../../../data/useKeeperStatus", () => ({ useKeeperStatus: () => mockUseKeeperStatus() }));
+vi.mock("../../../data/useForwardQueue", () => ({ useForwardQueue: () => mockUseForwardQueue() }));
+vi.mock("../EnableCashSettlementPanel", () => ({
+  EnableCashSettlementPanel: () => <div data-testid="enable-panel" />,
+}));
 
 const mockCanForwardKeeper = vi.fn();
 vi.mock("../../../capabilities/use-capabilities", () => ({
@@ -25,8 +30,9 @@ vi.mock("../../../wallet/use-tx-plan", () => ({
   useTxPlan: () => ({ run: vi.fn(), status: "idle", currentStep: 0, total: 0, error: null, steps: [] }),
 }));
 
+let mockAddress = "0xmgr";
 vi.mock("wagmi", () => ({
-  useAccount: () => ({ address: "0xmgr", isConnected: true }),
+  useAccount: () => ({ address: mockAddress, isConnected: true }),
   useChainId: () => 46630,
 }));
 
@@ -90,10 +96,12 @@ function renderWorkspace() {
 }
 
 beforeEach(() => {
+  mockAddress = "0xmgr";
   mockUseRebalanceDetail.mockReturnValue({ data: rebalance });
   mockUseForwardTickets.mockReturnValue({ data: [] });
   mockUseSettleGateStatus.mockReturnValue({ data: gatePending });
   mockUseKeeperStatus.mockReturnValue({ data: keeper });
+  mockUseForwardQueue.mockReturnValue({ data: { queueAddress: "0xqueue" } });
   mockCanForwardKeeper.mockReturnValue({ enabled: true, reason: "ok" });
 });
 
@@ -141,5 +149,28 @@ describe("OperationsWorkspace", () => {
     renderWorkspace();
     expect(screen.getAllByText(/Manager-only tool/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/sign in as the index manager/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows the settle-readiness checklist (not the enable panel) when a queue is live", () => {
+    mockUseForwardQueue.mockReturnValue({ data: { queueAddress: "0xqueue" } });
+    renderWorkspace();
+    expect(screen.getByText("Settle-readiness checklist")).toBeInTheDocument();
+    expect(screen.queryByTestId("enable-panel")).toBeNull();
+  });
+
+  it("mounts the manager enable panel (no checklist) when there's no queue and the wallet is the manager", () => {
+    mockUseForwardQueue.mockReturnValue({ data: { queueAddress: null } });
+    mockAddress = "0xmgr";
+    renderWorkspace();
+    expect(screen.getByTestId("enable-panel")).toBeInTheDocument();
+    expect(screen.queryByText("Settle-readiness checklist")).toBeNull();
+  });
+
+  it("shows an in-kind note (no enable panel) when there's no queue and the wallet is not the manager", () => {
+    mockUseForwardQueue.mockReturnValue({ data: { queueAddress: null } });
+    mockAddress = "0xother";
+    renderWorkspace();
+    expect(screen.queryByTestId("enable-panel")).toBeNull();
+    expect(screen.getByText(/Redeem in-kind anytime/i)).toBeInTheDocument();
   });
 });

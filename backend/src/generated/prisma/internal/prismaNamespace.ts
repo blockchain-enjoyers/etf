@@ -397,7 +397,9 @@ export const ModelName = {
   ForwardTicket: 'ForwardTicket',
   ForwardEvent: 'ForwardEvent',
   KeeperPayout: 'KeeperPayout',
-  ActivityEvent: 'ActivityEvent'
+  ActivityEvent: 'ActivityEvent',
+  ForwardQueueConfig: 'ForwardQueueConfig',
+  ForwardEnableNonce: 'ForwardEnableNonce'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -413,7 +415,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "basket" | "constituent" | "navSnapshot" | "priceSnapshot" | "tokenMetadata" | "indexerCheckpoint" | "queueEntry" | "fairValueAttestation" | "rebalanceEvent" | "targetChange" | "forwardTicket" | "forwardEvent" | "keeperPayout" | "activityEvent"
+    modelProps: "basket" | "constituent" | "navSnapshot" | "priceSnapshot" | "tokenMetadata" | "indexerCheckpoint" | "queueEntry" | "fairValueAttestation" | "rebalanceEvent" | "targetChange" | "forwardTicket" | "forwardEvent" | "keeperPayout" | "activityEvent" | "forwardQueueConfig" | "forwardEnableNonce"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1453,6 +1455,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ForwardQueueConfig: {
+      payload: Prisma.$ForwardQueueConfigPayload<ExtArgs>
+      fields: Prisma.ForwardQueueConfigFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ForwardQueueConfigFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ForwardQueueConfigFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>
+        }
+        findFirst: {
+          args: Prisma.ForwardQueueConfigFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ForwardQueueConfigFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>
+        }
+        findMany: {
+          args: Prisma.ForwardQueueConfigFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>[]
+        }
+        create: {
+          args: Prisma.ForwardQueueConfigCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>
+        }
+        createMany: {
+          args: Prisma.ForwardQueueConfigCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ForwardQueueConfigCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>[]
+        }
+        delete: {
+          args: Prisma.ForwardQueueConfigDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>
+        }
+        update: {
+          args: Prisma.ForwardQueueConfigUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>
+        }
+        deleteMany: {
+          args: Prisma.ForwardQueueConfigDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ForwardQueueConfigUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ForwardQueueConfigUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>[]
+        }
+        upsert: {
+          args: Prisma.ForwardQueueConfigUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardQueueConfigPayload>
+        }
+        aggregate: {
+          args: Prisma.ForwardQueueConfigAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateForwardQueueConfig>
+        }
+        groupBy: {
+          args: Prisma.ForwardQueueConfigGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ForwardQueueConfigGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ForwardQueueConfigCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ForwardQueueConfigCountAggregateOutputType> | number
+        }
+      }
+    }
+    ForwardEnableNonce: {
+      payload: Prisma.$ForwardEnableNoncePayload<ExtArgs>
+      fields: Prisma.ForwardEnableNonceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ForwardEnableNonceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ForwardEnableNonceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>
+        }
+        findFirst: {
+          args: Prisma.ForwardEnableNonceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ForwardEnableNonceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>
+        }
+        findMany: {
+          args: Prisma.ForwardEnableNonceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>[]
+        }
+        create: {
+          args: Prisma.ForwardEnableNonceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>
+        }
+        createMany: {
+          args: Prisma.ForwardEnableNonceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ForwardEnableNonceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>[]
+        }
+        delete: {
+          args: Prisma.ForwardEnableNonceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>
+        }
+        update: {
+          args: Prisma.ForwardEnableNonceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>
+        }
+        deleteMany: {
+          args: Prisma.ForwardEnableNonceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ForwardEnableNonceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ForwardEnableNonceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>[]
+        }
+        upsert: {
+          args: Prisma.ForwardEnableNonceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ForwardEnableNoncePayload>
+        }
+        aggregate: {
+          args: Prisma.ForwardEnableNonceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateForwardEnableNonce>
+        }
+        groupBy: {
+          args: Prisma.ForwardEnableNonceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ForwardEnableNonceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ForwardEnableNonceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ForwardEnableNonceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1707,6 +1857,31 @@ export const ActivityEventScalarFieldEnum = {
 } as const
 
 export type ActivityEventScalarFieldEnum = (typeof ActivityEventScalarFieldEnum)[keyof typeof ActivityEventScalarFieldEnum]
+
+
+export const ForwardQueueConfigScalarFieldEnum = {
+  vaultAddress: 'vaultAddress',
+  queueAddress: 'queueAddress',
+  requestedBy: 'requestedBy',
+  status: 'status',
+  params: 'params',
+  step: 'step',
+  txHashes: 'txHashes',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ForwardQueueConfigScalarFieldEnum = (typeof ForwardQueueConfigScalarFieldEnum)[keyof typeof ForwardQueueConfigScalarFieldEnum]
+
+
+export const ForwardEnableNonceScalarFieldEnum = {
+  vaultAddress: 'vaultAddress',
+  nonce: 'nonce',
+  usedAt: 'usedAt'
+} as const
+
+export type ForwardEnableNonceScalarFieldEnum = (typeof ForwardEnableNonceScalarFieldEnum)[keyof typeof ForwardEnableNonceScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1987,6 +2162,20 @@ export type ListEnumActivityKindFieldRefInput<$PrismaModel> = FieldRefInputType<
 
 
 /**
+ * Reference to a field of type 'ForwardEnableStatus'
+ */
+export type EnumForwardEnableStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ForwardEnableStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'ForwardEnableStatus[]'
+ */
+export type ListEnumForwardEnableStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ForwardEnableStatus[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -2123,6 +2312,8 @@ export type GlobalOmitConfig = {
   forwardEvent?: Prisma.ForwardEventOmit
   keeperPayout?: Prisma.KeeperPayoutOmit
   activityEvent?: Prisma.ActivityEventOmit
+  forwardQueueConfig?: Prisma.ForwardQueueConfigOmit
+  forwardEnableNonce?: Prisma.ForwardEnableNonceOmit
 }
 
 /* Types for Logging */

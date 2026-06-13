@@ -3,8 +3,8 @@
  "generated_at": "2026-06-11T09:08:11Z",
  "source_registry": "out/registry.json",
  "methodology": "Constituents + weights replicated from real ETFs (issuer holdings files), intersected with our registry and renormalized over the tokenizable subset. coverage_pct = matched source weight. We surface derived weights only, never the raw issuer file.",
- "min_coverage_pct": 70.0,
- "fund_count": 16,
+ "min_coverage_pct": 70,
+ "fund_count": 17,
  "funds": [
   {
    "id": "sp500",
@@ -5423,7 +5423,7 @@
     "weighting": "cap-weighted S&P sector",
     "source_holdings": 21
    },
-   "coverage_pct": 100.0,
+   "coverage_pct": 100,
    "constituent_count": 21,
    "vault": {
     "type": "BasketVault",
@@ -8539,6 +8539,44 @@
      "weight_pct": 0.7878,
      "address": "0x9a57fFd6fB91bCe9033f21D6b736cCa8b82Ea071",
      "market_cap_usd": 121050513408
+    }
+   ]
+  },
+  {
+   "id": "demo-scene3",
+   "name": "Demo Scene 3",
+   "description": "Scene basket (MSTRx/TSLAx/NVDAx) with on-chain price tamper enabled for the judge demo.",
+   "theme": "demo",
+   "source_etf": null,
+   "coverage_pct": 100,
+   "constituent_count": 3,
+   "vault": {
+    "type": "ManagedRebalanceVault",
+    "level": "L3",
+    "rationale": "Small curated scene for the judge price-safety demo.",
+    "cash_entry": "ForwardCashQueue (L5) for forward-priced cash create/redeem."
+   },
+   "constituents": [
+    {
+     "ticker": "MSTRx",
+     "name": "MicroStrategy (demo)",
+     "sector": "Demo",
+     "weight_pct": 34,
+     "address": "0x89eC78b779E00bc99044656b04a8DB059c9b7270"
+    },
+    {
+     "ticker": "TSLAx",
+     "name": "Tesla (demo)",
+     "sector": "Demo",
+     "weight_pct": 33,
+     "address": "0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3"
+    },
+    {
+     "ticker": "NVDAx",
+     "name": "NVIDIA (demo)",
+     "sector": "Demo",
+     "weight_pct": 33,
+     "address": "0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1"
     }
    ]
   }

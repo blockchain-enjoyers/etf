@@ -1,4 +1,5 @@
 import { Module, type OnModuleInit } from "@nestjs/common";
+import type { Job } from "pg-boss";
 import { IndexerModule } from "../indexer/indexer.module.js";
 import { NavModule } from "../nav/nav.module.js";
 import { SignalsModule } from "../signals/signals.module.js";
@@ -7,6 +8,7 @@ import {
   CRON_NAV_COMPUTE,
   CRON_SIGNAL_POLL,
   CRON_TWAP_RECORD,
+  JOB_FORWARD_ENABLE,
   JOB_INDEXER_TICK,
   JOB_NAV_COMPUTE,
   JOB_SIGNAL_POLL,
@@ -17,6 +19,7 @@ import { NavComputeHandler } from "./nav-compute.handler.js";
 import { TwapRecordHandler } from "./twap-record.handler.js";
 import { PgBossService } from "./pg-boss.service.js";
 import { SignalPollHandler } from "./signal-poll.handler.js";
+import { ForwardEnableHandler } from "./forward-enable.handler.js";
 
 /**
  * Producer role (spec §3). Registers the producer jobs as cron schedules with
@@ -32,6 +35,7 @@ import { SignalPollHandler } from "./signal-poll.handler.js";
     SignalPollHandler,
     IndexerTickHandler,
     TwapRecordHandler,
+    ForwardEnableHandler,
   ],
   exports: [PgBossService],
 })
@@ -42,6 +46,7 @@ export class JobsModule implements OnModuleInit {
     private readonly signalPoll: SignalPollHandler,
     private readonly indexerTick: IndexerTickHandler,
     private readonly twapRecord: TwapRecordHandler,
+    private readonly forwardEnable: ForwardEnableHandler,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -50,6 +55,8 @@ export class JobsModule implements OnModuleInit {
     await this.boss.createQueue(JOB_NAV_COMPUTE);
     await this.boss.createQueue(JOB_INDEXER_TICK);
     await this.boss.createQueue(JOB_TWAP_RECORD);
+    // forward-enable worker is wired in P4; the queue must exist so the API can enqueue.
+    await this.boss.createQueue(JOB_FORWARD_ENABLE);
 
     await this.boss.work(JOB_SIGNAL_POLL, async () => {
       await this.signalPoll.run();
@@ -64,6 +71,12 @@ export class JobsModule implements OnModuleInit {
     });
     await this.boss.work(JOB_TWAP_RECORD, async () => {
       await this.twapRecord.run();
+    });
+    // On-demand only (enqueued by the enable endpoint); the producer sends { vault } per job.
+    await this.boss.work(JOB_FORWARD_ENABLE, async (jobs: Job[]) => {
+      for (const job of jobs) {
+        await this.forwardEnable.run((job.data as { vault: string }).vault);
+      }
     });
 
     await this.boss.scheduleSingleton(JOB_SIGNAL_POLL, CRON_SIGNAL_POLL);

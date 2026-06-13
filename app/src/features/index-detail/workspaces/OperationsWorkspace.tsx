@@ -16,7 +16,6 @@ import { SettleReadinessPanel } from "../SettleReadinessPanel";
 import { ForwardKeeperPanel } from "../ForwardKeeperPanel";
 import { KeeperPanel } from "../KeeperPanel";
 import { EnableCashSettlementPanel } from "../EnableCashSettlementPanel";
-import { DemoPriceSafetyPanel } from "../DemoPriceSafetyPanel";
 
 export function OperationsWorkspace({ vaultAddress, basket }: { vaultAddress: string; basket: BasketDetail }) {
   const enabled = basket.vaultType === "rebalance";
@@ -91,12 +90,6 @@ export function OperationsWorkspace({ vaultAddress, basket }: { vaultAddress: st
               forward-priced cash flows.
             </p>
           )}
-        </Module>
-      )}
-
-      {import.meta.env.VITE_DEMO_MODE === "true" && (
-        <Module title="Price-safety (judge sandbox)" icon={<IconChecklist />} audience="curator" bodyClassName="p-0">
-          <DemoPriceSafetyPanel vault={vaultAddress} />
         </Module>
       )}
 

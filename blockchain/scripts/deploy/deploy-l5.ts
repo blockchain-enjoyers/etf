@@ -7,9 +7,17 @@ const ENC = ["address", "uint256", "uint256"];
 const FEED_ID = "0x" + "11".repeat(32); // mock router feed id (g1 only checks non-zero)
 
 // unitQty is OFF-CHAIN (tree input + bootstrap arg) ONLY; the createRegistryIndex struct does NOT carry it.
+// The VTBx demo basket is a SELF-CONTAINED 3-constituent registry index: deploy-l5 owns its constituents
+// (dedicated MockERC20Decimals) + a shared MockSource. It does NOT read the scale-out demo-stocks universe
+// (a ticker-keyed object map of role-gated Stock clones); that legacy array-schema coupling was what the
+// 33b6178 "100-constituent demo fund" refactor broke for this reader.
 const L5 = {
   unitSize: ONE,
-  unitQty: [2n * ONE, 3n * ONE, 1n * ONE], // aligned to demo.stocks order BEFORE sorting; re-aligned below
+  constituents: [
+    { key: "L5Stock_MSTRx", name: "MSTRx", unitQty: 2n * ONE },
+    { key: "L5Stock_TSLAx", name: "TSLAx", unitQty: 3n * ONE },
+    { key: "L5Stock_NVDAx", name: "NVDAx", unitQty: 1n * ONE },
+  ],
   name: "Volatile Tech Basket",
   symbol: "VTBx",
 };
@@ -24,15 +32,24 @@ export async function deployL5() {
   const fairValueNav = requireAddress(config, "FairValueNAV", "deploy-l4.ts");
   const aggregator = requireAddress(config, "PriceAggregator", "deploy-l4.ts");
   const keeperModule = requireAddress(config, "KeeperModule", "deploy-l3.ts");
-  const demo = (config.params as any)?.demo;
-  if (!demo?.stocks?.length) throw new Error("run deploy-demo-stocks.ts first (params.demo.stocks missing)");
+  const f = await ethers.getContractAt("CloneFactory", factory);
 
-  // Sort constituents ascending (recipe requires strictly-ascending tokens) and carry unitQty alongside.
-  const order = demo.stocks
-    .map((a: string, i: number) => ({ a, q: L5.unitQty[i] }))
-    .sort((x: any, y: any) => (BigInt(x.a) < BigInt(y.a) ? -1 : 1));
-  const tokens: string[] = order.map((o: any) => o.a);
-  const unitQty: bigint[] = order.map((o: any) => BigInt(o.q));
+  // 0. Ensure the basket constituents (dedicated MockERC20Decimals) and whitelist each for the registry vault.
+  const built: { a: string; q: bigint }[] = [];
+  for (const c of L5.constituents) {
+    const addr = await ensure(config, "MockERC20Decimals", [c.name, c.name, 18], deployer, c.key);
+    if (!(await f.constituentAllowed(addr))) await (await f.setConstituentAllowed(addr, true)).wait();
+    built.push({ a: addr, q: c.unitQty });
+  }
+  // Recipe requires strictly-ascending token addresses; sort and carry unitQty alongside.
+  const order = built.sort((x, y) => (BigInt(x.a) < BigInt(y.a) ? -1 : 1));
+  const tokens: string[] = order.map((o) => o.a);
+  const unitQty: bigint[] = order.map((o) => o.q);
+
+  // Record the basket constituents so verify-l5 can assert held == constituents.
+  (config.params as any) ??= {};
+  (config.params as any).l5 = { constituents: tokens };
+  saveConfig(config);
 
   // 1. Off-chain genesis Merkle root over (token, unitQty, unitSize) leaves.
   const values = tokens.map((t, i) => [t, unitQty[i].toString(), L5.unitSize.toString()]);
@@ -42,7 +59,6 @@ export async function deployL5() {
   const proofs = tokens.map((t) => proofByToken[t]);
 
   // 2. Create the registry index (idempotent).
-  const f = await ethers.getContractAt("CloneFactory", factory);
   let vaultAddr = config.deployments?.["RegistryIndex"]?.address;
   if (!vaultAddr || process.env.REDEPLOY) {
     const idx = {
@@ -101,9 +117,14 @@ export async function deployL5() {
   }
   const q = await ethers.getContractAt("ForwardCashQueue", queueAddr);
 
-  // 7. Wire gate + roles. g1 source ref = the shared MockSource registered for every token.
+  // 7. Wire gate + roles. g1 source ref = a shared MockSource registered for every constituent (one ref).
+  const sharedSource = await ensure(config, "MockSource", [], deployer, "Source_Shared_L5");
+  const aggC = await ethers.getContractAt("PriceAggregator", aggregator);
+  for (const t of tokens) {
+    if (!(await aggC.isSource(t, sharedSource))) await (await aggC.addSource(t, sharedSource)).wait();
+  }
   await (await q.setGateParams(2, 600, 200, 200, 3600)).wait();
-  await (await q.setG1Refs(aggregator, demo.sharedSource)).wait();
+  await (await q.setG1Refs(aggregator, sharedSource)).wait();
   await (await q.setKeeperTip(0)).wait();
   const km = await ethers.getContractAt("KeeperModule", keeperModule);
   if (!(await km.isExecutor(queueAddr))) await (await km.setExecutor(queueAddr, true)).wait();

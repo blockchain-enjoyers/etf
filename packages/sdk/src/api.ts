@@ -16,6 +16,8 @@ import type {
   ForwardQueue,
   SettleGateStatus,
   ForwardHistory,
+  EnableRequest,
+  ForwardEnableStatus,
   HoldingsResponse,
   AccountHoldingsResponse,
   ActivityEvent,
@@ -26,6 +28,9 @@ import type {
   PreviewDeployRequest,
   DeployPreview,
   SuggestedFundsResponse,
+  ConstituentPrice,
+  SceneTamper,
+  SceneRead,
 } from "./dto.js";
 
 export interface MeridianApi {
@@ -44,6 +49,8 @@ export interface MeridianApi {
   getForwardQueue(vaultAddress: string): Promise<ForwardQueue>;
   getSettleGateStatus(vaultAddress: string): Promise<SettleGateStatus>;
   getForwardHistory(vaultAddress: string): Promise<ForwardHistory>;
+  enableCashSettlement(vault: string, body: EnableRequest): Promise<{ status: "pending" }>;
+  getForwardEnableStatus(vault: string): Promise<ForwardEnableStatus>;
   getHoldings(vaultAddress: string): Promise<HoldingsResponse>;
   getAccountHoldings(account: string): Promise<AccountHoldingsResponse>;
   getAccountForwardTickets(account: string): Promise<ForwardTicket[]>;
@@ -85,4 +92,7 @@ export interface MeridianApi {
   buildAuctionSetExecModeTx(vaultAddress: string, req: { mode: number; account: string }): Promise<TxPlan>;
   getAuctionStatus(vaultAddress: string, account?: string): Promise<AuctionStatus>;
   getSuggestedFunds(): Promise<SuggestedFundsResponse>;
+  getConstituentPrices(vault: string): Promise<ConstituentPrice[]>;
+  tamperScene(body: SceneTamper): Promise<{ txHash: string }>;
+  getScene(token: string): Promise<SceneRead>;
 }

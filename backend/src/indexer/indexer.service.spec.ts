@@ -52,6 +52,7 @@ function makeRepo() {
     getRegistryVaultAddresses: vi.fn(async () => [] as string[]),
     getAllVaultAddresses: vi.fn(async () => [] as string[]),
     getRegistryVaultsNeedingGenesis: vi.fn(async () => [] as string[]),
+    getLiveForwardQueues: vi.fn(async () => [] as { vault: string; queue: string }[]),
     getCheckpoint: vi.fn(async () => 100n),
     setCheckpoint: vi.fn(async () => {}),
   };
@@ -71,7 +72,7 @@ describe("IndexerService", () => {
         { provide: ConfigService, useValue: { get: (k: string) => (k === "CHAIN_ID" ? 46630 : "") } },
         { provide: IndexerRepository, useValue: repo },
         { provide: ChainLogReader, useValue: reader },
-        { provide: ForwardQueueRegistry, useValue: { pairs: () => [], queueFor: () => undefined } },
+        { provide: ForwardQueueRegistry, useValue: { pairs: () => [], queueFor: () => undefined, refresh: vi.fn(async () => {}) } },
       ],
     }).compile();
     service = moduleRef.get(IndexerService);
@@ -250,6 +251,7 @@ it("routes managed + committed creation events to the repository", async () => {
     getRegistryVaultAddresses: vi.fn().mockResolvedValue([]),
     getAllVaultAddresses: vi.fn().mockResolvedValue([]),
     getRegistryVaultsNeedingGenesis: vi.fn().mockResolvedValue([]),
+    getLiveForwardQueues: vi.fn().mockResolvedValue([]),
   };
   const reader = {
     isReady: () => true,
@@ -273,7 +275,7 @@ it("routes managed + committed creation events to the repository", async () => {
     getVaultActivityLogs: vi.fn().mockResolvedValue([]),
   };
   const config = { get: () => 46630 } as unknown as ConstructorParameters<typeof IndexerService>[0];
-  const forwardQueues = { pairs: () => [], queueFor: () => undefined };
+  const forwardQueues = { pairs: () => [], queueFor: () => undefined, refresh: vi.fn(async () => {}) };
   const svc = new IndexerService(config, repo as never, reader as never, forwardQueues as never);
   await svc.tick();
   expect(repo.applyManagedBasketCreated).toHaveBeenCalledOnce();

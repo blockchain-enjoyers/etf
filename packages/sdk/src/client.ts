@@ -15,6 +15,7 @@ import {
   forwardQueueSchema,
   settleGateStatusSchema,
   forwardHistorySchema,
+  forwardEnableStatusSchema,
   holdingsResponseSchema,
   accountHoldingsResponseSchema,
   activityEventSchema,
@@ -24,6 +25,11 @@ import {
   auctionStatusSchema,
   suggestedFundsResponseSchema,
   previewDeployResponseSchema,
+  constituentPricesSchema,
+  sceneReadSchema,
+  type ConstituentPrice,
+  type SceneTamper,
+  type SceneRead,
   type FeedResponse,
   type BasketSummary,
   type BasketDetail,
@@ -41,6 +47,8 @@ import {
   type ForwardQueue,
   type SettleGateStatus,
   type ForwardHistory,
+  type EnableRequest,
+  type ForwardEnableStatus,
   type HoldingsResponse,
   type AccountHoldingsResponse,
   type ActivityEvent,
@@ -157,6 +165,20 @@ export class MeridianClient implements MeridianApi {
   async getForwardHistory(vaultAddress: string): Promise<ForwardHistory> {
     const res = await fetch(`${this.baseUrl}/baskets/${vaultAddress}/forward/history`);
     return parseResponse(res, forwardHistorySchema);
+  }
+
+  async enableCashSettlement(vault: string, body: EnableRequest): Promise<{ status: "pending" }> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vault}/forward/enable`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return parseResponse(res, z.object({ status: z.literal("pending") }));
+  }
+
+  async getForwardEnableStatus(vault: string): Promise<ForwardEnableStatus> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vault}/forward/enable/status`);
+    return parseResponse(res, forwardEnableStatusSchema);
   }
 
   async getHoldings(vaultAddress: string): Promise<HoldingsResponse> {
@@ -469,5 +491,20 @@ export class MeridianClient implements MeridianApi {
   async getSuggestedFunds(): Promise<SuggestedFundsResponse> {
     const res = await fetch(`${this.baseUrl}/catalog/suggested-funds`);
     return parseResponse(res, suggestedFundsResponseSchema);
+  }
+
+  async getConstituentPrices(vault: string): Promise<ConstituentPrice[]> {
+    const res = await fetch(`${this.baseUrl}/baskets/${vault}/constituent-prices`);
+    return parseResponse(res, constituentPricesSchema);
+  }
+
+  async tamperScene(body: SceneTamper): Promise<{ txHash: string }> {
+    const res = await fetch(`${this.baseUrl}/demo/scene/tamper`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    return parseResponse(res, z.object({ txHash: z.string() }));
+  }
+
+  async getScene(token: string): Promise<SceneRead> {
+    const res = await fetch(`${this.baseUrl}/demo/scene?token=${token}`);
+    return parseResponse(res, sceneReadSchema);
   }
 }

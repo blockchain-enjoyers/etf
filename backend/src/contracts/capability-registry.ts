@@ -22,7 +22,8 @@ export type Capability =
   | "RebalanceModule"
   | "BasketNavObserver"
   | "ForwardCashQueue"
-  | "MockAPFiller";
+  | "MockAPFiller"
+  | "USDG";
 
 export type CapabilityStatus = "live" | "absent";
 
@@ -46,6 +47,7 @@ const ALL_CAPABILITIES: readonly Capability[] = [
   "BasketNavObserver",
   "ForwardCashQueue",
   "MockAPFiller",
+  "USDG",
 ];
 
 const ZERO = "0x0000000000000000000000000000000000000000";

@@ -22,6 +22,11 @@ import type {
   PreviewDeployRequest,
   DeployPreview,
   SuggestedFundsResponse,
+  EnableRequest,
+  ForwardEnableStatus,
+  ConstituentPrice,
+  SceneTamper,
+  SceneRead,
 } from "@meridian/sdk";
 
 import {
@@ -364,5 +369,30 @@ export class FixtureApi implements MeridianApi {
         },
       ],
     };
+  }
+
+  async enableCashSettlement(_vault: string, _body: EnableRequest): Promise<{ status: "pending" }> {
+    await delay(DELAY_MS);
+    return { status: "pending" };
+  }
+
+  async getForwardEnableStatus(_vault: string): Promise<ForwardEnableStatus> {
+    await delay(DELAY_MS);
+    return { status: "none" };
+  }
+
+  async getConstituentPrices(_vault: string): Promise<ConstituentPrice[]> {
+    await delay(DELAY_MS);
+    return [];
+  }
+
+  async tamperScene(_body: SceneTamper): Promise<{ txHash: string }> {
+    await delay(DELAY_MS);
+    return { txHash: "0xfixture" };
+  }
+
+  async getScene(token: string): Promise<SceneRead> {
+    await delay(DELAY_MS);
+    return { token, mockPrice: "0" };
   }
 }

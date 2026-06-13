@@ -65,6 +65,14 @@ export const envSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  // Judge Price-Safety demo: when DEMO_MODE, scene tokens carry a 3rd mock oracle source.
+  DEMO_MODE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  // JSON map { "<sceneToken>": "<mockSourceAddress>" }.
+  DEMO_SCENE: z.string().default("{}"),
+
   // JSON map { "<vaultAddress>": "<forwardQueueAddress>" }. Empty until L5 is deployed.
   FORWARD_QUEUES: z.string().default("{}"),
   FORWARD_OPERATOR_ENABLED: z

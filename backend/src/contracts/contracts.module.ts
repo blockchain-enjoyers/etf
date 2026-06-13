@@ -7,10 +7,12 @@ import { ManagedRebalanceVaultReader } from "./managed-rebalance-vault.reader.js
 import { KeeperModuleReader } from "./keeper-module.reader.js";
 import { RebalanceModuleReader } from "./rebalance-module.reader.js";
 import { ForwardCashQueueReader } from "./forward-cash-queue.reader.js";
+import { ForwardEnableWriter } from "./forward-enable.writer.js";
 import { BasketNavObserverReader } from "./basket-nav-observer.reader.js";
 import { CapabilityRegistry } from "./capability-registry.js";
 import { ForwardQueueRegistry } from "./forward-queue-registry.js";
 import { TokenMetadataService } from "./token-metadata.service.js";
+import { IndexerRepository } from "../indexer/indexer.repository.js";
 
 @Global()
 @Module({
@@ -21,7 +23,9 @@ import { TokenMetadataService } from "./token-metadata.service.js";
     KeeperModuleReader,
     RebalanceModuleReader,
     ForwardCashQueueReader,
+    ForwardEnableWriter,
     BasketNavObserverReader,
+    IndexerRepository,
     ForwardQueueRegistry,
     TokenMetadataService,
     {
@@ -38,7 +42,9 @@ import { TokenMetadataService } from "./token-metadata.service.js";
     KeeperModuleReader,
     RebalanceModuleReader,
     ForwardCashQueueReader,
+    ForwardEnableWriter,
     BasketNavObserverReader,
+    IndexerRepository,
     ForwardQueueRegistry,
     TokenMetadataService,
     CapabilityRegistry,

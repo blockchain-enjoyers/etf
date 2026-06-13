@@ -1,23 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ForwardQueueRegistry } from "./forward-queue-registry.js";
-
-function withMap(json: string) {
-  const config = { get: (k: string) => (k === "FORWARD_QUEUES" ? json : undefined) };
-  return new ForwardQueueRegistry(config as never);
-}
-
-describe("ForwardQueueRegistry", () => {
-  it("resolves queueFor (case-insensitive) and lists pairs", () => {
-    const reg = withMap('{"0xVault":"0xQueue"}');
-    expect(reg.queueFor("0xvault")).toBe("0xQueue");
-    expect(reg.queueFor("0xVAULT")).toBe("0xQueue");
-    expect(reg.queueFor("0xother")).toBeUndefined();
-    expect(reg.pairs()).toEqual([{ vault: "0xvault", queue: "0xQueue" }]);
+const cfg = (q: string) => ({ get: () => q }) as never;
+const repo = (live: { vault: string; queue: string }[]) => ({ getLiveForwardQueues: vi.fn(async () => live) }) as never;
+describe("ForwardQueueRegistry env∪DB", () => {
+  it("seeds from env synchronously", () => {
+    const r = new ForwardQueueRegistry(cfg('{"0xAAA":"0xq1"}'), repo([]));
+    expect(r.queueFor("0xaaa")).toBe("0xq1");
   });
-
-  it("empty/malformed map => no pairs, never throws", () => {
-    expect(withMap("").pairs()).toEqual([]);
-    expect(withMap("not json").pairs()).toEqual([]);
-    expect(withMap("").queueFor("0xv")).toBeUndefined();
+  it("refresh() merges DB Live rows (DB wins)", async () => {
+    const r = new ForwardQueueRegistry(cfg('{"0xAAA":"0xq1"}'), repo([{ vault: "0xBBB", queue: "0xq2" }]));
+    await r.refresh(true);
+    expect(r.queueFor("0xbbb")).toBe("0xq2");
+    expect(r.pairs()).toEqual(expect.arrayContaining([{ vault: "0xaaa", queue: "0xq1" }, { vault: "0xbbb", queue: "0xq2" }]));
   });
 });

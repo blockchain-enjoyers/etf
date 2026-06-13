@@ -92,6 +92,16 @@ export const ForwardEventKind = {
 export type ForwardEventKind = (typeof ForwardEventKind)[keyof typeof ForwardEventKind]
 
 
+export const ForwardEnableStatus = {
+  Pending: 'Pending',
+  Wiring: 'Wiring',
+  Live: 'Live',
+  Failed: 'Failed'
+} as const
+
+export type ForwardEnableStatus = (typeof ForwardEnableStatus)[keyof typeof ForwardEnableStatus]
+
+
 export const ActivityKind = {
   Mint: 'Mint',
   Redeem: 'Redeem',

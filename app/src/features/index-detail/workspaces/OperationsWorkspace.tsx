@@ -11,9 +11,11 @@ import { useRebalanceDetail } from "../../../data/useRebalanceDetail";
 import { useForwardTickets } from "../../../data/useForwardTickets";
 import { useSettleGateStatus } from "../../../data/useSettleGateStatus";
 import { useKeeperStatus } from "../../../data/useKeeperStatus";
+import { useForwardQueue } from "../../../data/useForwardQueue";
 import { SettleReadinessPanel } from "../SettleReadinessPanel";
 import { ForwardKeeperPanel } from "../ForwardKeeperPanel";
 import { KeeperPanel } from "../KeeperPanel";
+import { EnableCashSettlementPanel } from "../EnableCashSettlementPanel";
 
 export function OperationsWorkspace({ vaultAddress, basket }: { vaultAddress: string; basket: BasketDetail }) {
   const enabled = basket.vaultType === "rebalance";
@@ -25,6 +27,10 @@ export function OperationsWorkspace({ vaultAddress, basket }: { vaultAddress: st
   const { data: tickets } = useForwardTickets(vaultAddress, address ?? undefined, enabled);
   const { data: gate } = useSettleGateStatus(vaultAddress, enabled);
   const { data: keeper } = useKeeperStatus(vaultAddress, enabled);
+  const { data: queue } = useForwardQueue(vaultAddress, enabled);
+
+  const hasQueue = Boolean(queue?.queueAddress);
+  const isManager = Boolean(address && manager && address.toLowerCase() === manager.toLowerCase());
 
   const keeperGate = useCapabilities("regular").canForwardKeeper(manager);
 
@@ -53,20 +59,39 @@ export function OperationsWorkspace({ vaultAddress, basket }: { vaultAddress: st
 
       {!keeperGate.enabled && <GateBanner gate={keeperGate} />}
 
-      <Module
-        title="Settle-readiness checklist"
-        icon={<IconChecklist />}
-        audience="keeper"
-        help="Every guard must PASS before any forward ticket can settle. Shown cryptically as g0…g8 in the contract — here they're plain English. One pending check blocks settlement."
-        right={
-          <Chip variant={guardsBlocked ? "pend" : "ok"}>
-            {guards.length === 0 ? "—" : guardsBlocked ? `${passCount}/${guards.length} ready` : "All clear"}
-          </Chip>
-        }
-        bodyClassName="p-0"
-      >
-        <SettleReadinessPanel gate={gate ?? null} />
-      </Module>
+      {hasQueue ? (
+        <Module
+          title="Settle-readiness checklist"
+          icon={<IconChecklist />}
+          audience="keeper"
+          help="Every guard must PASS before any forward ticket can settle. Shown cryptically as g0…g8 in the contract — here they're plain English. One pending check blocks settlement."
+          right={
+            <Chip variant={guardsBlocked ? "pend" : "ok"}>
+              {guards.length === 0 ? "—" : guardsBlocked ? `${passCount}/${guards.length} ready` : "All clear"}
+            </Chip>
+          }
+          bodyClassName="p-0"
+        >
+          <SettleReadinessPanel gate={gate ?? null} />
+        </Module>
+      ) : (
+        <Module
+          title="Cash settlement"
+          icon={<IconCoins />}
+          audience="curator"
+          help="Cash (forward-priced) create/redeem is an opt-in tool the index manager enables. In-kind create/redeem always works without it."
+          bodyClassName="p-0"
+        >
+          {isManager ? (
+            <EnableCashSettlementPanel vault={vaultAddress} manager={manager} />
+          ) : (
+            <p className="text-[11px] text-txt2 px-3 py-3">
+              Cash settlement isn’t enabled for this index. Redeem in-kind anytime; the index manager can enable
+              forward-priced cash flows.
+            </p>
+          )}
+        </Module>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Module

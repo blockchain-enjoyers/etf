@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAccount } from "wagmi";
 import type { BasketDetail, HistoryQuery, NavResponse } from "@meridian/sdk";
 import { Module } from "../../../components/Module";
+import { DemoPriceSafetyPanel } from "../DemoPriceSafetyPanel";
 import { Aud } from "../../../components/Aud";
 import { IconChart, IconCheck, IconGrid, IconDownload, IconDollar } from "../../../components/icons";
 import { Button } from "../../../components/Button";
@@ -66,6 +67,12 @@ export function TradeWorkspace({
         </div>
         <Aud role="holder" className="shrink-0" />
       </div>
+
+      {import.meta.env.VITE_DEMO_MODE === "true" && (
+        <Module title="Demo sandbox" icon={<span>🎚️</span>} audience="holder" bodyClassName="p-0">
+          <DemoPriceSafetyPanel vault={vaultAddress} />
+        </Module>
+      )}
 
       <div className="grid grid-cols-[2fr_1fr] gap-3 items-stretch">
         <Module

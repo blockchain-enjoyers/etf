@@ -98,7 +98,9 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
   const navPerUnit = nav?.nav ? BigInt(nav.nav) : null;
   const estValue18 = navPerUnit != null ? (BigInt(units) * navPerUnit).toString() : null;
 
-  const receive = `${receiveArg.toString()} ${basket.symbol}`;
+  // Share-based vaults mint `units × unitSize` 18-dec shares — format to a human figure (not raw base
+  // units like 1000000000000000000000). Count-based vaults receive the plain unit count.
+  const receive = `${isShareBased ? formatQty(receiveArg.toString()) : receiveArg.toString()} ${basket.symbol}`;
   const running = tx.status === "running";
   const currentLabel = tx.steps[tx.currentStep]?.label;
 

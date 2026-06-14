@@ -234,6 +234,17 @@ describe("OrderRail — iron rules", () => {
     });
     expect(screen.getAllByText(/~est/i).length).toBeGreaterThan(0);
   });
+
+  it("formats the share-based receive amount (not raw 18-dec base units)", () => {
+    mockUseCapabilities.mockReturnValue(capsMintEnabled as never);
+    const rebalanceBasket: BasketDetail = { ...basket, vaultType: "rebalance" };
+    render(<OrderRail vaultAddress="0xabc" basket={rebalanceBasket} nav={openNav} />, {
+      wrapper: makeWrapper(),
+    });
+    // 1 unit × unitSize(1e18) = 1e18 base shares → "1.0000", never the raw 1000000000000000000.
+    expect(screen.getByText(/Mint 1\.0000 .*\(in-kind\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/1000000000000000000/)).not.toBeInTheDocument();
+  });
 });
 
 describe("OrderRail — deposit list from mint-quote", () => {

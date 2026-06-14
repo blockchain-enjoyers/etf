@@ -117,3 +117,49 @@ Everything needed to run the full stack in Hardhat without a live network or pro
 Streams production key); the reproducible test suite; the demo-stand stocks. **Why:** the L4 adapters are
 designed so a mock source and a production source are interchangeable behind `IPriceSource`, so the engine is
 exercised end to end before any live feed exists.
+
+---
+
+## Deployed on Robinhood Chain testnet (chain 46630)
+
+Explorer base: `https://explorer.testnet.chain.robinhood.com/address/<addr>`. Every address was confirmed as a deployed contract on Blockscout (creation tx listed); source verification is a pre-submission to-do.
+
+### Core engine
+
+| Contract | Address | Creation tx |
+|---|---|---|
+| CloneFactory | `0x453B28529273E240120D6475F2369e002deb13F5` | `0x1ced7645011f200553dd45b6f0b4cbc332e7ed8252701e05359979ba0ab46acd` |
+| PriceAggregator | `0x77b009D07BDdC08a6b83c9859fEF77C714f37f00` | `0x95ca92989a9fcfba6353cf2b3ee6b199c42800c690b60926152bcf5f6edd2ae7` |
+| FairValueNAV | `0xAdec095EBB432239C19ba915aC167B9A3b3E0DD5` | `0xe3091be186af456f0d05b74cb11d73f202375249b0a27f1c3bf5c06e83b57ff1` |
+| USDG (USD Global) | `0x5F28D5E0939FDb94943d5C65241cBf850c3d98d1` | `0x739521a19edeec25ffb25de51483c5b8ec5f9df6f1a47b602c401f9921c75986` |
+
+### Vaults + lifecycle (L3-L5)
+
+| Contract | Address | Creation tx |
+|---|---|---|
+| RegistryRebalanceVault | `0x8937A6EE95097B5a794994Dce7c90C1168Af7205` | `0x407482875a9faf806a83d195cde8f09d7a4b339ddb2ae4a601f5c34b80a91817` |
+| RegistryIndex (demo fund: Volatile Tech Basket) | `0x3F78db0F384e4bf325809F0f417ef4Afa76B2E4F` | `0xe98895400b0c52aa4a9539ffbe75a10e2b532902e7934230455660c0aabe290f` |
+| ForwardCashQueue | `0x29d7dF7bC257180d56d9340C85Af67fA96fF88a2` | `0x4d03d8a461f065c4f21ef291b5ba1eec39e329f9f70b02388a4b49d0e88dae4e` |
+| BasketNavObserver | `0xe4f4ABefe290af163142A09dC9C41852DDe09Ca5` | `0xd5188fecf2c4cb58422c05cdc3d69150f9ea6f4d1ee307b7b23d3b2d61ab9ed7` |
+| KeeperModule | `0x746db09AC8c7DE315dCd5A19732033fb0F14f877` | `0x68d7178532373cc29743fed7c98af05e9d4f201471846e6eace0c5088ec7833a` |
+| RebalanceAuction | `0xD39AA1Cab5E24150257e5FEd43A4d79c53e47CCc` | `0x8576dc17d834c57a6bbdab46b61964d2f41dd0a7a3ff489f149d1b00d68af7a4` |
+| ManagedRebalanceVault | `0x2E578Bd5e288ae6f62708D1BFd5f806b2F092e61` | `0x45d55cbed7e8076bda3d6db95b513a6e7b06b232b8ec3c5b799802c01efef1ef` |
+
+### L4 price sources (keyless multi-oracle committee)
+
+| Contract | Address | Creation tx |
+|---|---|---|
+| UniversalSignedSource | `0x41BE2284c8bBc5C89B5e2Bd4784a10B2646691aA` | `0x5559d39f07b55f4cd75d474f91bac168577b27f52120bf2e8734ce132a1e06a0` |
+| UniversalSignedSourceWeekend | `0x32207892289a101d8546A430AbBdf62DD2049fFd` | `0x0950e29902ff0c06f221973080cf7a6528977aa04d93ee176220432c938e1a92` |
+| ChainlinkStreamsSource | `0x9b5747f8A46EbEb70Ab4E111dBD873cf7620C2Bb` | `0x3636af99fd3524db640e82c7203a3c0a260a25c7c7100625f1392fbca7c61bb6` |
+| MockVerifierProxy | `0x7703a06F6E43752B989a4aa6cA5e969d3e5af6CB` | `0x1bb7ebc6e927cb22a134180ff0d9cad51c7b86c6a519b226257b62d156e9c883` |
+
+### Demo constituents (our ERC-8056 mocks)
+
+| Token | Address | Creation tx |
+|---|---|---|
+| MSTRx | `0x89eC78b779E00bc99044656b04a8DB059c9b7270` | `0xb98576442a713a58ce3d8c1cfa9ad70783c84fa9308247b5899e2a361d6b933f` |
+| TSLAx | `0xB1EB0688FEA9011F38275a77b1BE7f2dCFb290C3` | `0x1a3a5237e12295a849127d0a8e1a9aa543f6879ebc4f2bcc4cf0ab377ae199e6` |
+| NVDAx | `0x1d2DC78A673E3040E188b2551DA2ec4785fB49a1` | `0x465d05977dae9562e41692e8a11136c7e4d644441a0c20435e84706085cd72aa` |
+
+The live registry demo runs a 3-name subset (MSTRx, TSLAx, NVDAx). The protocol also wires the official Robinhood testnet stocks (TSLA, AMZN, PLTR, NFLX, AMD) for the authentic in-kind create path.

@@ -24,6 +24,11 @@ vi.mock("../../../wallet/use-tx-plan", () => ({
   useTxPlan: (seed?: string[]) => mockUseTxPlan(seed),
 }));
 
+// Cancel targets the per-vault queue clone — the panel seeds it from the queue lookup + reads cash decimals.
+vi.mock("../../../data/useForwardQueue", () => ({
+  useForwardQueue: () => ({ data: { queueAddress: "0xqueue", cashDecimals: 6 } }),
+}));
+
 import { queryKeys } from "../../../lib/query";
 import { MyTicketsPanel } from "../MyTicketsPanel";
 
@@ -63,9 +68,9 @@ describe("MyTicketsPanel", () => {
     expect(screen.getByText(/no forward tickets/i)).toBeInTheDocument();
   });
 
-  it("cancel targets the queue singleton — no allowlist seed", () => {
+  it("seeds the per-vault queue clone into the cancel allowlist", () => {
     render(<MyTicketsPanel vaultAddress="0xv" tickets={[]} />, { wrapper: makeWrapper() });
-    expect(mockUseTxPlan).toHaveBeenCalledWith(undefined);
+    expect(mockUseTxPlan).toHaveBeenCalledWith(["0xqueue"]);
   });
 
   it("enables Cancel for a pending pre-cutoff ticket and runs a buildForwardCancelTx fetcher", async () => {

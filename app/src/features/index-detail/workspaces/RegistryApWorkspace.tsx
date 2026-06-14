@@ -6,18 +6,21 @@ import type { BasketDetail } from "@meridian/sdk";
 import { Module } from "../../../components/Module";
 import { Aud } from "../../../components/Aud";
 import { Button } from "../../../components/Button";
+import { Chip } from "../../../components/Chip";
 import { GateBanner } from "../../../components/GateBanner";
 import { AssetFunding } from "../../../components/AssetFunding";
 import { EnableCashSettlementPanel } from "../EnableCashSettlementPanel";
+import { MyTicketsPanel } from "../MyTicketsPanel";
 import { HelpTip } from "../../../components/HelpTip";
 import { TokenIcon } from "../../../components/TokenIcon";
-import { IconUpload, IconDownload, IconGrid, IconSwap, IconCoins } from "../../../components/icons";
+import { IconUpload, IconDownload, IconGrid, IconSwap, IconCoins, IconTicket } from "../../../components/icons";
 import { cn } from "../../../lib/cn";
 import { shortenAddress, formatQty } from "../../../lib/format";
 import { queryKeys } from "../../../lib/query";
 import { useApi } from "../../../lib/api";
 import type { Gate } from "../../../capabilities/use-capabilities";
 import { useForwardQueue } from "../../../data/useForwardQueue";
+import { useForwardTickets } from "../../../data/useForwardTickets";
 import { useTxPlan } from "../../../wallet/use-tx-plan";
 
 // Claim amounts are base-unit strings — parse a human "1.5" into 18-dec base units without viem so
@@ -575,6 +578,9 @@ export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: st
   // Forward-queue address (operator default for cash-in settle) — only meaningful for registry.
   const { data: queue } = useForwardQueue(vaultAddress, enabled);
   const forwardQueue = queue?.queueAddress ?? "";
+  // Owner-scoped forward tickets so the AP can track + cancel them here (registry has no Operations tab).
+  const { data: tickets } = useForwardTickets(vaultAddress, address ?? undefined, enabled);
+  const openTickets = (tickets ?? []).filter((t) => t.status === "pending" || t.status === "partial");
 
   // A fresh registry index is empty until its genesis basket is seeded — surface bootstrap first.
   // `bootstrapped` is the queue-independent on-chain signal (totalSupply > 0) from the basket detail.
@@ -664,6 +670,16 @@ export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: st
         help="ERC-6909 operator approval. The forward cash queue must be your operator before it can settle a cash-in by moving your claims. Defaults to the vault's forward queue."
       >
         <OperatorPanel {...panelProps} defaultOperator={forwardQueue} />
+      </Module>
+
+      <Module
+        title="Open tickets"
+        icon={<IconTicket />}
+        audience="ap"
+        help="Queued cash flows waiting to settle at the next market open. Pending tickets can be cancelled here — the escrowed USDG is refunded."
+        right={<Chip variant={openTickets.length > 0 ? "violet" : "neutral"}>{openTickets.length} open</Chip>}
+      >
+        <MyTicketsPanel vaultAddress={vaultAddress} tickets={tickets ?? []} />
       </Module>
 
       {isManager && (

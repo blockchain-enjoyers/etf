@@ -285,6 +285,9 @@ export const forwardTicketSchema = z.object({
   kind: forwardTicketKindSchema,
   amountRaw: decimalString,
   remainingRaw: decimalString,
+  // Cash-leg decimals for a create ticket's amount (USDG 18-dec, MockUSDC 6-dec). Redeem amounts are
+  // shares (always 18-dec). Lets the cross-vault Portfolio format without fetching each vault's queue.
+  cashDecimals: z.number().int().optional(),
   status: forwardTicketStatusSchema,
   cutoffMs: z.number().int().nonnegative(),
   createdAtMs: z.number().int().nonnegative(),

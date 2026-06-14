@@ -89,6 +89,7 @@ describe("ForwardService.getTickets", () => {
     expect(out[0]).toEqual({
       id: 0, vaultAddress: "0xv", owner: "0xo", kind: "create",
       amountRaw: "1000000", remainingRaw: "1000000", status: "pending",
+      cashDecimals: 18, // queue/chain unreadable in the mock → 18 default
       cutoffMs: 5000, createdAtMs: 0,
     });
   });

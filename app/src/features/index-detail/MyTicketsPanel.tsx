@@ -7,6 +7,7 @@ import { Chip, type ChipVariant } from "../../components/Chip";
 import { queryKeys } from "../../lib/query";
 import { useApi } from "../../lib/api";
 import { useCapabilities } from "../../capabilities/use-capabilities";
+import { useForwardQueue } from "../../data/useForwardQueue";
 import { useTxPlan } from "../../wallet/use-tx-plan";
 
 interface Props {
@@ -14,8 +15,9 @@ interface Props {
   tickets: ForwardTicket[];
 }
 
-function formatAmount(raw: string, kind: ForwardTicket["kind"]): string {
-  return formatUnits(BigInt(raw), kind === "create" ? 6 : 18);
+// Create amounts are the cash leg (decimals vary: USDG 18, MockUSDC 6); redeem amounts are shares (18).
+function formatAmount(raw: string, kind: ForwardTicket["kind"], cashDecimals: number): string {
+  return formatUnits(BigInt(raw), kind === "create" ? cashDecimals : 18);
 }
 
 function countdown(cutoffMs: number): string {
@@ -42,8 +44,11 @@ export function MyTicketsPanel({ vaultAddress, tickets }: Props) {
   const api = useApi();
   const { address } = useAccount();
   const cap = useCapabilities("regular").canForwardCancel();
-  // Cancel targets the ForwardCashQueue singleton (in the static address book) — no seed needed.
-  const tx = useTxPlan();
+  // Cancel's cancel(ticketId) targets the per-vault ForwardCashQueue clone (not in the static address
+  // book) — seed it into the allowlist. Also drives the cash-leg decimals for amount formatting.
+  const { data: queue } = useForwardQueue(vaultAddress, true);
+  const cashDecimals = queue?.cashDecimals ?? 18;
+  const tx = useTxPlan(queue?.queueAddress ? [queue.queueAddress] : []);
   const running = tx.status === "running";
 
   function handleCancel(ticketId: number) {
@@ -79,7 +84,8 @@ export function MyTicketsPanel({ vaultAddress, tickets }: Props) {
                   <td className={`${TD} text-violet font-semibold`}>#{t.id}</td>
                   <td className={TD}>{t.kind}</td>
                   <td className={`${TD} text-txt2`}>
-                    {formatAmount(t.remainingRaw, t.kind)} / {formatAmount(t.amountRaw, t.kind)}
+                    {formatAmount(t.remainingRaw, t.kind, t.cashDecimals ?? cashDecimals)} /{" "}
+                    {formatAmount(t.amountRaw, t.kind, t.cashDecimals ?? cashDecimals)}
                   </td>
                   <td className={TD}>
                     <Chip variant={STATUS_CHIP[t.status]}>{t.status}</Chip>

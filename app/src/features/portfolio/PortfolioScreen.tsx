@@ -163,7 +163,7 @@ export function PortfolioScreen({ holdings = [], queueTickets = [] }: Props) {
                     <td className={cn(TD_CLASS, "font-bold text-txt")}>#{t.id}</td>
                     <td className={TD_CLASS}>{t.kind === "create" ? "Cash create" : "Cash redeem"}</td>
                     <td className={TD_CLASS}>
-                      {formatUnits(BigInt(t.remainingRaw), t.kind === "create" ? 6 : 18)}
+                      {formatUnits(BigInt(t.remainingRaw), t.kind === "create" ? (t.cashDecimals ?? 18) : 18)}
                     </td>
                     <td className={TD_CLASS}>{ticketSettles(t.cutoffMs)}</td>
                     <td className={TD_CLASS}>

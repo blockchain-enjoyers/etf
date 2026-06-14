@@ -49,23 +49,37 @@ export class ForwardService {
 
   async getTickets(vault: string, owner?: string): Promise<ForwardTicket[]> {
     const rows = (await this.repo.getForwardTickets(vault, owner)) as TicketRow[];
-    return rows.map((r) => this.toWire(r));
+    const dec = (await this.cashLeg(this.forwardQueues.queueFor(vault))).decimals;
+    return rows.map((r) => this.toWire(r, dec));
   }
 
   /** OPEN (pending/partial) forward tickets for one owner across ALL vaults — Portfolio queue section. */
   async getAccountTickets(owner: string): Promise<ForwardTicket[]> {
     const rows = (await this.repo.getOpenForwardTicketsForOwner(owner)) as TicketRow[];
-    return rows.map((r) => this.toWire(r));
+    const decByVault = await this.cashDecimalsByVault(rows.map((r) => r.vaultAddress));
+    return rows.map((r) => this.toWire(r, decByVault.get(r.vaultAddress.toLowerCase()) ?? 18));
   }
 
   async getQueue(vault: string): Promise<ForwardQueue> {
     const queue = this.forwardQueues.queueFor(vault);
     const pending = (await this.repo.getPendingForwardTickets(vault)) as TicketRow[];
-    const tickets = pending.map((r) => this.toWire(r));
     const capacity = await this.capacity(vault, queue, pending);
     const fees = await this.forwardFees(vault, queue);
     const cash = await this.cashLeg(queue);
+    const tickets = pending.map((r) => this.toWire(r, cash.decimals));
     return { queueAddress: queue ?? null, cashToken: cash.token, cashDecimals: cash.decimals, tickets, capacity, fees };
+  }
+
+  /** Cash-leg decimals per distinct vault (one queue read each) — for the cross-vault account tickets. */
+  private async cashDecimalsByVault(vaults: string[]): Promise<Map<string, number>> {
+    const distinct = [...new Set(vaults.map((v) => v.toLowerCase()))];
+    const out = new Map<string, number>();
+    await Promise.all(
+      distinct.map(async (v) => {
+        out.set(v, (await this.cashLeg(this.forwardQueues.queueFor(v))).decimals);
+      }),
+    );
+    return out;
   }
 
   /** The queue's stable (cash) token + its decimals — the cash leg the UI parses create amounts in. */
@@ -241,7 +255,7 @@ export class ForwardService {
     }
   }
 
-  private toWire(r: TicketRow): ForwardTicket {
+  private toWire(r: TicketRow, cashDecimals = 18): ForwardTicket {
     return {
       id: r.ticketId,
       vaultAddress: r.vaultAddress,
@@ -249,6 +263,7 @@ export class ForwardService {
       kind: r.kind === "Redeem" ? "redeem" : "create",
       amountRaw: r.amount.toFixed(0),
       remainingRaw: r.remaining.toFixed(0),
+      cashDecimals,
       status: r.status.toLowerCase() as ForwardTicket["status"],
       cutoffMs: r.cutoff.getTime(),
       createdAtMs: r.createdAt.getTime(),

@@ -49,7 +49,7 @@ describe("PayloadSignerService", () => {
     const [weekday] = await svc.payloadsFor(TOKEN);
     const [feedId, price, depth, lastUpdate, sr, ss, sv] = decodeAbiParameters(
       PAYLOAD_TYPES,
-      weekday,
+      weekday!,
     );
     expect(price).toBe(300_000000000000000000n);
     expect(lastUpdate).toBe(1_780_000_500n); // live ⇒ wall-clock now (snapshot price, not its market ts)
@@ -78,7 +78,7 @@ describe("PayloadSignerService", () => {
       { nowSec: 1_780_000_500, forceOpen: false },
     );
     const [, weekend] = await svc.payloadsFor(TOKEN);
-    const [, price, , lastUpdate] = decodeAbiParameters(PAYLOAD_TYPES, weekend);
+    const [, price, , lastUpdate] = decodeAbiParameters(PAYLOAD_TYPES, weekend!);
     expect(price).toBe(299_000000000000000000n);
     expect(lastUpdate).toBe(1_780_000_500n); // weekend leg is always live ⇒ wall-clock now
   });
@@ -89,7 +89,7 @@ describe("PayloadSignerService", () => {
       { nowSec: CLOSED_NOW, forceOpen: false },
     );
     const [weekday] = await svc.payloadsFor(TOKEN);
-    const [, , , lastUpdate] = decodeAbiParameters(PAYLOAD_TYPES, weekday);
+    const [, , , lastUpdate] = decodeAbiParameters(PAYLOAD_TYPES, weekday!);
     expect(lastUpdate).toBe(BigInt(CLOSED_NOW - 86_400)); // aggregator staleHorizon drops it
   });
 
@@ -99,12 +99,37 @@ describe("PayloadSignerService", () => {
       { nowSec: CLOSED_NOW, forceOpen: true },
     );
     const [weekday] = await svc.payloadsFor(TOKEN);
-    const [, , , lastUpdate] = decodeAbiParameters(PAYLOAD_TYPES, weekday);
+    const [, , , lastUpdate] = decodeAbiParameters(PAYLOAD_TYPES, weekday!);
     expect(lastUpdate).toBe(BigInt(CLOSED_NOW)); // forced live ⇒ wall-clock now
   });
 
   it("throws a clear error when no usable snapshot exists", async () => {
     const svc = make(null, { nowSec: 1_780_000_500 });
     await expect(svc.payloadsFor(TOKEN)).rejects.toThrow(/no price/i);
+  });
+
+  it("pads to the aggregator sourceCount so priceOf doesn't revert PayloadLengthMismatch", async () => {
+    const prisma = {
+      priceSnapshot: {
+        findFirst: vi.fn(async () => ({
+          price: { toFixed: () => "300000000000000000000" },
+          timestamp: new Date(1_780_000_000 * 1000),
+        })),
+      },
+    };
+    // chain.id 46630 resolves PriceAggregator from the addresses book; readContract returns 3 sources.
+    const chain = {
+      account: privateKeyToAccount(PK),
+      chain: { id: 46630 },
+      publicClient: { readContract: vi.fn(async () => 3n) },
+    };
+    const svc = new PayloadSignerService(prisma as never, chain as never, {
+      depth: 5_000_000n * 10n ** 18n,
+      nowSec: () => 1_780_000_500,
+      forceOpen: () => true,
+    });
+    const payloads = await svc.payloadsFor(TOKEN);
+    expect(payloads).toHaveLength(3);
+    expect(payloads[2]).toBe("0x"); // extra (mock) source slot ignores its payload
   });
 });

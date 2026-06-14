@@ -1,20 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { PayloadSignerService } from "../chain/payload-signer.service.js";
-import { SceneOracleConfig } from "../demo/scene-oracle.config.js";
 
 @Injectable()
 export class AggSourcePayloads {
-  constructor(
-    private readonly signer: PayloadSignerService,
-    private readonly scene: SceneOracleConfig,
-  ) {}
-  /** Scene tokens carry a 3rd (mock) source registered on-chain; the mock ignores its payload, so append "0x". */
+  constructor(private readonly signer: PayloadSignerService) {}
+
+  /**
+   * Per-token aggregator payloads. The signer already pads each token's signed legs to the on-chain
+   * sourceCount (extra mock/read sources ignore their payload), so this just fans out over the set.
+   */
   async payloadsFor(tokens: readonly `0x${string}`[]): Promise<readonly `0x${string}`[][]> {
-    return Promise.all(
-      tokens.map(async (t) => {
-        const base = await this.signer.payloadsFor(t);
-        return this.scene.isSceneToken(t) ? [...base, "0x" as `0x${string}`] : base;
-      }),
-    );
+    return Promise.all(tokens.map(async (t) => [...(await this.signer.payloadsFor(t))]));
   }
 }

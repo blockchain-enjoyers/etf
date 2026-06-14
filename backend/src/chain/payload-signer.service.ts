@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { encodeAbiParameters, keccak256, padHex, parseSignature } from "viem";
+import { addresses, PriceAggregatorAbi } from "@meridian/contracts";
 import { PrismaService } from "../persistence/prisma.service.js";
 import { ChainService } from "./chain.service.js";
 import { marketStatusNow } from "../signals/market-calendar.js";
@@ -39,8 +40,13 @@ const PAYLOAD_TYPES = [
  */
 const STALE_BACKDATE_SEC = 86_400;
 
+/** sourceCount changes only via governance addSource — cache to avoid an RPC read per token per build. */
+const SOURCE_COUNT_TTL_MS = 10 * 60_000;
+
 @Injectable()
 export class PayloadSignerService {
+  private readonly countCache = new Map<string, { count: number; at: number }>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly chain: ChainService,
@@ -50,8 +56,13 @@ export class PayloadSignerService {
     },
   ) {}
 
-  /** [weekdayPayload, weekendPayload] — order matches the aggregator source registration (spec §1). */
-  async payloadsFor(token: string): Promise<[`0x${string}`, `0x${string}`]> {
+  /**
+   * Per-token payload array matching the aggregator's on-chain sourceCount. The two signed legs
+   * (weekday, weekend) come first; every extra registered source (the shared MockSource and other
+   * read-adapters that ignore their payload) gets an empty "0x". priceOf reverts PayloadLengthMismatch
+   * unless payloads.length === sourceCount(asset), so the count is read from the live aggregator.
+   */
+  async payloadsFor(token: string): Promise<readonly `0x${string}`[]> {
     const account = this.chain.account;
     if (!account || !("sign" in account) || !account.sign) {
       throw new Error("payload-signer: KEEPER_PRIVATE_KEY required");
@@ -82,7 +93,42 @@ export class PayloadSignerService {
 
     const weekday = await this.signOne(sign, feedId, price, BigInt(weekdayTs));
     const weekend = await this.signOne(sign, feedId, price, BigInt(liveTs));
-    return [weekday, weekend];
+    const base: `0x${string}`[] = [weekday, weekend];
+
+    // Pad to the aggregator's source count: extra sources (the shared MockSource / read-adapters)
+    // ignore their payload, but priceOf still requires payloads.length === sourceCount.
+    const count = await this.sourceCount(token);
+    if (count !== undefined && count > base.length) {
+      for (let i = base.length; i < count; i++) base.push("0x");
+    }
+    return base;
+  }
+
+  /** On-chain source count for an asset, cached briefly. Undefined when the aggregator can't be read. */
+  private async sourceCount(token: string): Promise<number | undefined> {
+    const chainId = this.chain.chain?.id;
+    const pub = this.chain.publicClient;
+    if (chainId === undefined || !pub) return undefined;
+    const agg = (addresses as Record<number, Record<string, `0x${string}`>>)[chainId]?.PriceAggregator;
+    if (!agg) return undefined;
+
+    const key = token.toLowerCase();
+    const hit = this.countCache.get(key);
+    const now = Date.now();
+    if (hit && now - hit.at < SOURCE_COUNT_TTL_MS) return hit.count;
+    try {
+      const n = (await pub.readContract({
+        address: agg,
+        abi: PriceAggregatorAbi,
+        functionName: "sourceCount",
+        args: [token as `0x${string}`],
+      })) as bigint;
+      const count = Number(n);
+      this.countCache.set(key, { count, at: now });
+      return count;
+    } catch {
+      return undefined; // aggregator unreadable → fall back to the 2 signed legs (no pad)
+    }
   }
 
   private async signOne(

@@ -123,6 +123,18 @@ model Constituent {
   @@unique([vaultAddress, token])
 }
 
+// Genesis recipe for a registry index, keyed by its on-chain Merkle root (recipeRoot/recipeCommitment).
+// A registry vault stores only the root on-chain; the per-token unitQty lives off-chain in the Merkle
+// leaves. We persist it at deploy so the indexer can populate constituents (and the bootstrap step can
+// run) BEFORE the vault is bootstrapped — otherwise the genesis basket is unknowable until after mint.
+model GenesisRecipe {
+  root      String   @id
+  tokens    String[]
+  unitQty   String[]
+  unitSize  String
+  createdAt DateTime @default(now())
+}
+
 model NavSnapshot {
   id              String       @id @default(cuid())
   basket          Basket       @relation(fields: [vaultAddress], references: [vaultAddress], onDelete: Cascade)

@@ -386,6 +386,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   Basket: 'Basket',
   Constituent: 'Constituent',
+  GenesisRecipe: 'GenesisRecipe',
   NavSnapshot: 'NavSnapshot',
   PriceSnapshot: 'PriceSnapshot',
   TokenMetadata: 'TokenMetadata',
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "basket" | "constituent" | "navSnapshot" | "priceSnapshot" | "tokenMetadata" | "indexerCheckpoint" | "queueEntry" | "fairValueAttestation" | "rebalanceEvent" | "targetChange" | "forwardTicket" | "forwardEvent" | "keeperPayout" | "activityEvent" | "forwardQueueConfig" | "forwardEnableNonce"
+    modelProps: "basket" | "constituent" | "genesisRecipe" | "navSnapshot" | "priceSnapshot" | "tokenMetadata" | "indexerCheckpoint" | "queueEntry" | "fairValueAttestation" | "rebalanceEvent" | "targetChange" | "forwardTicket" | "forwardEvent" | "keeperPayout" | "activityEvent" | "forwardQueueConfig" | "forwardEnableNonce"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -564,6 +565,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ConstituentCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ConstituentCountAggregateOutputType> | number
+        }
+      }
+    }
+    GenesisRecipe: {
+      payload: Prisma.$GenesisRecipePayload<ExtArgs>
+      fields: Prisma.GenesisRecipeFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.GenesisRecipeFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.GenesisRecipeFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>
+        }
+        findFirst: {
+          args: Prisma.GenesisRecipeFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.GenesisRecipeFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>
+        }
+        findMany: {
+          args: Prisma.GenesisRecipeFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>[]
+        }
+        create: {
+          args: Prisma.GenesisRecipeCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>
+        }
+        createMany: {
+          args: Prisma.GenesisRecipeCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.GenesisRecipeCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>[]
+        }
+        delete: {
+          args: Prisma.GenesisRecipeDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>
+        }
+        update: {
+          args: Prisma.GenesisRecipeUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>
+        }
+        deleteMany: {
+          args: Prisma.GenesisRecipeDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.GenesisRecipeUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.GenesisRecipeUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>[]
+        }
+        upsert: {
+          args: Prisma.GenesisRecipeUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GenesisRecipePayload>
+        }
+        aggregate: {
+          args: Prisma.GenesisRecipeAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGenesisRecipe>
+        }
+        groupBy: {
+          args: Prisma.GenesisRecipeGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GenesisRecipeGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.GenesisRecipeCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GenesisRecipeCountAggregateOutputType> | number
         }
       }
     }
@@ -1673,6 +1748,17 @@ export const ConstituentScalarFieldEnum = {
 export type ConstituentScalarFieldEnum = (typeof ConstituentScalarFieldEnum)[keyof typeof ConstituentScalarFieldEnum]
 
 
+export const GenesisRecipeScalarFieldEnum = {
+  root: 'root',
+  tokens: 'tokens',
+  unitQty: 'unitQty',
+  unitSize: 'unitSize',
+  createdAt: 'createdAt'
+} as const
+
+export type GenesisRecipeScalarFieldEnum = (typeof GenesisRecipeScalarFieldEnum)[keyof typeof GenesisRecipeScalarFieldEnum]
+
+
 export const NavSnapshotScalarFieldEnum = {
   id: 'id',
   vaultAddress: 'vaultAddress',
@@ -2300,6 +2386,7 @@ export type PrismaClientOptions = ({
 export type GlobalOmitConfig = {
   basket?: Prisma.BasketOmit
   constituent?: Prisma.ConstituentOmit
+  genesisRecipe?: Prisma.GenesisRecipeOmit
   navSnapshot?: Prisma.NavSnapshotOmit
   priceSnapshot?: Prisma.PriceSnapshotOmit
   tokenMetadata?: Prisma.TokenMetadataOmit

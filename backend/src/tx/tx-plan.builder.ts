@@ -67,6 +67,7 @@ import {
 } from "./actions/forward.js";
 import { buildCuratorActivate, buildCuratorSchedule } from "./actions/curator.js";
 import { buildFaucet } from "./actions/faucet.js";
+import { buildGenesisRoot } from "./registry-recipe.js";
 import { buildKeeperRecord, buildKeeperSettle, type KeeperDeps } from "./actions/keeper.js";
 import {
   buildAuctionBid,
@@ -343,8 +344,28 @@ export class TxPlanBuilder {
     } catch {
       return this.gatedPlan("not-deployed");
     }
+    // A registry vault commits its genesis basket as a Merkle root on-chain; the per-token unitQty isn't
+    // recoverable from chain. Persist the recipe (keyed by that root) so the indexer can populate the
+    // vault's constituents — and the bootstrap step can run — before it's bootstrapped.
+    if (req.vaultKind === "registry") await this.persistGenesisRecipe(req);
     // hexString fields infer to plain string; buildDeploy brands them — the validated DTO guarantees hex.
     return this.toTxPlan(await buildDeploy(deps, req as DeployTxRequest), req.account);
+  }
+
+  private async persistGenesisRecipe(req: z.infer<typeof deployTxRequestSchema>): Promise<void> {
+    try {
+      const { genesisRoot, sortedTokens, sortedUnitQty } = buildGenesisRoot(
+        req.tokens as `0x${string}`[],
+        req.unitQty.map((q) => BigInt(q)),
+        BigInt(req.unitSize),
+      );
+      const root = genesisRoot.toLowerCase();
+      const data = { root, tokens: sortedTokens, unitQty: sortedUnitQty.map((q) => q.toString()), unitSize: req.unitSize };
+      await this.prisma.genesisRecipe.upsert({ where: { root }, create: data, update: data });
+    } catch {
+      // Best-effort: a persistence hiccup must not block the deploy plan (the vault still deploys; the
+      // constituents just won't auto-populate until the recipe is re-persisted).
+    }
   }
 
   /**

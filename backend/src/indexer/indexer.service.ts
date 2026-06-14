@@ -740,7 +740,10 @@ export class IndexerService {
     // heldTokens/holdingsOf read is required either way; this form is self-healing (retries if the
     // indexer was down at the bootstrap block) and bounded (a vault leaves the set once populated).
     for (const vault of (await this.repo.getRegistryVaultsNeedingGenesis()) as `0x${string}`[]) {
-      const constituents = await this.reader.readRegistryGenesis(vault);
+      // Prefer the recipe persisted at deploy (available immediately, pre-bootstrap); fall back to the
+      // on-chain post-bootstrap read (heldTokens/holdingsOf) for vaults created before that path existed.
+      let constituents = await this.repo.getGenesisConstituents(vault);
+      if (constituents.length === 0) constituents = await this.reader.readRegistryGenesis(vault);
       if (constituents.length === 0) continue;
       await this.repo.replaceRegistryConstituents({ vaultAddress: vault, constituents });
       registryConstituentCount++;

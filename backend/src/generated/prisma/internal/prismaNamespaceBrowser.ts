@@ -53,6 +53,7 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Basket: 'Basket',
   Constituent: 'Constituent',
+  GenesisRecipe: 'GenesisRecipe',
   NavSnapshot: 'NavSnapshot',
   PriceSnapshot: 'PriceSnapshot',
   TokenMetadata: 'TokenMetadata',
@@ -114,6 +115,17 @@ export const ConstituentScalarFieldEnum = {
 } as const
 
 export type ConstituentScalarFieldEnum = (typeof ConstituentScalarFieldEnum)[keyof typeof ConstituentScalarFieldEnum]
+
+
+export const GenesisRecipeScalarFieldEnum = {
+  root: 'root',
+  tokens: 'tokens',
+  unitQty: 'unitQty',
+  unitSize: 'unitSize',
+  createdAt: 'createdAt'
+} as const
+
+export type GenesisRecipeScalarFieldEnum = (typeof GenesisRecipeScalarFieldEnum)[keyof typeof GenesisRecipeScalarFieldEnum]
 
 
 export const NavSnapshotScalarFieldEnum = {

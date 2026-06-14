@@ -10,6 +10,7 @@
  */
 export type * from './models/Basket.js'
 export type * from './models/Constituent.js'
+export type * from './models/GenesisRecipe.js'
 export type * from './models/NavSnapshot.js'
 export type * from './models/PriceSnapshot.js'
 export type * from './models/TokenMetadata.js'

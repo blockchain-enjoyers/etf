@@ -52,6 +52,11 @@ export type Basket = Prisma.BasketModel
  */
 export type Constituent = Prisma.ConstituentModel
 /**
+ * Model GenesisRecipe
+ * 
+ */
+export type GenesisRecipe = Prisma.GenesisRecipeModel
+/**
  * Model NavSnapshot
  * 
  */

@@ -52,6 +52,7 @@ function makeRepo() {
     getRegistryVaultAddresses: vi.fn(async () => [] as string[]),
     getAllVaultAddresses: vi.fn(async () => [] as string[]),
     getRegistryVaultsNeedingGenesis: vi.fn(async () => [] as string[]),
+    getGenesisConstituents: vi.fn(async () => [] as { token: string; unitQty: bigint }[]),
     getLiveForwardQueues: vi.fn(async () => [] as { vault: string; queue: string }[]),
     getCheckpoint: vi.fn(async () => 100n),
     setCheckpoint: vi.fn(async () => {}),
@@ -222,6 +223,26 @@ describe("IndexerService", () => {
       constituents: [
         { token: "0xA", unitQty: 100n },
         { token: "0xB", unitQty: 200n },
+      ],
+    });
+  });
+
+  it("prefers the persisted genesis recipe over the on-chain read (populates pre-bootstrap)", async () => {
+    vi.spyOn(repo, "getRegistryVaultsNeedingGenesis").mockResolvedValue(["0xReg"]);
+    vi.spyOn(repo, "getGenesisConstituents").mockResolvedValue([
+      { token: "0xA", unitQty: 500n },
+      { token: "0xB", unitQty: 300n },
+    ]);
+    reader.readRegistryGenesis = vi.fn(async () => []);
+    const replace = vi.spyOn(repo, "replaceRegistryConstituents");
+    await service.tick();
+    // Recipe satisfied the set → the on-chain post-bootstrap read is never reached.
+    expect(reader.readRegistryGenesis).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledWith({
+      vaultAddress: "0xReg",
+      constituents: [
+        { token: "0xA", unitQty: 500n },
+        { token: "0xB", unitQty: 300n },
       ],
     });
   });

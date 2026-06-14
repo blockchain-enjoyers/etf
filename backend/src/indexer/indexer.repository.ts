@@ -479,6 +479,23 @@ export class IndexerRepository {
     return rows.map((r) => r.vaultAddress);
   }
 
+  /**
+   * Genesis basket from the recipe persisted at deploy (keyed by the vault's recipeCommitment / Merkle
+   * root). Lets the indexer populate a registry vault's constituents BEFORE it's bootstrapped — the
+   * unitQty isn't on-chain, so this persisted recipe is the only pre-bootstrap source. [] if unknown.
+   */
+  async getGenesisConstituents(vault: string): Promise<{ token: string; unitQty: bigint }[]> {
+    const basket = await this.prisma.basket.findUnique({
+      where: { vaultAddress: vault },
+      select: { recipeCommitment: true },
+    });
+    const root = basket?.recipeCommitment?.toLowerCase();
+    if (!root) return [];
+    const recipe = await this.prisma.genesisRecipe.findUnique({ where: { root } });
+    if (!recipe) return [];
+    return recipe.tokens.map((token, i) => ({ token, unitQty: BigInt(recipe.unitQty[i] ?? "0") }));
+  }
+
   async getRebalanceHistory(vault: string) {
     return this.prisma.rebalanceEvent.findMany({
       where: { vaultAddress: vault },

@@ -48,6 +48,32 @@ body {
   background: rgba(53, 208, 224, 0.3);
 }
 
+/* Scrollbars in the app's terminal palette — slim, dark track, subtle thumb that brightens on hover. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-txt3);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -67,6 +93,43 @@ button:disabled,
 [aria-disabled="true"],
 [disabled] {
   cursor: not-allowed;
+}
+
+/* Sleek thin range slider for the create-wizard target weights. The filled portion is painted via
+   an inline linear-gradient background (set in the component from value/max). */
+.weight-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-surface3);
+  outline: none;
+}
+.weight-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--color-cyan);
+  border: 2px solid var(--color-bg2);
+  box-shadow: 0 0 6px rgba(53, 208, 224, 0.45);
+}
+.weight-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-bg2);
+  border-radius: 9999px;
+  background: var(--color-cyan);
+  box-shadow: 0 0 6px rgba(53, 208, 224, 0.45);
+}
+.weight-slider:disabled::-webkit-slider-thumb {
+  background: var(--color-txt3);
+  box-shadow: none;
+}
+.weight-slider:disabled::-moz-range-thumb {
+  background: var(--color-txt3);
+  box-shadow: none;
 }
 
 /* 28px terminal grid backdrop (from redesign-3) — applied to the app shell so it shows behind

@@ -32,6 +32,16 @@ function rowHint(c: WizardState["constituents"][number]): { text: string; ok: bo
   return { text: "✓ valid", ok: true };
 }
 
+/** Clamp a typed target weight to [0, max] so the running total can never be driven past 100%. */
+function clampWeight(raw: string, max: number): string {
+  if (raw.trim() === "") return raw;
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return raw;
+  if (n < 0) return "0";
+  if (n > max) return String(Math.round(max * 10) / 10);
+  return raw;
+}
+
 export function StepConstituents({ state, dispatch, onBack, onNext, preview }: Props) {
   const weights = isWeightsMode(state.vaultKind);
   const amountHeader = weights ? "Target %" : "Qty / unit";
@@ -54,9 +64,9 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
       >
         <table className="w-full table-fixed text-[11.5px]">
           <colgroup>
-            <col style={{ width: "48%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "24%" }} />
+            <col style={{ width: weights ? "42%" : "48%" }} />
+            <col style={{ width: weights ? "30%" : "20%" }} />
+            <col style={{ width: weights ? "20%" : "24%" }} />
             <col style={{ width: "8%" }} />
           </colgroup>
           <thead>
@@ -74,6 +84,10 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
           <tbody>
             {state.constituents.map((c, idx) => {
               const hint = rowHint(c);
+              // Per-row slider ceiling: the headroom left by every other row, so dragging this row
+              // can never push the running total above 100%.
+              const thisVal = parseFloat(c.amount) || 0;
+              const rowMax = Math.max(0, Math.round((100 - (sum - thisVal)) * 10) / 10);
               const d = byToken.get(c.token.trim().toLowerCase());
               const missing = preview?.priceMissing.some((t) => t.toLowerCase() === c.token.trim().toLowerCase());
               // Quantities mode never populates priceMissing; an unpriced token surfaces as a
@@ -91,19 +105,53 @@ export function StepConstituents({ state, dispatch, onBack, onNext, preview }: P
                     {/* Always rendered (fixed height) so the row doesn't jump as the hint appears/clears. */}
                     <span className={cn("block pl-0.5 mt-0.5 text-[10px] min-h-[13px]", hint?.ok ? "text-emerald" : "text-amber")}>{hint?.text ?? " "}</span>
                   </td>
-                  <td className="px-3 py-2 text-right align-top">
-                    <input
-                      aria-label={`Asset ${idx + 1} amount`}
-                      autoComplete="off"
-                      spellCheck={false}
-                      className={cn(inputCls, "w-20 text-right")}
-                      placeholder="0.00"
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={c.amount}
-                      onChange={(e) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "amount", value: e.target.value })}
-                    />
+                  <td className="px-3 py-2 align-top">
+                    {weights ? (
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="range"
+                          aria-label={`Asset ${idx + 1} weight slider`}
+                          min={0}
+                          max={rowMax}
+                          step={1}
+                          value={Math.min(thisVal, rowMax)}
+                          onChange={(e) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "amount", value: e.target.value })}
+                          className="weight-slider flex-1 min-w-0 cursor-pointer"
+                          style={{
+                            background: `linear-gradient(to right, var(--color-cyan) ${rowMax > 0 ? (Math.min(thisVal, rowMax) / rowMax) * 100 : 0}%, var(--color-surface3) ${rowMax > 0 ? (Math.min(thisVal, rowMax) / rowMax) * 100 : 0}%)`,
+                          }}
+                        />
+                        <input
+                          aria-label={`Asset ${idx + 1} amount`}
+                          autoComplete="off"
+                          spellCheck={false}
+                          className={cn(inputCls, "w-14 text-right")}
+                          placeholder="0"
+                          type="number"
+                          min="0"
+                          max={rowMax}
+                          step="any"
+                          value={c.amount}
+                          onChange={(e) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "amount", value: clampWeight(e.target.value, rowMax) })}
+                        />
+                        <span className="text-txt3 text-[10px]">%</span>
+                      </div>
+                    ) : (
+                      <div className="text-right">
+                        <input
+                          aria-label={`Asset ${idx + 1} amount`}
+                          autoComplete="off"
+                          spellCheck={false}
+                          className={cn(inputCls, "w-20 text-right")}
+                          placeholder="0.00"
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={c.amount}
+                          onChange={(e) => dispatch({ type: "UPDATE_CONSTITUENT", id: c.id, field: "amount", value: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </td>
                   <td className={cn("px-3 py-2 text-right align-top font-mono tabular-nums whitespace-nowrap overflow-hidden text-ellipsis", missing ? "text-amber" : "text-txt2")}>{derived}</td>
                   <td className="px-3 py-2 align-top text-right">

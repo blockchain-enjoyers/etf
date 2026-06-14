@@ -63,8 +63,10 @@ describe("LiveForwardSettleWriter", () => {
     expect(writeContract.mock.calls[1]![0].address).toBe(QUEUE_B);
   });
 
-  it("approve throws CapabilityUnavailableError (testnet approvals are pre-seeded out-of-band)", async () => {
-    const { w } = writer();
+  // The full approve() behavior (managed ERC-20 vs registry ERC-6909 operator+wrap) is covered in
+  // forward-settle-writer.live.adapter.spec.ts; here we only assert the dormant guard.
+  it("approve throws CapabilityUnavailableError when the vault has no queue (dormant)", async () => {
+    const { w } = writer({ mapped: false });
     await expect(w.approve(VAULT_A as `0x${string}`, "0xap")).rejects.toBeInstanceOf(
       CapabilityUnavailableError,
     );

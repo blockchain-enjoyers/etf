@@ -345,3 +345,34 @@ describe("ForwardCashQueue — registry cash-redeem flat fee (Task 4)", () => {
     expect(await usdg.balanceOf(ap.address)).to.equal(apBefore);
   });
 });
+
+// The backend automates exactly this for ANY (incl. judge-created) registry vault: the keeper drives the
+// MockAPFiller's OWN registry hooks (wrapInventory to hold claims + setVaultOperator to authorize the queue),
+// then settles. Proves a contract AP — not just an EOA — can source a registry create.
+describe("ForwardCashQueue — registry create settle via MockAPFiller (automated AP)", () => {
+  it("wrapInventory + setVaultOperator let a MockAPFiller source a create; user gets shares, filler keeps cash", async () => {
+    const ctx = await bootstrapped();
+    const { q, qAddr, vault, vaultAddr, user, usdg, usdgAddr, keeper, tokens, t0, t1, c0, c1 } = ctx;
+    const cash = 100n * 10n ** 6n;
+    await usdg.mint(user.address, cash);
+    await usdg.connect(user).approve(qAddr, cash);
+    await q.connect(user).requestCreate(cash);
+
+    const filler = await (await ethers.getContractFactory("MockAPFiller")).deploy(usdgAddr);
+    const fillerAddr = await filler.getAddress();
+    const amts = [200n * ONE, 300n * ONE]; // ample for the N=100e18 fill (need = 2e18/3e18 * 100)
+    await c0.mint(fillerAddr, amts[0]);
+    await c1.mint(fillerAddr, amts[1]);
+    await filler.wrapInventory(vaultAddr, tokens, amts);          // real ERC-20 -> this AP's ERC-6909 claims
+    await filler.setVaultOperator(vaultAddr, qAddr);              // authorize the queue as ERC-6909 operator
+
+    await time.increase(3600 + 1);
+    await ctx.reseedObs();
+
+    await expect(q.connect(keeper).settle([0n], tokens, [[], []], fillerAddr)).to.emit(q, "Settled").withArgs(0n);
+    expect(await vault.balanceOf(user.address)).to.equal(100n * ONE);  // user got N shares
+    expect(await usdg.balanceOf(fillerAddr)).to.equal(cash);           // filler kept the cash
+    expect(await ctx.claimBal(qAddr, t0)).to.equal(0n);                // non-custody: queue holds nothing
+    expect(await ctx.claimBal(qAddr, t1)).to.equal(0n);
+  });
+});

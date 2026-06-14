@@ -48,7 +48,7 @@ async function main() {
   if (!catalog && (!vault || !queue)) {
     throw new Error("set VAULT=0x.. and QUEUE=0x.. (per-vault), or CATALOG=1 to fund every catalog token");
   }
-  const amount = ethers.parseUnits(process.env.AMOUNT ?? "1000", 18);
+  const amount = ethers.parseUnits(process.env.AMOUNT ?? "100000", 18);
 
   const { address: me } = await getDeployer();
   const config = loadConfig();

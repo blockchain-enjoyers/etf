@@ -63,7 +63,8 @@ export class KeeperJobs implements OnModuleInit {
     });
     await this.pgboss.work(KEEPER_JOBS.forwardSettle, async () => {
       const res = await this.forwardSettle.run();
-      this.logger.log(`forward-settle: ${res.status} ${res.txHash ?? ""}`);
+      // Log detail too (the noop/skip reason) — otherwise "forward-settle: noop" hides WHY.
+      this.logger.log(`forward-settle: ${res.status} ${res.txHash ?? ""} ${res.detail ?? ""}`.trimEnd());
     });
 
     const forwardEnabled = this.config.get("FORWARD_OPERATOR_ENABLED") as boolean;

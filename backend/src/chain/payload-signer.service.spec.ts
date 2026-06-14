@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { decodeAbiParameters, encodeAbiParameters, keccak256, recoverAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { demoTokens } from "@meridian/contracts";
 import { PayloadSignerService } from "./payload-signer.service.js";
+import { catalogPrice18 } from "../contracts/catalog-price.js";
 
 const PK = `0x${"11".repeat(32)}` as const;
 const TOKEN = "0x000000000000000000000000000000000000000a";
@@ -103,9 +105,18 @@ describe("PayloadSignerService", () => {
     expect(lastUpdate).toBe(BigInt(CLOSED_NOW)); // forced live ⇒ wall-clock now
   });
 
-  it("throws a clear error when no usable snapshot exists", async () => {
-    const svc = make(null, { nowSec: 1_780_000_500 });
+  it("throws a clear error when no snapshot AND no catalog baseline exists", async () => {
+    const svc = make(null, { nowSec: 1_780_000_500 }); // TOKEN is off-catalog
     await expect(svc.payloadsFor(TOKEN)).rejects.toThrow(/no price/i);
+  });
+
+  it("falls back to the catalog baseline when a catalog token has no DB snapshot", async () => {
+    const catTok = demoTokens[0]!.address;
+    const svc = make(null, { nowSec: 1_780_000_500, forceOpen: true });
+    const [weekday] = await svc.payloadsFor(catTok);
+    const [, price] = decodeAbiParameters(PAYLOAD_TYPES, weekday!);
+    expect(price).toBe(catalogPrice18(catTok));
+    expect(price).toBeGreaterThan(0n);
   });
 
   it("pads to the aggregator sourceCount so priceOf doesn't revert PayloadLengthMismatch", async () => {

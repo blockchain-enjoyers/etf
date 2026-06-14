@@ -3,6 +3,7 @@ import { encodeAbiParameters, keccak256, padHex, parseSignature } from "viem";
 import { addresses, PriceAggregatorAbi } from "@meridian/contracts";
 import { PrismaService } from "../persistence/prisma.service.js";
 import { ChainService } from "./chain.service.js";
+import { catalogPrice18 } from "../contracts/catalog-price.js";
 import { marketStatusNow } from "../signals/market-calendar.js";
 import { MarketStatus } from "../domain/market-status.js";
 
@@ -73,11 +74,15 @@ export class PayloadSignerService {
       where: { token, price: { gt: 0 } },
       orderBy: { timestamp: "desc" },
     });
-    if (!latest) throw new Error(`payload-signer: no price snapshot for ${token}`);
+    // Prefer the freshest DB snapshot; fall back to the catalog baseline so a catalog token whose
+    // constituent row / snapshot isn't indexed yet still produces a payload (settle/record don't dead-end).
+    const price = latest ? BigInt(latest.price.toFixed(0)) : catalogPrice18(token);
+    if (price === undefined || price <= 0n) {
+      throw new Error(`payload-signer: no price snapshot or catalog baseline for ${token}`);
+    }
 
     const feedId = padHex(token as `0x${string}`, { size: 32 });
     const nowS = this.opts.nowSec();
-    const price = BigInt(latest.price.toFixed(0));
     // The on-chain payload's lastUpdate must reflect WALL-CLOCK freshness, NOT the snapshot's source
     // timestamp: the 24/7 demo feed is a last-close FV walk, so the snapshot ts is an old market time
     // the aggregator's staleHorizon would reject. The F3 guard tolerates a sub-second backend↔L2 lead,

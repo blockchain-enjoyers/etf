@@ -6,10 +6,11 @@ import type { ChainService } from "../chain/chain.service.js";
 
 const NVDA = demoTokens.find((t) => t.symbol === "NVDA")!;
 
-function make(getMany = vi.fn().mockResolvedValue({}), readContract = vi.fn()) {
+function make(getMany = vi.fn().mockResolvedValue({}), readContract = vi.fn(), usdg?: string) {
   const meta = { getMany } as unknown as TokenMetadataService;
   const chain = { publicClient: { readContract } } as unknown as ChainService;
-  return { ctrl: new TokensController(meta, chain), getMany, readContract };
+  const registry = { address: (c: string) => (c === "USDG" ? usdg : undefined) } as never;
+  return { ctrl: new TokensController(meta, chain, registry), getMany, readContract };
 }
 
 describe("TokensController.search", () => {
@@ -101,5 +102,19 @@ describe("TokensController.balances", () => {
     const { ctrl } = make();
     expect(await ctrl.balances({ account: "", tokens: [NVDA.address] })).toEqual([]);
     expect(await ctrl.balances({ account: ACC, tokens: [] })).toEqual([]);
+  });
+
+  it("reports an open-mint USDG faucet (fixed amount, unlimited headroom) without reading getters", async () => {
+    const USDG = "0x000000000000000000000000000000000000d6c0";
+    const getMany = vi.fn().mockResolvedValue({ [USDG]: { symbol: "USDG", decimals: 18 } });
+    const readContract = vi.fn(async (req: { functionName: string }) => {
+      if (req.functionName === "balanceOf") return 7n * 10n ** 18n;
+      throw new Error("USDG has no faucet getters");
+    });
+    const { ctrl } = make(getMany, readContract, USDG);
+    const out = await ctrl.balances({ account: ACC, tokens: [USDG] });
+    expect(out[0]!.faucetAmount).toBe((100n * 10n ** 18n).toString());
+    expect(BigInt(out[0]!.faucetRemaining!)).toBeGreaterThan(0n);
+    expect(out[0]!.balance).toBe((7n * 10n ** 18n).toString());
   });
 });

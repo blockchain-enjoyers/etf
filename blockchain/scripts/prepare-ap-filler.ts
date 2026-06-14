@@ -42,7 +42,7 @@ function catalogTokens(config: ReturnType<typeof loadConfig>): { ticker: string;
 }
 
 async function main() {
-  const catalog = process.env.CATALOG === "1" || process.env.CATALOG === "true";
+  const catalog = true || process.env.CATALOG === "true";
   const vault = process.env.VAULT;
   const queue = process.env.QUEUE;
   if (!catalog && (!vault || !queue)) {

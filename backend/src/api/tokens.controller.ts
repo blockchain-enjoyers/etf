@@ -1,9 +1,11 @@
 import { Body, Controller, Get, Post, Query } from "@nestjs/common";
-import { erc20Abi } from "viem";
+import { erc20Abi, maxUint256 } from "viem";
 import { demoTokens } from "@meridian/contracts";
 import type { TokenInfo, TokenBalance } from "@meridian/sdk";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { ChainService } from "../chain/chain.service.js";
+import { CapabilityRegistry } from "../contracts/capability-registry.js";
+import { USDG_FAUCET_AMOUNT } from "../tx/actions/faucet.js";
 
 const CATALOG = new Map(demoTokens.map((t) => [t.address.toLowerCase(), t]));
 
@@ -20,6 +22,7 @@ export class TokensController {
   constructor(
     private readonly meta: TokenMetadataService,
     private readonly chain: ChainService,
+    private readonly registry: CapabilityRegistry,
   ) {}
 
   @Get("search")
@@ -84,6 +87,11 @@ export class TokensController {
   }
 
   private async faucetInfo(token: `0x${string}`, account: `0x${string}`): Promise<{ amount: bigint; remaining: bigint } | null> {
+    // USDG is open-mint (no faucetMint/cap getters), so report a fixed per-click amount + unlimited headroom.
+    const usdg = this.registry.address("USDG");
+    if (usdg && token.toLowerCase() === usdg.toLowerCase()) {
+      return { amount: USDG_FAUCET_AMOUNT, remaining: maxUint256 };
+    }
     try {
       const [amount, cap, minted] = await Promise.all([
         this.chain.publicClient.readContract({ address: token, abi: faucetAbi, functionName: "FAUCET_AMOUNT" }) as Promise<bigint>,

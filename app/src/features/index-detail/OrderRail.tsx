@@ -385,6 +385,9 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
       <div className="px-3.5 py-3">
         {createGate.enabled && cashEnabled ? (
           <div className="flex flex-col gap-2">
+            {cashToken && (
+              <AssetFunding required={[{ token: cashToken, symbol: "USDG", amount: cash.toString() }]} account={address} />
+            )}
             <Button
               variant="primary"
               full

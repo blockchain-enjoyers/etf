@@ -66,7 +66,7 @@ import {
   type ForwardDeps,
 } from "./actions/forward.js";
 import { buildCuratorActivate, buildCuratorSchedule } from "./actions/curator.js";
-import { buildFaucet } from "./actions/faucet.js";
+import { buildFaucet, buildUsdgFaucet } from "./actions/faucet.js";
 import { buildGenesisRoot } from "./registry-recipe.js";
 import { buildKeeperRecord, buildKeeperSettle, type KeeperDeps } from "./actions/keeper.js";
 import {
@@ -332,6 +332,11 @@ export class TxPlanBuilder {
   // Demo faucet for a single token — funds the underlying so an in-kind mint/wrap/bootstrap can pull it.
   // Not vault-scoped and never gated; the safety surface is the destination token (FE allowlists it).
   async faucet(token: string, req: z.infer<typeof faucetTxRequestSchema>): Promise<TxPlan> {
+    // USDG uses an open mint(to, amount) (no faucetMint), so route the cash token through the USDG action.
+    const usdg = this.registry.address("USDG");
+    if (usdg && token.toLowerCase() === usdg.toLowerCase()) {
+      return this.toTxPlan(buildUsdgFaucet(token, req.account), req.account);
+    }
     const symbol = (await this.tokenMeta.getMany([token]))[token.toLowerCase()]?.symbol;
     return this.toTxPlan(buildFaucet(token, symbol), req.account);
   }

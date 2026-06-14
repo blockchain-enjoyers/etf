@@ -199,7 +199,13 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
           <div className="mt-2">
             <AssetFunding
               account={address}
-              required={deposits.map((d) => ({ token: d.token, symbol: d.symbol, amount: d.amount }))}
+              required={[
+                ...deposits.map((d) => ({ token: d.token, symbol: d.symbol, amount: d.amount })),
+                // FeeCore.create() also pulls a flat USDG fee from the wallet — fund it too, not just the constituents.
+                ...(mintFee && BigInt(mintFee.amount) > 0n
+                  ? [{ token: mintFee.token, symbol: mintFee.symbol, amount: mintFee.amount }]
+                  : []),
+              ]}
             />
           </div>
         )}

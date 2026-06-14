@@ -33,6 +33,7 @@ import {
 import { CapabilityUnavailableError } from "../capabilities/capability-unavailable.error.js";
 import { RedeemQuotePort } from "../capabilities/redeem-quote/redeem-quote.port.js";
 import { erc20Abi } from "viem";
+import { ManagedRebalanceVaultAbi } from "@meridian/contracts";
 import { PrismaService } from "../persistence/prisma.service.js";
 import { ChainService } from "../chain/chain.service.js";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
@@ -99,6 +100,11 @@ export class BasketsController {
     // queue-independent, so the UI can clear the "not set up" notice the moment bootstrap lands —
     // unlike the settle gate, which needs a forward queue. Other vault types are always "bootstrapped".
     const bootstrapped = b.vaultType === "Registry" ? await this.isBootstrapped(b.vaultAddress) : true;
+    // Flat USDG create fee (+ its token) so the FE can fund it alongside the constituents at in-kind create.
+    // Only managed/rebalance/registry carry a FeeCore flat fee; basket/committed have none.
+    const fees = ["Managed", "Rebalance", "Registry"].includes(b.vaultType)
+      ? await this.readFlatCreateFee(b.vaultAddress)
+      : {};
     return {
       vaultAddress: b.vaultAddress,
       name: b.name,
@@ -117,11 +123,29 @@ export class BasketsController {
       // (e.g. "1e+21") for values >= 1e21, which violates the decimal-string DTO contract.
       unitSize: b.unitSize.toFixed(0),
       bootstrapped,
+      ...fees,
       constituents: b.constituents.map((c) => {
         const m = meta[c.token.toLowerCase()];
         return { token: c.token, unitQty: c.unitQty.toFixed(0), symbol: m?.symbol, name: m?.name ?? undefined, decimals: m?.decimals };
       }),
     };
+  }
+
+  /** Fixed USDG create fee + its token (FeeCore). Best-effort: a pre-fee deployment lacks the getters. */
+  private async readFlatCreateFee(vault: string): Promise<{ flatCreateFee?: string; feeToken?: string }> {
+    try {
+      const [fee, token] = await Promise.all([
+        this.chain.publicClient.readContract({
+          address: vault as `0x${string}`, abi: ManagedRebalanceVaultAbi, functionName: "flatCreateFee",
+        }) as Promise<bigint>,
+        this.chain.publicClient.readContract({
+          address: vault as `0x${string}`, abi: ManagedRebalanceVaultAbi, functionName: "feeToken",
+        }) as Promise<`0x${string}`>,
+      ]);
+      return { flatCreateFee: fee.toString(), feeToken: token };
+    } catch {
+      return {};
+    }
   }
 
   /** Registry vault is bootstrapped once its genesis mint gave it a non-zero share supply. */

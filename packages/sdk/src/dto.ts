@@ -110,6 +110,11 @@ export const basketDetailSchema = basketSummarySchema.extend({
   // Registry only: false until the genesis basket is seeded (totalSupply > 0). Absent/true otherwise.
   // Queue-independent, so it reflects bootstrap even before cash settlement is enabled.
   bootstrapped: z.boolean().optional(),
+  // Fixed USDG fee FeeCore.create() pulls from the caller at in-kind create (managed/rebalance/registry),
+  // and its token. Queue-independent (charged even before cash settlement). 0/absent on the no-fee seam —
+  // lets the FE fund the fee alongside the constituents. flatRedeemFee is deducted from proceeds (no pull).
+  flatCreateFee: decimalString.optional(),
+  feeToken: z.string().optional(),
 });
 export type BasketDetail = z.infer<typeof basketDetailSchema>;
 

@@ -354,7 +354,14 @@ function CreatePanel({ vaultAddress, basket, gate }: PanelProps) {
   const units = unitSize > 0n ? nShares / unitSize : 0n;
   const required =
     units > 0n
-      ? basket.constituents.map((c) => ({ token: c.token, symbol: c.symbol, amount: (BigInt(c.unitQty) * units).toString() }))
+      ? [
+          ...basket.constituents.map((c) => ({ token: c.token, symbol: c.symbol, amount: (BigInt(c.unitQty) * units).toString() })),
+          // FeeCore.create() also pulls a flat USDG fee — fund it alongside the constituents (it's charged
+          // even before cash settlement, so it comes off the basket detail, not the forward queue).
+          ...(basket.flatCreateFee && BigInt(basket.flatCreateFee) > 0n && basket.feeToken
+            ? [{ token: basket.feeToken, symbol: "USDG", amount: basket.flatCreateFee }]
+            : []),
+        ]
       : [];
 
   function handleCreate() {

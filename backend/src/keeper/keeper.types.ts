@@ -19,8 +19,9 @@ export interface SettlePayload {
 }
 
 export interface KeeperResult {
-  /** "submitted" (tx sent), "skipped" (idempotent/no-op), or "noop" (disabled/preconditions unmet). */
-  status: "submitted" | "skipped" | "noop";
+  /** "submitted" (tx sent), "skipped" (nothing to do), "failed" (had work but every attempt reverted),
+   *  or "noop" (disabled/preconditions unmet). */
+  status: "submitted" | "skipped" | "failed" | "noop";
   txHash?: `0x${string}`;
   detail?: string;
 }

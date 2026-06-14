@@ -90,4 +90,14 @@ describe("ForwardSettleService", () => {
     });
     expect((await service.run()).status).toBe("noop");
   });
+
+  it("had past-cutoff tickets but settle reverted => failed (not a misleading 'skipped')", async () => {
+    const { service } = svc({
+      pending: [{ id: 1, cutoffMs: Date.now() - 1000 }],
+      writerThrows: new Error("NotSafe()"),
+    });
+    const res = await service.run();
+    expect(res.status).toBe("failed");
+    expect(res.detail).toContain("NotSafe");
+  });
 });

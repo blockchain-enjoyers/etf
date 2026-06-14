@@ -42,6 +42,8 @@ export class ForwardSettleService {
     const now = Date.now();
     let lastTx: `0x${string}` | undefined;
     let settledBatches = 0;
+    let foundBatches = 0; // queues that HAD past-cutoff tickets to settle this pass
+    let lastError: string | undefined;
     for (const { vault } of this.forwardQueues.pairs()) {
       const pending = (await this.repo.getPendingForwardTickets(vault)) as {
         ticketId: number;
@@ -49,6 +51,7 @@ export class ForwardSettleService {
       }[];
       const ids = pending.filter((t) => t.cutoff.getTime() <= now).map((t) => BigInt(t.ticketId));
       if (ids.length === 0) continue;
+      foundBatches += 1;
       try {
         await this.ap.prepare(vault, ids); // testnet: fund+approve the AP filler; noop when dormant
         lastTx = await this.writer.settle(vault as `0x${string}`, ids, ap);
@@ -58,12 +61,18 @@ export class ForwardSettleService {
           this.logger.warn(`ForwardSettleService dormant: ${err.message}`);
           return { status: "noop", detail: err.message };
         }
-        this.logger.error(`forward settle failed for ${vault}: ${(err as Error).message}`);
+        lastError = (err as Error).message;
+        this.logger.error(`forward settle failed for ${vault}: ${lastError}`);
       }
     }
-    if (settledBatches === 0) {
+    if (settledBatches > 0) {
+      return { status: "submitted", txHash: lastTx, detail: `settled ${settledBatches} batch(es)` };
+    }
+    // Distinguish "nothing to do" from "had tickets but every settle reverted" — the latter is the
+    // real signal (gate not open / oracle), and was previously masked as "skipped: no past-cutoff".
+    if (foundBatches === 0) {
       return { status: "skipped", detail: "no past-cutoff tickets" };
     }
-    return { status: "submitted", txHash: lastTx, detail: `settled ${settledBatches} batch(es)` };
+    return { status: "failed", detail: lastError ?? `all ${foundBatches} settle attempt(s) reverted` };
   }
 }

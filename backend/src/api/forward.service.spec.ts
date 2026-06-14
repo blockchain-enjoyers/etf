@@ -193,6 +193,7 @@ describe("ForwardService.getQueue registry fees", () => {
     expect(out.fees).toEqual({
       isRegistry: true,
       feeToken: USDG,
+      feeDecimals: 18, // chain mock has no readContract → decimals read fails → 18 default
       flatCreateFee: "5000000",
       flatRedeemFee: "3000000",
     });
@@ -220,6 +221,7 @@ describe("ForwardService.getQueue registry fees", () => {
     expect(out.fees).toEqual({
       isRegistry: true,
       feeToken: "0x0000000000000000000000000000000000000000",
+      feeDecimals: 18,
       flatCreateFee: "0",
       flatRedeemFee: "0",
     });
@@ -261,6 +263,7 @@ describe("ForwardService.getQueue registry fees", () => {
     expect(out.fees).toEqual({
       isRegistry: true,
       feeToken: USDG,
+      feeDecimals: 18, // chain mock has no readContract → decimals read fails → 18 default
       flatCreateFee: "5000000",
       flatRedeemFee: "3000000",
     });

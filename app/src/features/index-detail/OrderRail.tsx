@@ -30,9 +30,9 @@ function parseUsdc(value: string): bigint {
   }
 }
 
-/** USDG (6-dec) base-unit amount → "$X.XX" (USDG pegged to $1). */
-function formatUsdgFee(baseUnits: string): string {
-  return `$${Number(formatUnits(BigInt(baseUnits), USDC_DECIMALS)).toFixed(2)}`;
+/** Fee base-unit amount → "$X.XX" (fee token pegged to $1). Decimals come from the fee token (USDG 18). */
+function formatUsdgFee(baseUnits: string, decimals = 18): string {
+  return `$${Number(formatUnits(BigInt(baseUnits), decimals)).toFixed(2)}`;
 }
 
 interface Props {
@@ -373,7 +373,7 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
         <div className={cn(ROW, "border-0")}>
           <span className={ROW_K}>Create fee</span>
           <span className={cn(ROW_V, fees && BigInt(fees.flatCreateFee) > 0n ? "text-txt" : "text-emerald")}>
-            {fees && BigInt(fees.flatCreateFee) > 0n ? `+ ${formatUsdgFee(fees.flatCreateFee)} USDG` : "$0.00"}
+            {fees && BigInt(fees.flatCreateFee) > 0n ? `+ ${formatUsdgFee(fees.flatCreateFee, fees.feeDecimals)} USDG` : "$0.00"}
           </span>
         </div>
       </div>
@@ -552,7 +552,7 @@ function RedeemPanel({
             <span className={ROW_K}>Redeem fee</span>
             <span className={cn(ROW_V, redeemFee && BigInt(redeemFee.flatRedeemFee) > 0n ? "text-txt" : "text-emerald")}>
               {redeemFee && BigInt(redeemFee.flatRedeemFee) > 0n
-                ? `net − ${formatUsdgFee(redeemFee.flatRedeemFee)} USDG`
+                ? `net − ${formatUsdgFee(redeemFee.flatRedeemFee, redeemFee.feeDecimals)} USDG`
                 : "$0.00"}
             </span>
           </div>

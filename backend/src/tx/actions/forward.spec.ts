@@ -87,8 +87,24 @@ describe("buildForwardCreate", () => {
     await expect(buildForwardCreate(deps, VAULT, { account: ACCOUNT, cash: "1000000" })).rejects.toThrow(/not-deployed/);
   });
 
-  it("throws when the basket has no cashToken", async () => {
+  it("falls back to the queue stable token when the basket has no cashToken (registry)", async () => {
+    const STABLE = "0x000000000000000000000000000000000000d0d0";
     const deps = makeDeps({ basket: { vaultAddress: VAULT, symbol: "IDX", cashToken: null } });
+    // First multicall = readQueueStable (returns the stable); second = allowance check (0 → approve).
+    deps.publicClient.multicall = vi
+      .fn()
+      .mockResolvedValueOnce([{ status: "success", result: STABLE }])
+      .mockResolvedValueOnce([{ status: "success", result: 0n }]);
+    deps.meta.getMany = vi.fn().mockResolvedValue({ [STABLE.toLowerCase()]: { symbol: "USDG", decimals: 18 } });
+
+    const result = await buildForwardCreate(deps, VAULT, { account: ACCOUNT, cash: "1000000" });
+    const approve = result.steps.find((s) => s.kind === "approve") as { to: string };
+    expect(approve.to).toBe(STABLE);
+  });
+
+  it("throws when no cashToken and the queue stable can't be read", async () => {
+    const deps = makeDeps({ basket: { vaultAddress: VAULT, symbol: "IDX", cashToken: null } });
+    deps.publicClient.multicall = vi.fn().mockResolvedValueOnce([{ status: "failure" }]);
     await expect(buildForwardCreate(deps, VAULT, { account: ACCOUNT, cash: "1000000" })).rejects.toThrow(/cashToken/);
   });
 });

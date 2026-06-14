@@ -325,6 +325,8 @@ export type QueueCapacity = z.infer<typeof queueCapacitySchema>;
 export const forwardQueueFeesSchema = z.object({
   isRegistry: z.boolean(),
   feeToken: z.string(),
+  // Fee-token decimals (USDG is 18-dec, MockUSDC 6-dec) — needed to format flatCreate/RedeemFee. 18 default.
+  feeDecimals: z.number().int().default(18),
   flatCreateFee: baseUnitString,
   flatRedeemFee: baseUnitString,
 });

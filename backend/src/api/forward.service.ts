@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { erc20Abi } from "viem";
 import type {
   ForwardTicket,
   ForwardQueue,
@@ -119,9 +120,20 @@ export class ForwardService {
       // stable() unreadable on a stale impl — skip the cross-check, keep the disclosed fees.
     }
 
+    // Fee-token decimals so the UI can format the fee (USDG 18-dec, MockUSDC 6-dec). Default 18 on read fail.
+    let feeDecimals = 18;
+    try {
+      feeDecimals = Number(
+        await this.chain.publicClient.readContract({ address: feeToken as `0x${string}`, abi: erc20Abi, functionName: "decimals" }),
+      );
+    } catch {
+      feeDecimals = 18;
+    }
+
     return {
       isRegistry: true,
       feeToken,
+      feeDecimals,
       flatCreateFee: flatCreateFee.toString(),
       flatRedeemFee: flatRedeemFee.toString(),
     };

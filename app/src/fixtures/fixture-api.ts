@@ -295,6 +295,7 @@ export class FixtureApi implements MeridianApi {
       fees: {
         isRegistry: true,
         feeToken: "0xusdg00000000000000000000000000000000usdg",
+        feeDecimals: 6,
         flatCreateFee: "1000000",
         flatRedeemFee: "1000000",
       },

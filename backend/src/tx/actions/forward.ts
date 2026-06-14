@@ -31,6 +31,20 @@ async function findBasket(deps: ForwardDeps, vault: string): Promise<ForwardBask
   return basket;
 }
 
+/** The queue's stable (cash) token — the create cash leg for registry vaults with no Basket.cashToken. */
+async function readQueueStable(deps: ForwardDeps, queue: string): Promise<string | undefined> {
+  try {
+    const res = await deps.publicClient.multicall({
+      allowFailure: true,
+      contracts: [{ address: queue as `0x${string}`, abi: ForwardCashQueueAbi, functionName: "stable" }],
+    } as never);
+    const r = res[0];
+    return r?.status === "success" ? (r.result as string) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function buildForwardCreate(
   deps: ForwardDeps,
   vault: string,
@@ -38,11 +52,14 @@ export async function buildForwardCreate(
 ): Promise<ActionResult> {
   const queue = resolveQueue(deps, vault);
   const basket = await findBasket(deps, vault);
-  if (!basket.cashToken) throw new Error(`basket ${vault} has no cashToken`);
+  // Registry vaults don't carry a cashToken on the Basket row — the cash leg is the queue's own stable
+  // (set when cash settlement was enabled). Fall back to reading it from the live queue.
+  const cashToken = basket.cashToken ?? (await readQueueStable(deps, queue));
+  if (!cashToken) throw new Error(`basket ${vault} has no cashToken`);
 
   const cashBn = BigInt(cash);
   // Queue pulls the cash leg via transferFrom — approve the cash token to the queue.
-  const approvals = await buildApprovalSteps(deps, account, queue, [{ token: basket.cashToken, amount: cashBn }], "queue");
+  const approvals = await buildApprovalSteps(deps, account, queue, [{ token: cashToken, amount: cashBn }], "queue");
 
   // use-forward-queue.ts: requestCreate(cash)
   const data = encodeFunctionData({ abi: ForwardCashQueueAbi, functionName: "requestCreate", args: [cashBn] });

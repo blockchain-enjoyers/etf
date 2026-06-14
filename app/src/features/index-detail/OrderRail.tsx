@@ -292,7 +292,7 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
  * FORWARD CASH via buildForwardCreateTx. The user pays USDG now and is minted units at the next open
  * (forward-priced), plus a flat USDG create fee disclosed from the forward-queue `fees` DTO.
  */
-function RegistryCreatePanel({ vaultAddress, basket }: Props) {
+function RegistryCreatePanel({ vaultAddress, basket, nav }: Props) {
   const qc = useQueryClient();
   const api = useApi();
   const { address } = useAccount();
@@ -324,7 +324,9 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
   const running = tx.status === "running";
 
   // Estimate only (IRON RULE): shares = cash * 1e18 / navPerShare; struck for real at the next open.
-  const navPerShare = gate?.navPerShare ? BigInt(gate.navPerShare) : 0n;
+  // Prefer the gate's struck per-share; fall back to the live (off-chain) NAV per share so the estimate
+  // still shows when the settle gate can't simulate (oracle/peg) — both are 18-dec base units.
+  const navPerShare = gate?.navPerShare ? BigInt(gate.navPerShare) : nav?.nav ? BigInt(nav.nav) : 0n;
   const estShares =
     navPerShare > 0n ? (parseUnits(formatUnits(cash, cashDecimals), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
 
@@ -474,6 +476,21 @@ function RedeemPanel({
   const { data: queue } = useForwardQueue(vaultAddress, hasForward);
   const redeemFee = queue?.fees ?? null;
 
+  // Cash-redeem estimate (IRON RULE: informational, struck at the next open). USDG out ≈ shares · NAV/share,
+  // net of the fixed redeem fee; NAV/share is the live off-chain per-share (18-dec base units).
+  const cashDecimals = queue?.cashDecimals ?? 18;
+  const navPerShare = nav?.nav ? BigInt(nav.nav) : 0n;
+  const sharesIn = (() => {
+    try {
+      return parseUnits(amount || "0", 18);
+    } catch {
+      return 0n;
+    }
+  })();
+  const estCashGross = navPerShare > 0n ? (sharesIn * navPerShare) / 1_000_000_000_000_000_000n : 0n;
+  const redeemFeeBase = redeemFee ? BigInt(redeemFee.flatRedeemFee) : 0n;
+  const estCashNet = estCashGross > redeemFeeBase ? estCashGross - redeemFeeBase : 0n;
+
   // Registry forces cash; everything else honors the selected method.
   const effectiveMethod: RedeemMethod = isRegistry ? "cash" : method;
   const activeGate = effectiveMethod === "inkind" ? inKindGate : cashGate;
@@ -553,6 +570,17 @@ function RedeemPanel({
 
       {isRegistry ? (
         <div className={cn(RAIL_SEC, "text-[11px]")}>
+          <div className={ROW}>
+            <span className={ROW_K}>You receive (estimate)</span>
+            <span className={cn(ROW_V, "inline-flex items-center gap-1")}>
+              {navPerShare > 0n ? formatUnits(estCashNet, cashDecimals) : "—"} USDG
+              <EstBadge />
+            </span>
+          </div>
+          <div className={ROW}>
+            <span className={ROW_K}>Basis</span>
+            <span className={ROW_V}>forward · next open</span>
+          </div>
           <div className={ROW}>
             <span className={ROW_K}>Method</span>
             <span className={cn(ROW_V, "text-txt2")}>cash · forward queue</span>

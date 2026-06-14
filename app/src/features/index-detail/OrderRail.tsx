@@ -323,15 +323,21 @@ function RegistryCreatePanel({ vaultAddress, basket, nav }: Props) {
   const tx = useTxPlan([cashToken, queue?.queueAddress].filter(Boolean) as string[]);
   const running = tx.status === "running";
 
-  // Estimate only (IRON RULE): shares = cash * 1e18 / navPerShare; struck for real at the next open.
+  // The fixed USDG create fee comes off the top before any shares are minted — a deposit <= fee mints 0
+  // and the on-chain settle reverts ZeroShares(), so net it out of the estimate and block it below.
+  const flatCreateFeeBase = fees ? BigInt(fees.flatCreateFee) : 0n;
+  const netCash = cash > flatCreateFeeBase ? cash - flatCreateFeeBase : 0n;
+  // Estimate only (IRON RULE): shares = netCash * 1e18 / navPerShare; struck for real at the next open.
   // Prefer the gate's struck per-share; fall back to the live (off-chain) NAV per share so the estimate
   // still shows when the settle gate can't simulate (oracle/peg) — both are 18-dec base units.
   const navPerShare = gate?.navPerShare ? BigInt(gate.navPerShare) : nav?.nav ? BigInt(nav.nav) : 0n;
   const estShares =
-    navPerShare > 0n ? (parseUnits(formatUnits(cash, cashDecimals), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
+    navPerShare > 0n ? (parseUnits(formatUnits(netCash, cashDecimals), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
+  // Below the fee (or exactly it) the deposit can never settle — disable + explain rather than queue a dead ticket.
+  const belowFee = cash > 0n && netCash === 0n;
 
   function handleCreate() {
-    if (cash <= 0n) return;
+    if (netCash <= 0n) return;
     void tx
       .run(() => api.buildForwardCreateTx(vaultAddress, { cash: cash.toString(), account: address! }))
       .then(() => {
@@ -394,12 +400,17 @@ function RegistryCreatePanel({ vaultAddress, basket, nav }: Props) {
               variant="primary"
               full
               onClick={handleCreate}
-              disabled={running || cash === 0n}
+              disabled={running || netCash === 0n}
               aria-label="Queue cash create"
               className="py-3"
             >
               {running ? "Queueing…" : "Queue cash create"}
             </Button>
+            {belowFee && (
+              <span className="text-[10.5px] text-amber">
+                Deposit more than the {formatUsdgFee(fees!.flatCreateFee, fees!.feeDecimals)} USDG create fee.
+              </span>
+            )}
             {tx.total > 0 && (
               <div className="flex items-center justify-between text-[11px] text-txt3">
                 <span>{currentLabel ?? (tx.status === "success" ? "Confirmed ✓" : "Working…")}</span>

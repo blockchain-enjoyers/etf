@@ -2,12 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ForwardSettleService } from "./forward-settle.service.js";
 import { CapabilityUnavailableError } from "../capabilities/capability-unavailable.error.js";
 
+type Pending = { id: number; cutoffMs: number; kind?: "Create" | "Redeem"; remaining?: bigint };
+
 function svc(opts: {
   enabled?: boolean;
   wallet?: boolean;
   ap?: string;
-  pending?: { id: number; cutoffMs: number }[];
+  pending?: Pending[];
   writerThrows?: Error;
+  flatCreateFee?: bigint;
 }) {
   const config = {
     get: (k: string) => {
@@ -19,7 +22,12 @@ function svc(opts: {
   const chain = { walletClient: opts.wallet === false ? undefined : {} };
   const repo = {
     getPendingForwardTickets: vi.fn(async () =>
-      (opts.pending ?? []).map((p) => ({ ticketId: p.id, cutoff: new Date(p.cutoffMs) })),
+      (opts.pending ?? []).map((p) => ({
+        ticketId: p.id,
+        cutoff: new Date(p.cutoffMs),
+        kind: p.kind ?? "Redeem",
+        remaining: { toFixed: () => (p.remaining ?? 10n ** 30n).toString() },
+      })),
     ),
   };
   const forwardQueues = { pairs: () => [{ vault: "0xv", queue: "0xq" }], refresh: vi.fn(async () => {}) };
@@ -30,6 +38,7 @@ function svc(opts: {
     }),
   };
   const ap = { prepare: vi.fn(async () => ({ status: "noop" as const })) };
+  const rebVault = { flatCreateFee: vi.fn(async () => opts.flatCreateFee ?? 0n) };
   return {
     service: new ForwardSettleService(
       config as never,
@@ -38,6 +47,7 @@ function svc(opts: {
       forwardQueues as never,
       writer as never,
       ap as never,
+      rebVault as never,
     ),
     writer,
     ap,
@@ -89,6 +99,24 @@ describe("ForwardSettleService", () => {
       writerThrows: new CapabilityUnavailableError("ForwardCashQueue"),
     });
     expect((await service.run()).status).toBe("noop");
+  });
+
+  it("skips an unsettleable create ticket (cash <= flatCreateFee) instead of retrying it forever", async () => {
+    const { service, writer } = svc({
+      pending: [{ id: 7, cutoffMs: Date.now() - 1000, kind: "Create", remaining: 1n * 10n ** 18n }],
+      flatCreateFee: 1n * 10n ** 18n, // deposit == fee => mints 0 => dead ticket
+    });
+    expect((await service.run()).status).toBe("skipped");
+    expect(writer.settle).not.toHaveBeenCalled();
+  });
+
+  it("settles a create ticket whose cash exceeds the flatCreateFee", async () => {
+    const { service, writer } = svc({
+      pending: [{ id: 8, cutoffMs: Date.now() - 1000, kind: "Create", remaining: 100n * 10n ** 18n }],
+      flatCreateFee: 1n * 10n ** 18n,
+    });
+    expect((await service.run()).status).toBe("submitted");
+    expect(writer.settle).toHaveBeenCalledWith("0xv", [8n], "0xap");
   });
 
   it("had past-cutoff tickets but settle reverted => failed (not a misleading 'skipped')", async () => {

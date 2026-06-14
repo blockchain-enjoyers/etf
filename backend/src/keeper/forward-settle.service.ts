@@ -4,9 +4,17 @@ import { ForwardSettleWriterPort } from "../capabilities/forward-settle-writer.p
 import { ChainService } from "../chain/chain.service.js";
 import { ConfigService } from "../config/config.service.js";
 import { ForwardQueueRegistry } from "../contracts/forward-queue-registry.js";
+import { ManagedRebalanceVaultReader } from "../contracts/managed-rebalance-vault.reader.js";
 import { IndexerRepository } from "../indexer/indexer.repository.js";
 import { ForwardApProvider } from "./forward-ap.provider.js";
 import type { KeeperResult } from "./keeper.types.js";
+
+interface PendingTicket {
+  ticketId: number;
+  cutoff: Date;
+  kind: "Create" | "Redeem";
+  remaining: { toFixed(n: number): string };
+}
 
 /**
  * Settles past-cutoff forward tickets for every configured queue. The settle writer runs the gate
@@ -24,6 +32,7 @@ export class ForwardSettleService {
     private readonly forwardQueues: ForwardQueueRegistry,
     private readonly writer: ForwardSettleWriterPort,
     private readonly ap: ForwardApProvider,
+    private readonly rebVault: ManagedRebalanceVaultReader,
   ) {}
 
   async run(): Promise<KeeperResult> {
@@ -45,11 +54,26 @@ export class ForwardSettleService {
     let foundBatches = 0; // queues that HAD past-cutoff tickets to settle this pass
     let lastError: string | undefined;
     for (const { vault } of this.forwardQueues.pairs()) {
-      const pending = (await this.repo.getPendingForwardTickets(vault)) as {
-        ticketId: number;
-        cutoff: Date;
-      }[];
-      const ids = pending.filter((t) => t.cutoff.getTime() <= now).map((t) => BigInt(t.ticketId));
+      const pending = (await this.repo.getPendingForwardTickets(vault)) as PendingTicket[];
+      const pastCutoff = pending.filter((t) => t.cutoff.getTime() <= now);
+      if (pastCutoff.length === 0) continue;
+      // Drop create tickets that can never settle: a deposit <= the fixed flatCreateFee mints 0 shares
+      // (ZeroShares revert) and, being past cutoff, can't be cancelled either — so the keeper would retry
+      // it forever. Read the fee once; default 0 (managed / no-fee seam) so nothing is dropped there.
+      let fee = 0n;
+      try {
+        fee = await this.rebVault.flatCreateFee(vault as `0x${string}`);
+      } catch {
+        /* no flat-fee surface (managed vault) — keep all tickets */
+      }
+      const live = pastCutoff.filter(
+        (t) => !(t.kind === "Create" && BigInt(t.remaining.toFixed(0)) <= fee),
+      );
+      const dropped = pastCutoff.length - live.length;
+      if (dropped > 0) {
+        this.logger.warn(`skipping ${dropped} unsettleable create ticket(s) on ${vault} (cash <= flatCreateFee)`);
+      }
+      const ids = live.map((t) => BigInt(t.ticketId));
       if (ids.length === 0) continue;
       foundBatches += 1;
       try {

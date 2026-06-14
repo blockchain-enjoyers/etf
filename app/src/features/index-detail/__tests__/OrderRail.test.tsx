@@ -472,14 +472,23 @@ describe("OrderRail — registry vault routes to forward cash", () => {
   it("clicking cash create routes to buildForwardCreateTx with 6-dec USDG base units", async () => {
     const user = userEvent.setup();
     render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
-    await user.type(screen.getByLabelText(/usdg amount/i), "1");
+    // Above the 5 USDG flat create fee (a deposit <= fee mints 0 and is blocked); checks 6-dec parsing.
+    await user.type(screen.getByLabelText(/usdg amount/i), "10");
     await user.click(screen.getByRole("button", { name: /queue cash create/i }));
 
     expect(mockRun).toHaveBeenCalledOnce();
     const [fetcher] = mockRun.mock.calls[0]!;
     fetcher();
-    expect(api.buildForwardCreateTx).toHaveBeenCalledWith("0xabc", { cash: "1000000", account: "0xme" });
+    expect(api.buildForwardCreateTx).toHaveBeenCalledWith("0xabc", { cash: "10000000", account: "0xme" });
     expect(api.buildMintTx).not.toHaveBeenCalled();
+  });
+
+  it("blocks a cash create at/below the flat create fee (would mint 0 → ZeroShares)", async () => {
+    const user = userEvent.setup();
+    render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
+    await user.type(screen.getByLabelText(/usdg amount/i), "3"); // below the 5 USDG create fee
+    expect(screen.getByRole("button", { name: /queue cash create/i })).toBeDisabled();
+    expect(screen.getByText(/more than the .* USDG create fee/i)).toBeInTheDocument();
   });
 
   it("Redeem is cash-only (no in-kind option) and discloses the flat redeem fee", async () => {

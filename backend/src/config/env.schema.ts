@@ -70,6 +70,12 @@ export const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // Hackathon-only: compute a living, drifting per-share NAV off-chain from the catalog so charts
+  // populate + positions value without a working on-chain oracle. Temporary — remove post-hackathon.
+  DEMO_NAV: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   // JSON map { "<sceneToken>": "<mockSourceAddress>" }.
   DEMO_SCENE: z.string().default("{}"),
 

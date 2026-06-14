@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { demoTokens } from "@meridian/contracts";
 import { MarketStatus } from "../domain/market-status.js";
 import { OracleSource } from "../domain/oracle.js";
 import type { NavReading, SignalRouter } from "../signals/signal-router.js";
@@ -197,5 +198,31 @@ describe("NavEngineService.computeNav (on-chain path)", () => {
     const r = await svc.computeNav("0xreg");
     expect(onchain.readL4Holdings).toHaveBeenCalledWith("0xreg");
     expect(r.nav).toBe(9n);
+  });
+});
+
+describe("NavEngineService.computeNav (DEMO_NAV)", () => {
+  it("computes a living per-share NAV from the catalog constituents (estimated=false, safe)", async () => {
+    const demo = demoTokens[0]!;
+    const prisma = {
+      basket: {
+        findUnique: vi.fn(async () => ({
+          vaultAddress: "0xv",
+          unitSize: { toString: () => "1000000000000000000000" }, // 1000 shares / unit
+          constituents: [{ token: demo.address, unitQty: { toString: () => "1000000000000000000" } }], // 1.0
+        })),
+      },
+    };
+    const config = { get: (k: string) => (k === "DEMO_NAV" ? true : k === "NAV_SOURCE" ? "offchain" : undefined) };
+    const svc = new NavEngineService(
+      routerOf({}), new ConfidenceService(200), new BootstrapBasket(),
+      {} as never, prisma as never, {} as never, config as never, {} as never,
+    );
+    const res = await svc.computeNav("0xv");
+    // base per-share = (1.0 × catalog price) / 1000, then ±~1.5% drift → strictly positive.
+    expect(res.nav > 0n).toBe(true);
+    expect(res.estimated).toBe(false);
+    expect(res.safe).toBe(true);
+    expect(res.marketStatus).toBe(MarketStatus.Regular);
   });
 });

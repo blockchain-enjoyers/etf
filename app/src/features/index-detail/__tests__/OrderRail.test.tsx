@@ -441,6 +441,7 @@ describe("OrderRail — registry vault routes to forward cash", () => {
     cashToken: "0x9999999999999999999999999999999999999999",
   };
   const queueWithFees = {
+    queueAddress: "0x9999999999999999999999999999999999999999",
     fees: { isRegistry: true, feeToken: "0xusdg", flatCreateFee: "5000000", flatRedeemFee: "3000000" },
   };
   const gateWithNav = { navPerShare: "1000000000000000000", guards: [{ id: "g0", ok: true }] };

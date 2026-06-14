@@ -307,6 +307,10 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
   // on a registry vault that hasn't enabled cash settlement yet.
   const bootstrapped = basket.bootstrapped !== false;
   const createGate = caps.canForwardCreate(vaultAddress, bootstrapped);
+  // Cash buy/mint needs a wired forward queue. A registry index that hasn't enabled cash settlement has
+  // none, so surface that explicitly rather than letting the plan dead-end as a generic "halted" gate.
+  const cashEnabled = !!queue?.queueAddress;
+  const cashNotEnabled = createGate.enabled && queue !== undefined && !cashEnabled;
 
   const fees = queue?.fees ?? null;
   const cash = parseUsdc(amount);
@@ -375,7 +379,7 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
       </div>
 
       <div className="px-3.5 py-3">
-        {createGate.enabled ? (
+        {createGate.enabled && cashEnabled ? (
           <div className="flex flex-col gap-2">
             <Button
               variant="primary"
@@ -411,7 +415,17 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
             <Button full disabled aria-label="Queue cash create" className="py-3">
               Queue cash create
             </Button>
-            <GateBanner gate={createGate} />
+            {cashNotEnabled ? (
+              <div className="flex items-start gap-2.5 px-2.5 py-2 rounded-md border border-cyan-dim bg-cyan/[0.05] text-[11.5px] text-txt2">
+                <span aria-hidden className="mt-px text-cyan">ⓘ</span>
+                <div>
+                  <b className="font-semibold text-txt">Cash settlement isn&apos;t enabled yet.</b>
+                  <div className="text-txt2 mt-0.5">The manager enables it in Liquidity → Enable cash settlement. Until then, use in-kind create in Liquidity.</div>
+                </div>
+              </div>
+            ) : (
+              <GateBanner gate={createGate} />
+            )}
           </div>
         )}
         <p className="mt-2.5 text-center text-[10px] leading-relaxed text-txt3">

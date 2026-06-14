@@ -8,6 +8,7 @@ import { Aud } from "../../../components/Aud";
 import { Button } from "../../../components/Button";
 import { GateBanner } from "../../../components/GateBanner";
 import { AssetFunding } from "../../../components/AssetFunding";
+import { EnableCashSettlementPanel } from "../EnableCashSettlementPanel";
 import { HelpTip } from "../../../components/HelpTip";
 import { TokenIcon } from "../../../components/TokenIcon";
 import { IconUpload, IconDownload, IconGrid, IconSwap, IconCoins } from "../../../components/icons";
@@ -557,8 +558,11 @@ function OperatorPanel({ vaultAddress, gate, defaultOperator }: PanelProps & { d
 
 export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: string; basket: BasketDetail }) {
   const enabled = basket.vaultType === "registry";
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const chainId = useChainId();
+  // Registry buy/mint routes to cash (forward queue), so the manager must enable cash settlement here —
+  // registry vaults have no Operations tab where that panel otherwise lives.
+  const isManager = !!address && !!basket.manager && address.toLowerCase() === basket.manager.toLowerCase();
   // Registry AP actions are claim-lifecycle writes — there's no per-action backend availability flag,
   // so gate purely on wallet+chain presence (the backend-built plan still carries its own gate).
   const wired = isConnected && chainId in addresses;
@@ -661,6 +665,17 @@ export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: st
       >
         <OperatorPanel {...panelProps} defaultOperator={forwardQueue} />
       </Module>
+
+      {isManager && (
+        <Module
+          title="Enable cash settlement"
+          icon={<IconCoins />}
+          audience="curator"
+          help="Manager-only: sign the cash-settlement parameters to wire this index's forward queue. Until enabled, USDG buy/mint and cash redeem can't settle (the queue doesn't exist yet)."
+        >
+          <EnableCashSettlementPanel vault={vaultAddress} manager={basket.manager!} />
+        </Module>
+      )}
     </div>
   );
 }

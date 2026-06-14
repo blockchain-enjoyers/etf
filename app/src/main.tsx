@@ -11,6 +11,8 @@ import { RouterProvider } from "react-router-dom";
 import { getWagmiConfig, FIXTURES } from "./lib/wagmi";
 import { makeQueryClient } from "./lib/query";
 import { ApiProvider } from "./lib/api";
+import { ToastProvider } from "./components/Toast";
+import { useTicketNotifications } from "./data/useTicketNotifications";
 import { router } from "./routes/router";
 
 const queryClient = makeQueryClient();
@@ -27,6 +29,12 @@ function FixturesAutoConnect() {
   return null;
 }
 
+/** App-wide background watchers (toast on forward-ticket resolution). Renders nothing. */
+function AppWatchers() {
+  useTicketNotifications();
+  return null;
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <WagmiProvider config={getWagmiConfig()}>
@@ -34,7 +42,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <FixturesAutoConnect />
         <RainbowKitProvider theme={darkTheme({ accentColor: "#35d0e0", borderRadius: "small" })}>
           <ApiProvider>
-            <RouterProvider router={router} />
+            <ToastProvider>
+              <AppWatchers />
+              <RouterProvider router={router} />
+            </ToastProvider>
           </ApiProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

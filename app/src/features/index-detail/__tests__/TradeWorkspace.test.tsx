@@ -128,12 +128,12 @@ describe("TradeWorkspace", () => {
 
   it("hides the cash redeem card for a static (basket) vault", () => {
     renderWorkspace();
-    expect(screen.queryByText(/Redeem to cash \(USDC\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Redeem to cash \(USDG\)/i)).not.toBeInTheDocument();
   });
 
   it("shows the cash redeem card for a rebalance vault", () => {
     renderWorkspace({ ...basket, vaultType: "rebalance" });
-    expect(screen.getByText(/Redeem to cash \(USDC\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Redeem to cash \(USDG\)/i)).toBeInTheDocument();
   });
 
   it("always shows the price chart at the top", () => {

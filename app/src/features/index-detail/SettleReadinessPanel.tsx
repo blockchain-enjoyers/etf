@@ -15,7 +15,7 @@ const GUARD_COPY: Record<SettleGateGuardId, { title: string; detail: string }> =
   g3: { title: "NAV safe", detail: "NAV computed cleanly — no stale or missing leg." },
   g6: { title: "Enough recent price prints", detail: "A few fresh TWAP observations are required so settlement can't hinge on one bad tick." },
   g7: { title: "Price within band", detail: "Recorded price sits inside the safety band — no outlier." },
-  g8: { title: "Peg healthy", detail: "USDC cash leg is at peg — settlement value is trustworthy." },
+  g8: { title: "Peg healthy", detail: "USDG cash leg is at peg — settlement value is trustworthy." },
 };
 
 // g6 (insufficient prints) is a "just wait" condition → PENDING; any other failing guard is a hard BLOCK.

@@ -18,7 +18,7 @@ const KIND_META: Record<ActivityEvent["kind"], { label: string; variant: ChipVar
   "forward-cancel": { label: "Cancelled", variant: "bad" },
 };
 
-/** Amounts are raw base units in the payload; format per kind (cash legs are 6-dec USDC, the rest 18-dec). */
+/** Amounts are raw base units in the payload; format per kind (cash legs are 6-dec USDG, the rest 18-dec). */
 function amountLabel(e: ActivityEvent): string {
   const p = e.payload;
   switch (e.kind) {
@@ -27,11 +27,11 @@ function amountLabel(e: ActivityEvent): string {
     case "redeem":
       return p.amount ? `−${formatQty(p.amount)} ${e.symbol}` : "—";
     case "forward-create":
-      return p.amount ? `${formatUnits(BigInt(p.amount), 6)} USDC` : "—";
+      return p.amount ? `${formatUnits(BigInt(p.amount), 6)} USDG` : "—";
     case "forward-redeem":
       return p.amount ? `${formatQty(p.amount)} ${e.symbol}` : "—";
     case "forward-fill":
-      return p.filledCash ? `${formatUnits(BigInt(p.filledCash), 6)} USDC` : "—";
+      return p.filledCash ? `${formatUnits(BigInt(p.filledCash), 6)} USDG` : "—";
     default:
       return "—";
   }

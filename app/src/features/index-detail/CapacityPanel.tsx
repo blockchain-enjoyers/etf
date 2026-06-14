@@ -32,7 +32,7 @@ export function CapacityPanel({ capacity }: Props) {
         <div className="flex items-center justify-between py-1.5 border-b border-line-soft text-[11.5px]">
           <span className="text-txt2">Pending create</span>
           <span className="font-mono font-semibold tabular-nums">
-            {formatUnits(BigInt(capacity.pendingCreateCash), 6)} USDC
+            {formatUnits(BigInt(capacity.pendingCreateCash), 6)} USDG
           </span>
         </div>
         <div className="flex items-center justify-between py-1.5 text-[11.5px]">

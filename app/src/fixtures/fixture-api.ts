@@ -603,7 +603,7 @@ export class FixtureApi implements MeridianApi {
 
   async buildForwardCreateTx(vaultAddress: string, req: { cash: string; account: string }) {
     await delay(DELAY_MS);
-    // cash is USDC base (6-dec); at ~$1000/share that's `cash * 1e9` shares (18-dec).
+    // cash is USDG base (6-dec); at ~$1000/share that's `cash * 1e9` shares (18-dec).
     this.credit(req.account, vaultAddress, BigInt(req.cash || "0") * 1_000_000_000n);
     return mockPlan("Forward create");
   }

@@ -16,7 +16,7 @@ const ROLE_TEXT: Record<Role, string> = {
 
 export function WorkspaceTabs({ tabs, active, onChange }: { tabs: WorkspaceTab[]; active: WorkspaceId; onChange: (id: WorkspaceId) => void }) {
   return (
-    <div role="tablist" className="flex border border-line rounded-lg overflow-hidden bg-surface">
+    <div role="tablist" className="shrink-0 flex border border-line rounded-lg overflow-hidden bg-surface">
       {tabs.map((t) => {
         const on = t.id === active;
         return (

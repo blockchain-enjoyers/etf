@@ -74,13 +74,13 @@ describe("ForwardCreatePanel", () => {
     expect(mockUseTxPlan).toHaveBeenCalledWith(["0xusdc"]);
   });
 
-  it("queue create runs a buildForwardCreateTx fetcher with the 6-dec USDC base units", async () => {
+  it("queue create runs a buildForwardCreateTx fetcher with the 6-dec USDG base units", async () => {
     const user = userEvent.setup();
     render(<ForwardCreatePanel vaultAddress="0xv" basket={basket} gate={gate} bootstrapped={true} />, {
       wrapper: makeWrapper(),
     });
-    await user.clear(screen.getByLabelText(/usdc amount/i));
-    await user.type(screen.getByLabelText(/usdc amount/i), "1");
+    await user.clear(screen.getByLabelText(/usdg amount/i));
+    await user.type(screen.getByLabelText(/usdg amount/i), "1");
     await user.click(screen.getByRole("button", { name: /queue create/i }));
 
     expect(mockRun).toHaveBeenCalledOnce();
@@ -94,7 +94,7 @@ describe("ForwardCreatePanel", () => {
     render(<ForwardCreatePanel vaultAddress="0xv" basket={basket} gate={gate} bootstrapped={true} />, {
       wrapper: makeWrapper(),
     });
-    await user.type(screen.getByLabelText(/usdc amount/i), "1");
+    await user.type(screen.getByLabelText(/usdg amount/i), "1");
     await user.click(screen.getByRole("button", { name: /queue create/i }));
     await waitFor(() =>
       expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: queryKeys.forwardTickets("0xv") }),

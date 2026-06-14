@@ -202,16 +202,16 @@ export function TradeWorkspace({
 
         {isRebalance && (
           <Module
-            title="Redeem to cash (USDC)"
+            title="Redeem to cash (USDG)"
             icon={<IconDollar />}
-            help="Pays USDC via the forward queue. While the market is open it settles now at NAV. While closed it becomes a forward ticket that settles at the next open's real price — never at the closed-market estimate (the Iron Rule)."
+            help="Pays USDG via the forward queue. While the market is open it settles now at NAV. While closed it becomes a forward ticket that settles at the next open's real price — never at the closed-market estimate (the Iron Rule)."
             right={<Chip variant={cashGate.enabled ? "ok" : "info"}>{cashGate.enabled ? "Settles now" : "Forward"}</Chip>}
             bodyClassName="flex flex-col"
           >
             <div className="flex-1">
               <p className="text-[11.5px] text-txt2">
                 {cashGate.enabled
-                  ? "Receive USDC. Market is open, so this settles immediately at NAV."
+                  ? "Receive USDG. Market is open, so this settles immediately at NAV."
                   : "Market is closed → becomes a forward ticket that settles at the next open's real price."}
               </p>
               {!cashGate.enabled && <GateBanner gate={cashGate} className="mt-2" />}

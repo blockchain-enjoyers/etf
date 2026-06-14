@@ -62,7 +62,7 @@ export function ForwardCreatePanel({ vaultAddress, basket, gate, bootstrapped }:
     <div className="flex flex-col gap-3">
       <div className="flex items-stretch border border-line rounded-md overflow-hidden bg-bg">
         <span className="grid place-items-center px-3 bg-surface2 text-txt3 font-mono text-xs border-r border-line">
-          USDC
+          USDG
         </span>
         <input
           type="text"
@@ -70,7 +70,7 @@ export function ForwardCreatePanel({ vaultAddress, basket, gate, bootstrapped }:
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0.00"
           className="flex-1 bg-transparent font-mono text-sm text-txt placeholder:text-txt3 px-3 py-2.5 focus:outline-none"
-          aria-label="USDC amount"
+          aria-label="USDG amount"
         />
       </div>
 

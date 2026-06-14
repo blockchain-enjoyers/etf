@@ -21,7 +21,7 @@ import { ManageWorkspace } from "./workspaces/ManageWorkspace";
 import { OrderRail, type Direction, type RedeemMethod } from "./OrderRail";
 
 const TABS: WorkspaceTab[] = [
-  { id: "trade", label: "Trade", who: "Buy · Sell · Redeem", role: "holder", icon: "📈" },
+  { id: "trade", label: "Trade", who: "Buy · Redeem", role: "holder", icon: "📈" },
   { id: "liquidity", label: "Liquidity", who: "Forward create / redeem · tickets", role: "ap", icon: "💧" },
   { id: "operations", label: "Operations", who: "Settle · record price · payouts", role: "keeper", icon: "⚙" },
   { id: "manage", label: "Manage", who: "Target weights · auction · drift", role: "curator", icon: "🛠" },

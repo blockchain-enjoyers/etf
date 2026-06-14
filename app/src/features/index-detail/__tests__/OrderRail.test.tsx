@@ -386,7 +386,7 @@ describe("OrderRail — redeem via tx-plan executor", () => {
       wrapper: makeWrapper(),
     });
     await user.click(screen.getByRole("button", { name: "Redeem" }));
-    expect(screen.queryByText(/cash \(usdc\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cash \(usdg\)/i)).not.toBeInTheDocument();
   });
 
   it("shows the cash method for a rebalance vault", async () => {
@@ -396,7 +396,7 @@ describe("OrderRail — redeem via tx-plan executor", () => {
       wrapper: makeWrapper(),
     });
     await user.click(screen.getByRole("button", { name: "Redeem" }));
-    expect(screen.getByText(/cash \(usdc\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/cash \(usdg\)/i)).toBeInTheDocument();
   });
 
   it("clicking cash on a rebalance vault runs a buildForwardRedeemTx fetcher (not buildRedeemTx)", async () => {
@@ -407,7 +407,7 @@ describe("OrderRail — redeem via tx-plan executor", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "Redeem" }));
-    await user.click(screen.getByText(/cash \(usdc\)/i));
+    await user.click(screen.getByText(/cash \(usdg\)/i));
     await user.type(screen.getByLabelText(/redeem amount/i), "2");
     await user.click(screen.getByRole("button", { name: /redeem basket tokens/i }));
 
@@ -446,19 +446,19 @@ describe("OrderRail — registry vault routes to forward cash", () => {
     expect(screen.queryByText(/in-kind mint/i)).not.toBeInTheDocument();
   });
 
-  it("Create rail takes USDC cash-in and hides the in-kind mint button", () => {
+  it("Create rail takes USDG cash-in and hides the in-kind mint button", () => {
     render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
-    expect(screen.getByLabelText(/usdc amount/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/usdg amount/i)).toBeInTheDocument();
     // The in-kind mint button must not exist for registry.
     expect(screen.queryByRole("button", { name: /mint basket tokens/i })).not.toBeInTheDocument();
     // The flat USDG create fee from the queue DTO is disclosed (5.00 USDG).
     expect(screen.getByText(/\+ \$5\.00 USDG/i)).toBeInTheDocument();
   });
 
-  it("clicking cash create routes to buildForwardCreateTx with 6-dec USDC base units", async () => {
+  it("clicking cash create routes to buildForwardCreateTx with 6-dec USDG base units", async () => {
     const user = userEvent.setup();
     render(<OrderRail vaultAddress="0xabc" basket={registryBasket} nav={openNav} />, { wrapper: makeWrapper() });
-    await user.type(screen.getByLabelText(/usdc amount/i), "1");
+    await user.type(screen.getByLabelText(/usdg amount/i), "1");
     await user.click(screen.getByRole("button", { name: /queue cash create/i }));
 
     expect(mockRun).toHaveBeenCalledOnce();

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { WorkspaceTabs, type WorkspaceId } from "../WorkspaceTabs";
 
 const TABS = [
-  { id: "trade" as WorkspaceId, label: "Trade", who: "Buy · Sell · Redeem", role: "holder" as const },
+  { id: "trade" as WorkspaceId, label: "Trade", who: "Buy · Redeem", role: "holder" as const },
   { id: "liquidity" as WorkspaceId, label: "Liquidity", who: "Forward cash", role: "ap" as const },
 ];
 

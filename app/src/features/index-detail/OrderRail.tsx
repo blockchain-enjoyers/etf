@@ -42,7 +42,7 @@ interface Props {
 }
 
 export type RedeemMethod = "inkind" | "cash";
-export type Direction = "mint" | "sell" | "redeem";
+export type Direction = "mint" | "redeem";
 
 const RAIL_SEC = "px-3.5 py-3 border-b border-line";
 const LAB = "text-[9.5px] uppercase tracking-[0.12em] text-txt3 mb-2.5 flex items-center gap-1.5";
@@ -279,7 +279,7 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
 
 /**
  * Registry create rail: a registry vault has no in-kind mint surface (deferred) — create routes to
- * FORWARD CASH via buildForwardCreateTx. The user pays USDC now and is minted units at the next open
+ * FORWARD CASH via buildForwardCreateTx. The user pays USDG now and is minted units at the next open
  * (forward-priced), plus a flat USDG create fee disclosed from the forward-queue `fees` DTO.
  */
 function RegistryCreatePanel({ vaultAddress, basket }: Props) {
@@ -326,13 +326,13 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
         <div className={LAB}>
           Cash in
           <HelpTip>
-            Registry indices create for cash through a forward queue. You deposit USDC now; {basket.symbol} is minted to
+            Registry indices create for cash through a forward queue. You deposit USDG now; {basket.symbol} is minted to
             you priced at the next market open, never at this estimate.
           </HelpTip>
         </div>
         <div className="flex items-stretch border border-line rounded-md overflow-hidden bg-surface">
           <span className="grid place-items-center px-3 bg-surface2 text-txt3 font-mono text-xs border-r border-line">
-            USDC
+            USDG
           </span>
           <input
             type="text"
@@ -340,7 +340,7 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             className="flex-1 bg-transparent font-mono text-sm text-txt placeholder:text-txt3 px-3 py-2.5 focus:outline-none"
-            aria-label="USDC amount"
+            aria-label="USDG amount"
           />
         </div>
         <div className={cn(ROW, "mt-2.5")}>
@@ -483,7 +483,7 @@ function RedeemPanel({
     },
     {
       value: "cash" as const,
-      label: "Cash (USDC) · queued",
+      label: "Cash (USDG) · queued",
       description: isMarketClosed
         ? "market closed → queued, settles next open at open price, not estimate"
         : "Settle for cash at current NAV.",
@@ -583,7 +583,6 @@ function RedeemPanel({
 
 const DIRECTIONS: { value: Direction; label: string }[] = [
   { value: "mint", label: "Buy / Mint" },
-  { value: "sell", label: "Sell" },
   { value: "redeem", label: "Redeem" },
 ];
 
@@ -645,12 +644,6 @@ export function OrderRail({
         ) : (
           <CreatePanel vaultAddress={vaultAddress} basket={basket} nav={nav} rebalance={rebalance} />
         ))}
-      {direction === "sell" && (
-        <div className="px-3.5 py-4 text-[11.5px] text-txt2 leading-relaxed">
-          Sell {basket.symbol} on the open market via a DEX. Market trading isn&apos;t part of this demo — use{" "}
-          <b className="text-txt">Redeem</b> to exit in-kind or to cash.
-        </div>
-      )}
       {direction === "redeem" && (
         <RedeemPanel
           vaultAddress={vaultAddress}

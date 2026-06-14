@@ -73,7 +73,7 @@ export function ForwardRedeemPanel({ vaultAddress, basket, gate }: Props) {
       <div className="flex items-center justify-between py-1.5 border-b border-line-soft text-[11.5px]">
         <span className="text-txt2">You receive (estimate)</span>
         <span className="inline-flex items-center gap-1 font-mono font-semibold tabular-nums">
-          {navPerShare > 0n ? formatUnits(estCashUsd, 18) : "—"} USDC
+          {navPerShare > 0n ? formatUnits(estCashUsd, 18) : "—"} USDG
           <EstBadge />
         </span>
       </div>

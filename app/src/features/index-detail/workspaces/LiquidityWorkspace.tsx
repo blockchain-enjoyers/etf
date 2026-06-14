@@ -47,7 +47,7 @@ export function LiquidityWorkspace({ vaultAddress, basket }: { vaultAddress: str
           title="Forward create"
           icon={<IconUpload />}
           audience="ap"
-          help="Deposit USDC now; units are minted to you priced at the next market open (forward-priced). Capacity per window is capped to protect the vault."
+          help="Deposit USDG now; units are minted to you priced at the next market open (forward-priced). Capacity per window is capped to protect the vault."
         >
           <ForwardCreatePanel vaultAddress={vaultAddress} basket={basket} gate={gate ?? null} bootstrapped={bootstrapped} />
         </Module>
@@ -56,7 +56,7 @@ export function LiquidityWorkspace({ vaultAddress, basket }: { vaultAddress: str
           title="Forward redeem (cash)"
           icon={<IconDollar />}
           audience="ap"
-          help="Burn units for USDC at the next open's authoritative price, less the AP spread. Holders should use in-kind redeem in the Trade tab — instant and always available."
+          help="Burn units for USDG at the next open's authoritative price, less the AP spread. Holders should use in-kind redeem in the Trade tab — instant and always available."
         >
           <ForwardRedeemPanel vaultAddress={vaultAddress} basket={basket} gate={gate ?? null} />
         </Module>

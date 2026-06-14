@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { demoTokens } from "@meridian/contracts";
 import { SignalPollHandler } from "./signal-poll.handler.js";
 
 describe("SignalPollHandler", () => {
@@ -20,6 +21,26 @@ describe("SignalPollHandler", () => {
     const h = new SignalPollHandler(signals as never, prisma as never);
     await h.run();
     expect(prisma.priceSnapshot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("seeds a catalog anchor when a demo-catalog token has no live price", async () => {
+    const demo = demoTokens[0]!;
+    const prisma = {
+      constituent: { findMany: vi.fn().mockResolvedValue([{ token: demo.address }]) },
+      priceSnapshot: { create: vi.fn() },
+    };
+    const signals = {
+      getReading: vi.fn().mockResolvedValue({
+        price: 0n, confidence: 0n, timestamp: 1, marketStatus: "Unknown", source: "LastClose", estimated: true,
+      }),
+    };
+    const h = new SignalPollHandler(signals as never, prisma as never);
+    await h.run();
+    expect(prisma.priceSnapshot.create).toHaveBeenCalledTimes(1);
+    const arg = prisma.priceSnapshot.create.mock.calls[0]![0].data;
+    expect(arg.token).toBe(demo.address);
+    expect(arg.marketStatus).toBe("Regular");
+    expect(BigInt(arg.price)).toBeGreaterThan(0n);
   });
 
   it("skips persisting zero-price (synthesized fallback) readings", async () => {

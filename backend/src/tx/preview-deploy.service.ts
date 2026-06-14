@@ -6,6 +6,7 @@ import { ChainService } from "../chain/chain.service.js";
 import { PrismaService } from "../persistence/prisma.service.js";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { CapabilityRegistry } from "../contracts/capability-registry.js";
+import { catalogPrice18 } from "../contracts/catalog-price.js";
 import { buildGenesisRoot } from "./registry-recipe.js";
 
 const DEFAULT_SALT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -47,12 +48,15 @@ export class PreviewDeployService {
     const decimalsOf = (t: string) => meta[t.toLowerCase()]?.decimals ?? 18;
     const symbolOf = (t: string) => meta[t.toLowerCase()]?.symbol ?? t.slice(0, 6);
 
-    // latest 18-dec USD price per token (casing not normalized in PriceSnapshot — try as-is then lowercase)
+    // latest 18-dec USD price per token (casing not normalized in PriceSnapshot — try as-is then lowercase).
+    // Demo-catalog stocks have no snapshot until they're in an indexed vault, so fall back to the catalog
+    // baseline — otherwise every brand-new basket would price its constituents as "no price".
     const priceOf = async (t: string): Promise<bigint> => {
       const snap =
         (await this.prisma.priceSnapshot.findFirst({ where: { token: t }, orderBy: { timestamp: "desc" } })) ??
         (await this.prisma.priceSnapshot.findFirst({ where: { token: t.toLowerCase() }, orderBy: { timestamp: "desc" } }));
-      return snap ? BigInt(snap.price.toFixed(0)) : 0n;
+      if (snap) return BigInt(snap.price.toFixed(0));
+      return catalogPrice18(t) ?? 0n;
     };
 
     const priceMissing: string[] = [];

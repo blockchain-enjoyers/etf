@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { demoTokens } from "@meridian/contracts";
 import { PreviewDeployService } from "./preview-deploy.service.js";
 
 const A = "0x" + "a".repeat(40);
@@ -97,6 +98,19 @@ describe("PreviewDeployService", () => {
     expect(out.priceMissing).toContain(B);
     expect(out.gate).toEqual({ gated: true, reason: "price-missing" });
     expect(out.predictedVault).toBeNull();
+  });
+
+  it("weights: prices a demo-catalog token from the catalog baseline when it has no snapshot", async () => {
+    const demo = demoTokens[0]!;
+    const svc = makeService({ price: {} }); // no PriceSnapshot rows at all
+    const out = await svc.preview({
+      account: "0xo", vaultKind: "rebalance", name: "X", symbol: "X",
+      tokens: [demo.address], unitSize: "1000",
+      composition: { mode: "weights", weightsBps: [10000], valuePerUnitUsd: "1000" },
+    });
+    expect(out.priceMissing).toEqual([]);
+    expect(out.gate.gated).toBe(false);
+    expect(BigInt(out.unitQty[0]!)).toBeGreaterThan(0n);
   });
 
   it("gates with length-mismatch when composition length != tokens length (does not throw)", async () => {

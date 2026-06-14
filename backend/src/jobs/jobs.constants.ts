@@ -15,7 +15,7 @@ export const PGBOSS_SCHEMA = "pgboss" as const;
 export const CRON_SIGNAL_POLL = "*/15 * * * * *" as const; // every 15s (6-field: seconds)
 export const CRON_NAV_COMPUTE = "*/30 * * * * *" as const; // every 30s
 export const CRON_INDEXER_TICK = "*/20 * * * * *" as const; // every 20s
-export const CRON_TWAP_RECORD = "0 */5 * * * *" as const; // every 5 min
+export const CRON_TWAP_RECORD = "0 */10 * * * *" as const; // every 10 min
 
 /** NOTIFY payload contract: which snapshot to read for the SSE push. */
 export interface NavUpdatePayload {

@@ -32,7 +32,9 @@ import {
 } from "@meridian/sdk";
 import { CapabilityUnavailableError } from "../capabilities/capability-unavailable.error.js";
 import { RedeemQuotePort } from "../capabilities/redeem-quote/redeem-quote.port.js";
+import { erc20Abi } from "viem";
 import { PrismaService } from "../persistence/prisma.service.js";
+import { ChainService } from "../chain/chain.service.js";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { marketStatusToWire, oracleSourceToWire, severityToWire, vaultTypeToWire } from "../domain/wire.js";
 import { AvailabilityService } from "./availability.service.js";
@@ -62,6 +64,7 @@ export class BasketsController {
     private readonly holdings: HoldingsService,
     private readonly meta: TokenMetadataService,
     private readonly availability: AvailabilityService,
+    private readonly chain: ChainService,
   ) {}
 
   @Get()
@@ -92,6 +95,10 @@ export class BasketsController {
     });
     if (!b) throw new NotFoundException(`basket ${id} not found`);
     const meta = await this.meta.getMany(b.constituents.map((c) => c.token));
+    // Registry vaults are empty until bootstrapped (genesis mint → totalSupply > 0). This signal is
+    // queue-independent, so the UI can clear the "not set up" notice the moment bootstrap lands —
+    // unlike the settle gate, which needs a forward queue. Other vault types are always "bootstrapped".
+    const bootstrapped = b.vaultType === "Registry" ? await this.isBootstrapped(b.vaultAddress) : true;
     return {
       vaultAddress: b.vaultAddress,
       name: b.name,
@@ -109,11 +116,24 @@ export class BasketsController {
       // toFixed(0) not toString(): Prisma Decimal.toString() emits scientific notation
       // (e.g. "1e+21") for values >= 1e21, which violates the decimal-string DTO contract.
       unitSize: b.unitSize.toFixed(0),
+      bootstrapped,
       constituents: b.constituents.map((c) => {
         const m = meta[c.token.toLowerCase()];
         return { token: c.token, unitQty: c.unitQty.toFixed(0), symbol: m?.symbol, name: m?.name ?? undefined, decimals: m?.decimals };
       }),
     };
+  }
+
+  /** Registry vault is bootstrapped once its genesis mint gave it a non-zero share supply. */
+  private async isBootstrapped(vault: string): Promise<boolean> {
+    try {
+      const supply = (await this.chain.publicClient.readContract({
+        address: vault as `0x${string}`, abi: erc20Abi, functionName: "totalSupply",
+      })) as bigint;
+      return supply > 0n;
+    } catch {
+      return false;
+    }
   }
 
   @Get(":id/holdings")

@@ -33,12 +33,6 @@ vi.mock("../../../data/useForwardQueue", () => ({
   useForwardQueue: (...args: unknown[]) => mockUseForwardQueue(...(args as [])),
 }));
 
-// Drives useRegistryBootstrap (g0). Default undefined ⇒ bootstrapped (panel hidden).
-const mockUseSettleGateStatus = vi.fn(() => ({ data: undefined as unknown }));
-vi.mock("../../../data/useSettleGateStatus", () => ({
-  useSettleGateStatus: (...args: unknown[]) => mockUseSettleGateStatus(...(args as [])),
-}));
-
 const mockUseAccount = vi.fn(() => ({ address: "0xme", isConnected: true }) as unknown);
 vi.mock("wagmi", () => ({
   useAccount: () => mockUseAccount(),
@@ -94,13 +88,13 @@ const api = {
   buildBootstrapTx: vi.fn(),
 } as unknown as MeridianApi;
 
-function renderWorkspace() {
+function renderWorkspace(basket: BasketDetail = registryBasket) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   qc.invalidateQueries = vi.fn() as never;
   return render(
     <QueryClientProvider client={qc}>
       <ApiContext.Provider value={api}>
-        <RegistryApWorkspace vaultAddress={VAULT} basket={registryBasket} />
+        <RegistryApWorkspace vaultAddress={VAULT} basket={basket} />
       </ApiContext.Provider>
     </QueryClientProvider>,
   );
@@ -113,8 +107,6 @@ beforeEach(() => {
   mockUseTxPlan.mockImplementation(() => txDefaults());
   mockUseForwardQueue.mockReset();
   mockUseForwardQueue.mockImplementation(() => ({ data: queue }));
-  mockUseSettleGateStatus.mockReset();
-  mockUseSettleGateStatus.mockImplementation(() => ({ data: undefined }));
   mockUseAccount.mockReset();
   mockUseAccount.mockReturnValue({ address: "0xme", isConnected: true });
   (api.buildWrapTx as ReturnType<typeof vi.fn>).mockReset();
@@ -281,16 +273,14 @@ describe("RegistryApWorkspace", () => {
     expect(screen.getByRole("button", { name: /wrap token into claim/i })).toBeDisabled();
   });
 
-  it("hides the Bootstrap panel once the vault is bootstrapped (g0 ok)", () => {
-    mockUseSettleGateStatus.mockReturnValue({ data: { guards: [{ id: "g0", ok: true }] } });
-    renderWorkspace();
+  it("hides the Bootstrap panel once the vault is bootstrapped (basket.bootstrapped)", () => {
+    renderWorkspace({ ...registryBasket, bootstrapped: true });
     expect(screen.queryByRole("button", { name: /bootstrap the registry index/i })).not.toBeInTheDocument();
   });
 
   it("shows the Bootstrap panel and calls buildBootstrapTx with the genesis recipe when not bootstrapped", async () => {
-    mockUseSettleGateStatus.mockReturnValue({ data: { guards: [{ id: "g0", ok: false }] } });
     const user = userEvent.setup();
-    renderWorkspace();
+    renderWorkspace({ ...registryBasket, bootstrapped: false });
     await user.click(screen.getByRole("button", { name: /bootstrap the registry index/i }));
 
     expect(mockRun).toHaveBeenCalledOnce();

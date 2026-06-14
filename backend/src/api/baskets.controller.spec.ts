@@ -7,6 +7,7 @@ import { PrismaService } from "../persistence/prisma.service.js";
 import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { AvailabilityService } from "./availability.service.js";
 import { BasketsController } from "./baskets.controller.js";
+import { ChainService } from "../chain/chain.service.js";
 import { ForwardService } from "./forward.service.js";
 import { HoldingsService } from "./holdings.service.js";
 import { RebalanceService } from "./rebalance.service.js";
@@ -90,6 +91,7 @@ describe("BasketsController", () => {
         { provide: HoldingsService, useValue: { getHoldings: vi.fn() } },
         { provide: TokenMetadataService, useValue: { getMany: getManyMock } },
         { provide: AvailabilityService, useValue: { availability: vi.fn().mockResolvedValue({ vaultAddress: "0xv", account: null, items: [] }) } },
+        { provide: ChainService, useValue: { publicClient: { readContract: vi.fn().mockResolvedValue(0n) } } },
       ],
     }).compile();
     controller = moduleRef.get(BasketsController);

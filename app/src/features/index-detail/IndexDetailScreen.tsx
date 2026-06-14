@@ -13,7 +13,6 @@ import { ErrorState } from "../../components/ErrorState";
 import { Skeleton } from "../../components/Skeleton";
 import { formatQty, formatUsd, formatSignedPctFromBps } from "../../lib/format";
 import { useAccountHoldings } from "../../data/useAccountHoldings";
-import { useRegistryBootstrap } from "../../data/useRegistryBootstrap";
 import { TradeWorkspace } from "./workspaces/TradeWorkspace";
 import { LiquidityWorkspace } from "./workspaces/LiquidityWorkspace";
 import { RegistryApWorkspace } from "./workspaces/RegistryApWorkspace";
@@ -72,9 +71,9 @@ export function IndexDetailScreen() {
 
   // A fresh registry index is empty until its manager/an AP seeds the genesis basket. Surface this:
   // the manager gets a nudge into Liquidity → Bootstrap; everyone else sees a "not set up yet" notice.
-  const { bootstrapped, loaded: bootstrapLoaded } = useRegistryBootstrap(vaultAddress ?? "", Boolean(isRegistry));
+  // `bootstrapped` is a queue-independent on-chain signal (totalSupply > 0) on the basket detail.
   const isManager = !!address && !!basket?.manager && basket.manager.toLowerCase() === address.toLowerCase();
-  const needsBootstrap = Boolean(isRegistry) && bootstrapLoaded && !bootstrapped;
+  const needsBootstrap = Boolean(isRegistry) && basket?.bootstrapped === false;
 
   // Liquidity/Operations/Manage are rebalance-only (forward queue, keeper, curator). Registry vaults
   // expose Trade + a registry-flavoured Liquidity (AP) tab. Other static vault types (basket/managed/

@@ -17,7 +17,6 @@ import { queryKeys } from "../../../lib/query";
 import { useApi } from "../../../lib/api";
 import type { Gate } from "../../../capabilities/use-capabilities";
 import { useForwardQueue } from "../../../data/useForwardQueue";
-import { useRegistryBootstrap } from "../../../data/useRegistryBootstrap";
 import { useTxPlan } from "../../../wallet/use-tx-plan";
 
 // Claim amounts are base-unit strings — parse a human "1.5" into 18-dec base units without viem so
@@ -574,7 +573,8 @@ export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: st
   const forwardQueue = queue?.queueAddress ?? "";
 
   // A fresh registry index is empty until its genesis basket is seeded — surface bootstrap first.
-  const { bootstrapped } = useRegistryBootstrap(vaultAddress, enabled);
+  // `bootstrapped` is the queue-independent on-chain signal (totalSupply > 0) from the basket detail.
+  const bootstrapped = basket.bootstrapped !== false;
 
   const tokens = useMemo(
     () => basket.constituents.map((c) => ({ token: c.token, symbol: c.symbol })),

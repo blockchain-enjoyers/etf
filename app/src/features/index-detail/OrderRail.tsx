@@ -302,9 +302,10 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
   const caps = useCapabilities("regular", vaultAddress);
   const { data: queue } = useForwardQueue(vaultAddress, true);
   const { data: gate } = useSettleGateStatus(vaultAddress, true);
-  // g0 = "Vault bootstrapped"; a live queue implies a bootstrapped vault, so default true.
-  const g0 = gate?.guards.find((g) => g.id === "g0");
-  const bootstrapped = g0 ? g0.ok : true;
+  // Bootstrap status is a queue-independent on-chain signal (totalSupply > 0) on the basket detail —
+  // NOT the settle gate's g0, which needs a forward queue and would read "not bootstrapped" forever
+  // on a registry vault that hasn't enabled cash settlement yet.
+  const bootstrapped = basket.bootstrapped !== false;
   const createGate = caps.canForwardCreate(vaultAddress, bootstrapped);
 
   const fees = queue?.fees ?? null;

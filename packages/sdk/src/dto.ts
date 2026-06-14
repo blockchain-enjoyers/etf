@@ -107,6 +107,9 @@ export const basketDetailSchema = basketSummarySchema.extend({
   unitSize: decimalString,
   constituents: z.array(constituentDtoSchema),
   recipeCommitment: z.string().nullable().optional(),
+  // Registry only: false until the genesis basket is seeded (totalSupply > 0). Absent/true otherwise.
+  // Queue-independent, so it reflects bootstrap even before cash settlement is enabled.
+  bootstrapped: z.boolean().optional(),
 });
 export type BasketDetail = z.infer<typeof basketDetailSchema>;
 

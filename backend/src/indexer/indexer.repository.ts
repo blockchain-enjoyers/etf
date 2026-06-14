@@ -384,15 +384,19 @@ export class IndexerRepository {
   }
 
   async getForwardTickets(vault: string, owner?: string) {
+    // Case-insensitive vault (URL param / lowercased keys may differ from the stored checksummed address);
+    // owner is checksummed in both the event and the connected-wallet query, so match it exactly.
     return this.prisma.forwardTicket.findMany({
-      where: { vaultAddress: vault, ...(owner ? { owner } : {}) },
+      where: { vaultAddress: { equals: vault, mode: "insensitive" }, ...(owner ? { owner } : {}) },
       orderBy: { ticketId: "asc" },
     });
   }
 
   async getPendingForwardTickets(vault: string) {
+    // Case-insensitive on vaultAddress: the forward-settle keeper queries with the registry's lowercased
+    // vault key, but tickets are stored under the checksummed Basket address — an exact match misses them.
     return this.prisma.forwardTicket.findMany({
-      where: { vaultAddress: vault, status: { in: ["Pending", "Partial"] } },
+      where: { vaultAddress: { equals: vault, mode: "insensitive" }, status: { in: ["Pending", "Partial"] } },
       orderBy: { ticketId: "asc" },
     });
   }

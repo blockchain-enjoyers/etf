@@ -8,5 +8,7 @@ export function useForwardTickets(vaultAddress: string, owner: string | undefine
     queryKey: [...queryKeys.forwardTickets(vaultAddress), owner ?? "all"],
     queryFn: () => api.getForwardTickets(vaultAddress, owner),
     enabled: enabled && Boolean(vaultAddress),
+    // Tickets change off-screen (keeper settles, cutoffs pass) — poll like the account/activity feeds.
+    refetchInterval: 15000,
   });
 }

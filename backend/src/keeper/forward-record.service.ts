@@ -5,6 +5,7 @@ import { ForwardRecordWriterPort } from "../capabilities/forward-record-writer.p
 import { ChainService } from "../chain/chain.service.js";
 import { ConfigService } from "../config/config.service.js";
 import { ForwardQueueRegistry } from "../contracts/forward-queue-registry.js";
+import { IndexerRepository } from "../indexer/indexer.repository.js";
 import type { KeeperResult } from "./keeper.types.js";
 
 // MockPegFeed.setUpdatedAt — the g8 peg gate checks block.timestamp - updatedAt <= pegMaxAge. The testnet
@@ -14,9 +15,10 @@ const PEG_ABI = [
 ] as const;
 
 /**
- * Pokes BasketNavObserver.record for each configured vault to keep the navPerShare TWAP fresh.
- * record() is a no-op on-chain unless the L4 reading is Open && safe, so an over-eager poke is cheap.
- * Degrade-safe: disabled / no walletClient / capability absent => noop.
+ * Pokes BasketNavObserver.record to keep the navPerShare TWAP fresh — but ONLY for vaults with pending
+ * forward tickets. record() costs ~480k gas, so poking every idle queue every cycle wastes the keeper's
+ * gas; a vault only needs a warm TWAP for the settle it's heading into, and a ticket's cutoff (>= 10 min)
+ * leaves ample time to accumulate prints. Degrade-safe: disabled / no walletClient / capability absent => noop.
  */
 @Injectable()
 export class ForwardRecordService {
@@ -27,6 +29,7 @@ export class ForwardRecordService {
     private readonly chain: ChainService,
     private readonly forwardQueues: ForwardQueueRegistry,
     private readonly writer: ForwardRecordWriterPort,
+    private readonly repo: IndexerRepository,
   ) {}
 
   async run(): Promise<KeeperResult> {
@@ -37,9 +40,13 @@ export class ForwardRecordService {
     if (!this.chain.walletClient) {
       return { status: "noop", detail: "no walletClient — FORWARD_OPERATOR_PRIVATE_KEY not set" };
     }
-    const pairs = this.forwardQueues.pairs();
     let poked = 0;
-    for (const { vault } of pairs) {
+    const activeQueues: string[] = [];
+    for (const { vault, queue } of this.forwardQueues.pairs()) {
+      // Skip idle vaults: no pending ticket => no settle coming => no need to keep its TWAP warm.
+      const pending = await this.repo.getPendingForwardTickets(vault);
+      if (pending.length === 0) continue;
+      activeQueues.push(queue);
       try {
         await this.writer.record(vault as `0x${string}`);
         poked += 1;
@@ -51,8 +58,9 @@ export class ForwardRecordService {
         this.logger.error(`forward record failed for ${vault}: ${(err as Error).message}`);
       }
     }
-    await this.refreshPegFeeds(pairs.map((p) => p.queue));
-    if (poked === 0) return { status: "skipped", detail: "no queues to poke" };
+    // Peg only matters when something can settle this window, so refresh it only for active vaults.
+    await this.refreshPegFeeds(activeQueues);
+    if (poked === 0) return { status: "skipped", detail: "no vaults with pending tickets" };
     return { status: "submitted", detail: `poked ${poked} vault(s)` };
   }
 

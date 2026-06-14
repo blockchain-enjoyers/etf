@@ -3,7 +3,13 @@ import { ForwardRecordService } from "./forward-record.service.js";
 
 const PEG = "0x00000000000000000000000000000000000000e9";
 
-function make(opts: { enabled?: boolean; wallet?: boolean; pairs?: { vault: string; queue: string }[] }) {
+function make(opts: {
+  enabled?: boolean;
+  wallet?: boolean;
+  pairs?: { vault: string; queue: string }[];
+  /** vaults with >=1 pending ticket; default: all pairs have one. */
+  withPending?: string[];
+}) {
   const config = { get: (k: string) => (k === "FORWARD_OPERATOR_ENABLED" ? (opts.enabled ?? true) : undefined) };
   const writeContract = vi.fn(async (_args: Record<string, unknown>) => "0xtx" as `0x${string}`);
   const readContract = vi.fn(async (_a: { functionName: string }) => PEG as `0x${string}`);
@@ -13,13 +19,21 @@ function make(opts: { enabled?: boolean; wallet?: boolean; pairs?: { vault: stri
     walletClient: opts.wallet === false ? undefined : { writeContract },
     publicClient: { readContract },
   };
-  const forwardQueues = {
-    refresh: vi.fn(async () => {}),
-    pairs: () => opts.pairs ?? [{ vault: "0xv1", queue: "0xq1" }],
-  };
+  const pairs = opts.pairs ?? [{ vault: "0xv1", queue: "0xq1" }];
+  const forwardQueues = { refresh: vi.fn(async () => {}), pairs: () => pairs };
   const writer = { record: vi.fn(async () => "0xrec" as `0x${string}`) };
+  const hasPending = (v: string) => (opts.withPending ?? pairs.map((p) => p.vault)).includes(v);
+  const repo = {
+    getPendingForwardTickets: vi.fn(async (v: string) => (hasPending(v) ? [{ ticketId: 0 }] : [])),
+  };
   return {
-    service: new ForwardRecordService(config as never, chain as never, forwardQueues as never, writer as never),
+    service: new ForwardRecordService(
+      config as never,
+      chain as never,
+      forwardQueues as never,
+      writer as never,
+      repo as never,
+    ),
     writeContract,
     readContract,
     writer,
@@ -48,6 +62,27 @@ describe("ForwardRecordService peg refresh", () => {
     });
     await service.run();
     expect(writeContract).toHaveBeenCalledTimes(1); // both queues share PEG → one setUpdatedAt
+  });
+
+  it("skips idle vaults (no pending tickets) — no record, no peg poke", async () => {
+    const { service, writeContract, writer } = make({ withPending: [] });
+    const res = await service.run();
+    expect(res.status).toBe("skipped");
+    expect(writer.record).not.toHaveBeenCalled();
+    expect(writeContract).not.toHaveBeenCalled();
+  });
+
+  it("pokes only the vault that has pending tickets", async () => {
+    const { service, writer } = make({
+      pairs: [
+        { vault: "0xv1", queue: "0xq1" },
+        { vault: "0xv2", queue: "0xq2" },
+      ],
+      withPending: ["0xv2"], // only v2 has a ticket
+    });
+    await service.run();
+    expect(writer.record).toHaveBeenCalledTimes(1);
+    expect(writer.record).toHaveBeenCalledWith("0xv2");
   });
 
   it("noop (no peg poke) when the operator is disabled", async () => {

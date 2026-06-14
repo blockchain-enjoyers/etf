@@ -9,6 +9,7 @@ const DECODE: Record<Exclude<Reason, "ok">, { meaning: string; fix: string; tone
   "manager-mismatch": { meaning: "Manager-only tool.", fix: "Sign in as the index manager.", tone: "amber" },
   frozen: { meaning: "This basket is frozen.", fix: "Only in-kind redeem stays open.", tone: "red" },
   "not-deployed": { meaning: "Vault isn't deployed yet.", fix: "Nothing to trade until launch.", tone: "red" },
+  "not-bootstrapped": { meaning: "Index isn't set up yet.", fix: "Its genesis basket must be seeded first — Liquidity → Bootstrap.", tone: "cyan" },
 };
 const TONE: Record<Tone, string> = {
   amber: "border-amber/30 bg-amber/[0.06]",

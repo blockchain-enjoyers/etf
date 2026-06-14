@@ -1,5 +1,4 @@
 import type { VaultKind } from "./types";
-import { Chip } from "../../components/Chip";
 import { HelpPopover } from "../../components/HelpPopover";
 import { CREATE_HELP } from "./help-content";
 import { cn } from "../../lib/cn";
@@ -12,18 +11,47 @@ interface Props {
 interface KindCard {
   id: VaultKind;
   label: string;
-  badge: string;
-  whatItIs: string;
-  unlocks: string[];
-  hasFee: boolean;
+  blurb: string;
+  bestFor: string;
+  example: string;
+  badges: string[];
 }
 
+// Committed is intentionally hidden from the picker (advanced, hash-committed recipe). The VaultKind
+// type still carries it; it's just not offered in the wizard.
 const CARDS: KindCard[] = [
-  { id: "basket", label: "Static", badge: "simplest", whatItIs: "Holds fixed token quantities forever. Weights drift with price. In-kind only, zero fee.", unlocks: ["in-kind mint", "in-kind redeem", "NAV (market hours)"], hasFee: false },
-  { id: "managed", label: "Managed", badge: "curated", whatItIs: "Same fixed holdings as Static, plus a capped, timelocked manager fee.", unlocks: ["everything in Static", "manager fee"], hasFee: true },
-  { id: "committed", label: "Committed", badge: "advanced", whatItIs: "Static holdings with the recipe committed by hash and passed at mint. For very large baskets.", unlocks: ["in-kind mint", "in-kind redeem"], hasFee: false },
-  { id: "rebalance", label: "Rebalanced", badge: "full", whatItIs: "Holds target weights. A keeper trades back to target via auctions when drift exceeds the band.", unlocks: ["target weights", "keeper + auction", "manager fee"], hasFee: true },
-  { id: "registry", label: "Registry Index", badge: "SP500", whatItIs: "A large registry-native index (up to 500 names). Cash create/redeem via a forward queue; a keeper rebalances to target weights.", unlocks: ["target weights", "cash create/redeem", "keeper + auction"], hasFee: true },
+  {
+    id: "basket",
+    label: "Static",
+    blurb: "A fixed basket that never changes. Publish the holdings once and they stay locked forever. No fee, no rebalancing.",
+    bestFor: "A set-and-forget thematic basket.",
+    example: "An equal-weight or any fixed thematic basket you never touch.",
+    badges: ["Fixed holdings", "No fee", "Stocks in/out"],
+  },
+  {
+    id: "managed",
+    label: "Managed fee",
+    blurb: "A fixed basket that earns you a fee. The same locked holdings as Static, but you set an annual management fee on the assets.",
+    bestFor: "A curated fund you charge for but don't rebalance.",
+    example: "A 10-name AI fund at 1%/yr; or any curated thematic fund with an expense ratio.",
+    badges: ["Fixed holdings", "Management fee", "Stocks in/out"],
+  },
+  {
+    id: "rebalance",
+    label: "Rebalanced",
+    blurb: "A basket that keeps its strategy. When the weights drift or the line-up changes, it rebalances back to target automatically. A market maker fills the trade through an auction; you set a fee. Investors enter and exit by depositing the stocks.",
+    bestFor: "Rules-based baskets whose weights or members move over time.",
+    example: "An equal-weight tech index that resets to equal weight every quarter; or any periodically rebalanced strategy.",
+    badges: ["Auto-rebalanced", "Management fee", "Stocks in/out"],
+  },
+  {
+    id: "registry",
+    label: "Index fund",
+    blurb: "An on-chain index people buy with USDG. A 24/7 NAV prices it at any hour, weekends included. USDG subscriptions and redemptions settle forward, at the market-open NAV, so backing stays honest. A market maker sources or unwinds the basket. Scales to a full index and rebalances automatically.",
+    bestFor: "A broad index you want anyone to buy with stablecoins.",
+    example: "An S&P 500 or Nasdaq-100 tracker; or any broad market index.",
+    badges: ["USDG in/out", "24/7 NAV", "Forward-priced", "Full index"],
+  },
 ];
 
 export function VaultKindPicker({ value, onChange }: Props) {
@@ -52,19 +80,17 @@ export function VaultKindPicker({ value, onChange }: Props) {
                   {selected && <span className="w-2 h-2 rounded-full bg-cyan" />}
                 </span>
                 <span className={cn("text-[12.5px] font-semibold", selected ? "text-cyan" : "text-txt")}>{card.label}</span>
-                <span className="flex-1" />
-                {card.hasFee && <Chip variant="info">manager fee</Chip>}
-                <span className="font-mono text-[8.5px] uppercase tracking-wider text-txt3 border border-line bg-surface3 px-1.5 py-0.5 rounded">{card.badge}</span>
               </div>
-              <p className="text-[11px] text-txt2 leading-relaxed">{card.whatItIs}</p>
-              <div className="border-t border-line-soft pt-2 mt-auto">
-                <div className="text-[8.5px] uppercase tracking-wider text-txt3 mb-1.5">Unlocks</div>
-                <ul className="flex flex-wrap gap-1.5 list-none p-0 m-0">
-                  {card.unlocks.map((u) => (
-                    <li key={u} className="font-mono text-[9.5px] text-txt2 bg-surface3 border border-line rounded px-1.5 py-0.5">{u}</li>
-                  ))}
-                </ul>
+              <p className="text-[11px] text-txt2 leading-relaxed">{card.blurb}</p>
+              <div className="flex flex-col gap-0.5 text-[10px] leading-relaxed">
+                <p className="text-txt2"><span className="text-txt3">Best for: </span>{card.bestFor}</p>
+                <p className="text-txt2"><span className="text-txt3">Example: </span>{card.example}</p>
               </div>
+              <ul className="flex flex-wrap gap-1.5 list-none p-0 m-0 mt-auto pt-1">
+                {card.badges.map((b) => (
+                  <li key={b} className="font-mono text-[9.5px] text-txt2 bg-surface3 border border-line rounded px-1.5 py-0.5">{b}</li>
+                ))}
+              </ul>
             </button>
           </div>
         );

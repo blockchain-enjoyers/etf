@@ -29,6 +29,8 @@ import {
   sceneReadSchema,
   tokenInfoListSchema,
   type TokenInfo,
+  tokenBalancesSchema,
+  type TokenBalance,
   type ConstituentPrice,
   type SceneTamper,
   type SceneRead,
@@ -522,5 +524,23 @@ export class MeridianClient implements MeridianApi {
       body: JSON.stringify({ addresses }),
     });
     return parseResponse(res, tokenInfoListSchema);
+  }
+
+  async getTokenBalances(account: string, tokens: string[]): Promise<TokenBalance[]> {
+    const res = await fetch(`${this.baseUrl}/tokens/balances`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ account, tokens }),
+    });
+    return parseResponse(res, tokenBalancesSchema);
+  }
+
+  async buildFaucetTx(token: string, req: { account: string }): Promise<TxPlan> {
+    const res = await fetch(`${this.baseUrl}/tokens/${token}/tx/faucet`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    return parseResponse(res, txPlanSchema);
   }
 }

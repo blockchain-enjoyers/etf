@@ -28,6 +28,7 @@ export const queryKeys = {
   suggestedFunds: ["suggestedFunds"] as const,
   tokenSearch: (q: string) => ["tokenSearch", q] as const,
   tokenResolve: (addr: string) => ["tokenResolve", addr] as const,
+  tokenBalances: (account: string, tokens: string) => ["tokenBalances", account, tokens] as const,
 };
 
 export function makeQueryClient(): QueryClient {

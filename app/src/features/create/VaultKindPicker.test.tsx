@@ -4,19 +4,20 @@ import userEvent from "@testing-library/user-event";
 import { VaultKindPicker } from "./VaultKindPicker";
 
 describe("VaultKindPicker", () => {
-  it("renders all five kinds and marks the selected one", () => {
+  it("renders the four offered kinds (committed hidden) and marks the selected one", () => {
     render(<VaultKindPicker value="basket" onChange={vi.fn()} />);
-    for (const label of [/^static$/i, /^managed$/i, /^committed$/i, /^rebalanced$/i, /registry index/i]) {
+    for (const label of [/^static$/i, /managed fee/i, /^rebalanced$/i, /index fund/i]) {
       expect(screen.getByRole("radio", { name: label })).toBeInTheDocument();
     }
+    expect(screen.queryByRole("radio", { name: /committed/i })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /^static$/i })).toBeChecked();
   });
 
-  it("calls onChange with 'registry' when the Registry Index card is clicked", async () => {
+  it("calls onChange with 'registry' when the Index fund card is clicked", async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(<VaultKindPicker value="basket" onChange={onChange} />);
-    await user.click(screen.getByRole("radio", { name: /registry index/i }));
+    await user.click(screen.getByRole("radio", { name: /index fund/i }));
     expect(onChange).toHaveBeenCalledWith("registry");
   });
 
@@ -28,12 +29,11 @@ describe("VaultKindPicker", () => {
     expect(onChange).toHaveBeenCalledWith("rebalance");
   });
 
-  it("shows a fee badge on managed, rebalanced and registry cards", () => {
+  it("shows a Management fee badge on managed and rebalanced cards", () => {
     render(<VaultKindPicker value="basket" onChange={vi.fn()} />);
-    // managed, rebalanced and registry carry the "manager fee" badge
     const feeCards = screen
       .getAllByRole("radio")
-      .filter((card) => within(card).queryAllByText(/manager fee/i).length > 0);
-    expect(feeCards).toHaveLength(3);
+      .filter((card) => within(card).queryAllByText(/management fee/i).length > 0);
+    expect(feeCards).toHaveLength(2);
   });
 });

@@ -7,15 +7,17 @@ import { Module } from "../../../components/Module";
 import { Aud } from "../../../components/Aud";
 import { Button } from "../../../components/Button";
 import { GateBanner } from "../../../components/GateBanner";
+import { AssetFunding } from "../../../components/AssetFunding";
 import { HelpTip } from "../../../components/HelpTip";
 import { TokenIcon } from "../../../components/TokenIcon";
 import { IconUpload, IconDownload, IconGrid, IconSwap, IconCoins } from "../../../components/icons";
 import { cn } from "../../../lib/cn";
-import { shortenAddress } from "../../../lib/format";
+import { shortenAddress, formatQty } from "../../../lib/format";
 import { queryKeys } from "../../../lib/query";
 import { useApi } from "../../../lib/api";
 import type { Gate } from "../../../capabilities/use-capabilities";
 import { useForwardQueue } from "../../../data/useForwardQueue";
+import { useRegistryBootstrap } from "../../../data/useRegistryBootstrap";
 import { useTxPlan } from "../../../wallet/use-tx-plan";
 
 // Claim amounts are base-unit strings — parse a human "1.5" into 18-dec base units without viem so
@@ -188,6 +190,9 @@ function WrapPanel({ vaultAddress, gate, tokens }: PanelProps) {
           className={FIELD}
         />
       </div>
+      {token && amt > 0n && (
+        <AssetFunding account={address} required={[{ token, symbol: tokens.find((t) => t.token === token)?.symbol, amount: amt.toString() }]} />
+      )}
       <ActionButton
         gate={gate}
         label="Wrap → claim"
@@ -267,6 +272,70 @@ function UnwrapPanel({ vaultAddress, gate, tokens }: PanelProps) {
   );
 }
 
+/**
+ * Genesis bootstrap: the one-time, Merkle-gated mint that seeds an empty registry index from its
+ * genesis basket. The plan auto-approves + wraps each constituent, then calls bootstrap(). Shown only
+ * until the vault is seeded; afterwards cash + steady-state AP flows open.
+ */
+function BootstrapPanel({ vaultAddress, basket, gate }: PanelProps) {
+  const qc = useQueryClient();
+  const api = useApi();
+  const { address } = useAccount();
+  const tokens = basket.constituents.map((c) => c.token);
+  const tx = useTxPlan([vaultAddress, ...tokens]);
+
+  function handleBootstrap() {
+    if (!address || tokens.length === 0) return;
+    void tx
+      .run(() =>
+        api.buildBootstrapTx(vaultAddress, {
+          account: address,
+          tokens,
+          unitQty: basket.constituents.map((c) => c.unitQty),
+          unitSize: basket.unitSize,
+        }),
+      )
+      .then(() => {
+        qc.invalidateQueries({ queryKey: queryKeys.basket(vaultAddress) });
+        qc.invalidateQueries({ queryKey: queryKeys.forwardGate(vaultAddress) });
+        qc.invalidateQueries({ queryKey: queryKeys.nav(vaultAddress) });
+      });
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className="text-[11.5px] text-txt2 leading-relaxed">
+        This index was created empty. Bootstrap seeds it with one creation unit of the genesis basket —
+        it auto-approves and wraps each constituent, then mints the first {basket.symbol}. One-time and
+        oracle-free; after this, cash create/redeem opens for everyone.
+      </p>
+      <div className="flex flex-col gap-1 rounded-md border border-line bg-bg px-2.5 py-2 text-[11px]">
+        <span className={LAB}>Genesis basket · per unit</span>
+        {basket.constituents.map((c) => (
+          <div key={c.token} className="flex items-center justify-between font-mono text-txt2">
+            <span>{c.symbol ?? shortenAddress(c.token)}</span>
+            <span>{formatQty(c.unitQty)}</span>
+          </div>
+        ))}
+      </div>
+      <AssetFunding
+        account={address}
+        required={basket.constituents.map((c) => ({ token: c.token, symbol: c.symbol, amount: c.unitQty }))}
+      />
+      <ActionButton
+        gate={gate}
+        label="Bootstrap (genesis mint)"
+        runningLabel="Bootstrapping…"
+        running={tx.status === "running"}
+        disabled={tokens.length === 0}
+        onClick={handleBootstrap}
+        ariaLabel="Bootstrap the registry index"
+      />
+      <TxStatus tx={tx} />
+    </div>
+  );
+}
+
 /** In-kind create: mint N shares; the builder prepends wraps for any per-token claim shortfall. */
 function CreatePanel({ vaultAddress, basket, gate }: PanelProps) {
   const qc = useQueryClient();
@@ -275,6 +344,15 @@ function CreatePanel({ vaultAddress, basket, gate }: PanelProps) {
   const [shares, setShares] = useState("");
   const tx = useTxPlan([vaultAddress, ...basket.constituents.map((c) => c.token)]);
   const nShares = toBaseUnits(shares);
+
+  // The create wraps unitQty × units of each constituent (units = shares / unitSize). Surface that as
+  // the funding requirement so a short AP can faucet before the create reverts on the wrap.
+  const unitSize = BigInt(basket.unitSize || "0");
+  const units = unitSize > 0n ? nShares / unitSize : 0n;
+  const required =
+    units > 0n
+      ? basket.constituents.map((c) => ({ token: c.token, symbol: c.symbol, amount: (BigInt(c.unitQty) * units).toString() }))
+      : [];
 
   function handleCreate() {
     if (nShares <= 0n || !address) return;
@@ -313,6 +391,7 @@ function CreatePanel({ vaultAddress, basket, gate }: PanelProps) {
       <p className="text-[10.5px] text-txt3 leading-relaxed">
         In-kind · NAV-free · auto-wraps any claim shortfall before minting.
       </p>
+      <AssetFunding account={address} required={required} />
       <ActionButton
         gate={gate}
         label="Create (in-kind)"
@@ -494,15 +573,15 @@ export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: st
   const { data: queue } = useForwardQueue(vaultAddress, enabled);
   const forwardQueue = queue?.queueAddress ?? "";
 
+  // A fresh registry index is empty until its genesis basket is seeded — surface bootstrap first.
+  const { bootstrapped } = useRegistryBootstrap(vaultAddress, enabled);
+
   const tokens = useMemo(
     () => basket.constituents.map((c) => ({ token: c.token, symbol: c.symbol })),
     [basket.constituents],
   );
 
   const panelProps: PanelProps = { vaultAddress, basket, gate, tokens };
-
-  // Bootstrap (genesis mint) is intentionally omitted: it's a one-time, deploy-time,
-  // Merkle-proof-gated action (buildBootstrapTx), not part of the steady-state AP lifecycle.
 
   return (
     <div className="flex flex-col gap-4" data-workspace="liquidity">
@@ -520,6 +599,19 @@ export function RegistryApWorkspace({ vaultAddress, basket }: { vaultAddress: st
       </div>
 
       {!gate.enabled && <GateBanner gate={gate} />}
+
+      {!bootstrapped && (
+        <div className="rounded-lg border border-cyan-dim bg-cyan/[0.05] p-px">
+          <Module
+            title="Bootstrap — genesis mint"
+            icon={<IconGrid />}
+            audience="ap"
+            help="One-time genesis seed for a fresh registry index: auto-approves + wraps the genesis basket, then mints the first shares (Merkle-proof-gated). Cash and steady-state AP flows stay locked until this lands."
+          >
+            <BootstrapPanel {...panelProps} />
+          </Module>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Module

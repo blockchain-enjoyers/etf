@@ -9,7 +9,6 @@ import { Button } from "../../../components/Button";
 import { Chip } from "../../../components/Chip";
 import { EstBadge } from "../../../components/EstBadge";
 import { GateBanner } from "../../../components/GateBanner";
-import { IronRuleCallout } from "../../../components/IronRuleCallout";
 import { KV } from "../../../components/KV";
 import { PriceChart } from "../../../components/PriceChart";
 import { cn } from "../../../lib/cn";
@@ -156,8 +155,6 @@ export function TradeWorkspace({
           )}
         </Module>
       </div>
-
-      <IronRuleCallout marketStatus={nav?.marketStatus ?? null} forward={isRebalance} />
 
       <Module
         title="What's inside one unit — Constituents"

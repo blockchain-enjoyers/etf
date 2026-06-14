@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useStatusView } from "../../status/StatusViewContext";
 import { useBasket } from "../../data/useBasket";
@@ -13,6 +13,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { Skeleton } from "../../components/Skeleton";
 import { formatQty, formatUsd, formatSignedPctFromBps } from "../../lib/format";
 import { useAccountHoldings } from "../../data/useAccountHoldings";
+import { useRegistryBootstrap } from "../../data/useRegistryBootstrap";
 import { TradeWorkspace } from "./workspaces/TradeWorkspace";
 import { LiquidityWorkspace } from "./workspaces/LiquidityWorkspace";
 import { RegistryApWorkspace } from "./workspaces/RegistryApWorkspace";
@@ -43,7 +44,11 @@ function formatBps(bps?: number | null): string {
 
 export function IndexDetailScreen() {
   const { vaultAddress } = useParams<{ vaultAddress: string }>();
-  const [active, setActive] = useState<WorkspaceId>("trade");
+  const [searchParams] = useSearchParams();
+  // Deep-link support: /index/:addr?tab=liquidity lands directly on a workspace (e.g. the post-deploy
+  // "set up your index" CTA). A stale/invalid tab is corrected by the visible-set effect below.
+  const tabParam = searchParams.get("tab") as WorkspaceId | null;
+  const [active, setActive] = useState<WorkspaceId>(tabParam ?? "trade");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   // Order-rail direction/method lifted here so the Trade redeem cards can drive the rail.
   const [orderDir, setOrderDir] = useState<Direction>("mint");
@@ -64,6 +69,12 @@ export function IndexDetailScreen() {
     acct?.holdings.find(
       (h) => h.vaultAddress.toLowerCase() === (vaultAddress ?? "").toLowerCase(),
     )?.balance ?? "0";
+
+  // A fresh registry index is empty until its manager/an AP seeds the genesis basket. Surface this:
+  // the manager gets a nudge into Liquidity → Bootstrap; everyone else sees a "not set up yet" notice.
+  const { bootstrapped, loaded: bootstrapLoaded } = useRegistryBootstrap(vaultAddress ?? "", Boolean(isRegistry));
+  const isManager = !!address && !!basket?.manager && basket.manager.toLowerCase() === address.toLowerCase();
+  const needsBootstrap = Boolean(isRegistry) && bootstrapLoaded && !bootstrapped;
 
   // Liquidity/Operations/Manage are rebalance-only (forward queue, keeper, curator). Registry vaults
   // expose Trade + a registry-flavoured Liquidity (AP) tab. Other static vault types (basket/managed/
@@ -169,6 +180,31 @@ export function IndexDetailScreen() {
               <span aria-hidden>ⓘ</span>
               One workspace shows at a time — click a tab to switch. You start on Trade.
             </p>
+          )}
+          {needsBootstrap && isManager && active !== "liquidity" && (
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-cyan-dim bg-cyan/[0.06] text-[11.5px] text-txt2">
+              <span aria-hidden className="grid place-items-center w-6 h-6 rounded-md bg-cyan/[0.12] text-cyan shrink-0">⚙</span>
+              <p className="flex-1">
+                <b className="text-cyan font-semibold">Your index isn&apos;t set up yet.</b> Seed the genesis basket to open
+                trading — go to Liquidity and run Bootstrap.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActive("liquidity")}
+                className="shrink-0 px-2.5 py-1 rounded-md border border-cyan-dim text-cyan hover:bg-cyan/[0.1] text-[11px]"
+              >
+                Go to Liquidity →
+              </button>
+            </div>
+          )}
+          {needsBootstrap && !isManager && (
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber/30 bg-amber/[0.06] text-[11.5px] text-txt2">
+              <span aria-hidden className="grid place-items-center w-6 h-6 rounded-md bg-amber/[0.12] text-amber shrink-0">⏳</span>
+              <p className="flex-1">
+                <b className="font-semibold">Index not set up yet.</b> The manager hasn&apos;t seeded this index&apos;s
+                genesis basket — trading opens once it&apos;s bootstrapped.
+              </p>
+            </div>
           )}
           {showOnboarding && (
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-cyan-dim bg-gradient-to-r from-cyan/[0.07] to-cyan/[0.01] text-[11.5px] text-txt2">

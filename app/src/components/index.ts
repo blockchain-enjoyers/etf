@@ -18,7 +18,6 @@ export { Guard } from "./Guard";
 export { HelpTip } from "./HelpTip";
 export { InstrumentBar } from "./InstrumentBar";
 export type { InstrumentStat } from "./InstrumentBar";
-export { IronRuleCallout } from "./IronRuleCallout";
 export { KV } from "./KV";
 export { MarketStatusWidget } from "./MarketStatusWidget";
 export { Module } from "./Module";

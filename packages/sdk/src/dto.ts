@@ -676,3 +676,19 @@ export const tokenInfoSchema = z.object({ token: z.string(), symbol: z.string(),
 export type TokenInfo = z.infer<typeof tokenInfoSchema>;
 export const tokenInfoListSchema = z.array(tokenInfoSchema);
 export const resolveTokensRequestSchema = z.object({ addresses: z.array(z.string()) });
+
+// --- Token balances + demo faucet (in-kind funding check) ---
+// Per-token wallet balance plus, for the colleague's mock Stock faucet, the fixed amount it mints and
+// how much of the per-address cap is still available (null when the token has no faucet).
+export const walletBalanceSchema = z.object({
+  token: z.string(),
+  symbol: z.string(),
+  decimals: z.number().int(),
+  balance: baseUnitString,
+  faucetAmount: baseUnitString.nullable(),
+  faucetRemaining: baseUnitString.nullable(),
+});
+export type TokenBalance = z.infer<typeof walletBalanceSchema>;
+export const tokenBalancesSchema = z.array(walletBalanceSchema);
+export const tokenBalancesRequestSchema = z.object({ account: z.string(), tokens: z.array(z.string()) });
+export const faucetTxRequestSchema = z.object({ account: addr });

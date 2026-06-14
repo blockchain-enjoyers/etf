@@ -55,6 +55,9 @@ export function DeploySuccess({
     refetchInterval: (q) => (q.state.status === "success" ? false : 4000),
   });
   const isIndexed = indexed.isSuccess;
+  // A registry index deploys empty — its manager must seed the genesis basket before anyone can trade.
+  // Steer them straight into Liquidity → Bootstrap rather than the (still-locked) Trade tab.
+  const needsSetup = isIndexed && indexed.data?.vaultType === "registry";
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-bg/90 backdrop-blur-sm p-6">
@@ -93,15 +96,25 @@ export function DeploySuccess({
           </p>
         )}
 
+        {needsSetup && (
+          <div className="flex items-start gap-2.5 rounded-md border border-cyan-dim bg-cyan/[0.05] px-3 py-2.5 text-[11.5px] text-txt2">
+            <span aria-hidden className="mt-px text-cyan">⚙</span>
+            <p>
+              <b className="text-cyan font-semibold">One more step: set up your index.</b> A registry index starts
+              empty — seed its genesis basket in Liquidity → Bootstrap to open trading.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-1">
           <Button
             variant="primary"
             full
             disabled={!isIndexed}
-            onClick={() => navigate(`/index/${vaultAddress}`)}
-            aria-label="Open the deployed index"
+            onClick={() => navigate(needsSetup ? `/index/${vaultAddress}?tab=liquidity` : `/index/${vaultAddress}`)}
+            aria-label={needsSetup ? "Set up the deployed index" : "Open the deployed index"}
           >
-            {isIndexed ? "Open index →" : "Waiting for indexation…"}
+            {!isIndexed ? "Waiting for indexation…" : needsSetup ? "Set up index →" : "Open index →"}
           </Button>
           <Button onClick={() => navigate("/explore")} aria-label="Back to markets">
             Markets

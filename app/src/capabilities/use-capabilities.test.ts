@@ -400,6 +400,14 @@ describe("useCapabilities — backend availability verdict", () => {
     expect(gate.reason).toBe("not-deployed");
   });
 
+  it("canForwardCreate returns not-bootstrapped (not not-deployed) for a deployed-but-unseeded vault", () => {
+    mockUseAvailability.mockReturnValue({ data: { items: [] } } as unknown as ReturnType<typeof useAvailability>);
+    const caps = renderCapabilities("regular");
+    const gate = caps.canForwardCreate("0xVaultAddr", false);
+    expect(gate.enabled).toBe(false);
+    expect(gate.reason).toBe("not-bootstrapped");
+  });
+
   it("an unknown backend reason can't crash the gate (falls back to ok)", () => {
     // Model a forward-compat payload whose reason the FE enum doesn't know — double-cast through
     // unknown since the literal is intentionally out-of-contract (no `any`).

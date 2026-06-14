@@ -32,6 +32,7 @@ import type {
   SceneTamper,
   SceneRead,
   TokenInfo,
+  TokenBalance,
 } from "./dto.js";
 
 export interface MeridianApi {
@@ -98,4 +99,6 @@ export interface MeridianApi {
   getScene(token: string): Promise<SceneRead>;
   searchTokens(q: string): Promise<TokenInfo[]>;
   resolveTokens(addresses: string[]): Promise<TokenInfo[]>;
+  getTokenBalances(account: string, tokens: string[]): Promise<TokenBalance[]>;
+  buildFaucetTx(token: string, req: { account: string }): Promise<TxPlan>;
 }

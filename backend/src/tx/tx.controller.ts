@@ -11,6 +11,7 @@ import {
   curatorActivateTxRequestSchema,
   curatorScheduleTxRequestSchema,
   deployTxRequestSchema,
+  faucetTxRequestSchema,
   forwardCancelTxRequestSchema,
   forwardCreateTxRequestSchema,
   forwardRedeemTxRequestSchema,
@@ -57,6 +58,7 @@ export class RegistrySetOperatorTxDto extends createZodDto(registrySetOperatorTx
 export class RegistryBootstrapTxDto extends createZodDto(registryBootstrapTxRequestSchema) {}
 export class RegistryCreateTxDto extends createZodDto(registryCreateTxRequestSchema) {}
 export class RegistryRedeemTxDto extends createZodDto(registryRedeemTxRequestSchema) {}
+export class FaucetTxDto extends createZodDto(faucetTxRequestSchema) {}
 
 @ApiTags("tx")
 @Controller()
@@ -142,6 +144,13 @@ export class TxController {
   @ApiParam({ name: "id", description: "vaultAddress (0x address)" })
   registryRedeem(@Param("id") id: string, @Body() body: RegistryRedeemTxDto): Promise<TxPlan> {
     return this.builder.registryRedeem(id, body);
+  }
+
+  @Post("tokens/:token/tx/faucet")
+  @ApiOperation({ summary: "Build a demo faucet plan (faucetMint the mock Stock token to the caller)" })
+  @ApiParam({ name: "token", description: "ERC-20 token address (a demo Stock)" })
+  faucet(@Param("token") token: string, @Body() body: FaucetTxDto): Promise<TxPlan> {
+    return this.builder.faucet(token, body);
   }
 
   @Post("baskets/:id/tx/forward/create")

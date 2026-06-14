@@ -30,6 +30,7 @@ import type {
   TxPlan,
   VaultType,
   TokenInfo,
+  TokenBalance,
 } from "@meridian/sdk";
 import { demoTokens } from "@meridian/contracts";
 
@@ -133,6 +134,13 @@ export class FixtureApi implements MeridianApi {
     const k = this.posKey(account, vault);
     const next = (this.positions.get(k) ?? 0n) + delta;
     this.positions.set(k, next > 0n ? next : 0n);
+  }
+  // In-memory underlying balances ("account:token" -> base units) so the in-kind funding check + demo
+  // faucet round-trip (short → Mint 100 → funded) works without a chain. Fixtures-only.
+  private tokenBal = new Map<string, bigint>();
+  private creditToken(account: string, token: string, delta: bigint): void {
+    const k = `${account.toLowerCase()}:${token.toLowerCase()}`;
+    this.tokenBal.set(k, (this.tokenBal.get(k) ?? 0n) + delta);
   }
 
   private vaultAddrFor(symbol: string): string {
@@ -543,6 +551,27 @@ export class FixtureApi implements MeridianApi {
   ) {
     await delay(DELAY_MS);
     return mockPlan("Bootstrap vault");
+  }
+
+  async getTokenBalances(account: string, tokens: string[]): Promise<TokenBalance[]> {
+    await delay(DELAY_MS);
+    return tokens.map((token) => {
+      const k = `${account.toLowerCase()}:${token.toLowerCase()}`;
+      return {
+        token,
+        symbol: symOf(token),
+        decimals: 18,
+        balance: (this.tokenBal.get(k) ?? 0n).toString(),
+        faucetAmount: (100n * E18).toString(),
+        faucetRemaining: (100n * E18).toString(),
+      };
+    });
+  }
+
+  async buildFaucetTx(token: string, req: { account: string }) {
+    await delay(DELAY_MS);
+    this.creditToken(req.account, token, 100n * E18);
+    return mockPlan("Mint test tokens");
   }
 
   async buildRegistryCreateTx(vaultAddress: string, req: { nShares: string; account: string }) {

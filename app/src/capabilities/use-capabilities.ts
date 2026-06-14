@@ -7,6 +7,7 @@ type Cap = "CloneFactory" | "BasketVault" | "ForwardCashQueue";
 export type Reason =
   | "ok"
   | "not-deployed"
+  | "not-bootstrapped"
   | "wrong-chain"
   | "wallet-disconnected"
   | "market-closed"
@@ -122,7 +123,9 @@ export function useCapabilities(marketStatus: MarketStatus, vaultAddress?: strin
     if (chainAddresses["CloneFactory"] === undefined) return { enabled: false, reason: "not-deployed" };
     if (!isConnected) return { enabled: false, reason: "wallet-disconnected" };
     if (!vaultAddress) return { enabled: false, reason: "not-deployed" };
-    if (!bootstrapped) return { enabled: false, reason: "not-deployed" };
+    // The vault is deployed but its genesis basket hasn't been seeded yet — distinct from not-deployed
+    // so the banner can point the user at the in-kind bootstrap (Liquidity → Create shares in-kind).
+    if (!bootstrapped) return { enabled: false, reason: "not-bootstrapped" };
     return backendGate("forwardCreate");
   }
 

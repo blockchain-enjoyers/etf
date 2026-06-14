@@ -56,6 +56,8 @@ const stubApi: MeridianApi = {
   getScene: vi.fn(),
   searchTokens: vi.fn(),
   resolveTokens: vi.fn(),
+  getTokenBalances: vi.fn(),
+  buildFaucetTx: vi.fn(),
 };
 
 function Consumer() {

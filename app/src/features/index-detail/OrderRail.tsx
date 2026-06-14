@@ -11,6 +11,7 @@ import { TokenIcon } from "../../components/TokenIcon";
 import { RadioCards } from "../../components/RadioCards";
 import { cn } from "../../lib/cn";
 import { formatQty, formatUsd, shortenAddress } from "../../lib/format";
+import { AssetFunding } from "../../components/AssetFunding";
 import { queryKeys } from "../../lib/query";
 import { useApi } from "../../lib/api";
 import { useCapabilities } from "../../capabilities/use-capabilities";
@@ -195,6 +196,14 @@ function CreatePanel({ vaultAddress, basket, nav }: Props) {
             ))
           )}
         </div>
+        {deposits.length > 0 && (
+          <div className="mt-2">
+            <AssetFunding
+              account={address}
+              required={deposits.map((d) => ({ token: d.token, symbol: d.symbol, amount: d.amount }))}
+            />
+          </div>
+        )}
       </div>
 
       <div className={cn(RAIL_SEC, "text-[11px]")}>

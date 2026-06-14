@@ -749,16 +749,23 @@ export class IndexerService {
       registryConstituentCount++;
     }
 
+    // The forward-queue registry lowercases its vault keys, but ForwardTicket.vaultAddress FKs to the
+    // Basket's stored (checksummed) address — pass the stored case (else the upsert violates the FK and
+    // throws the whole tick). Skip queues whose vault isn't indexed yet (no Basket row to point at).
+    const allVaults = (await this.repo.getAllVaultAddresses()) as `0x${string}`[];
+    const byCase = new Map(allVaults.map((a) => [a.toLowerCase(), a]));
+
     let forwardCount = 0;
     await this.forwardQueues.refresh();
     for (const { vault, queue } of this.forwardQueues.pairs()) {
-      const evs = await this.reader.getForwardQueueLogs(queue, vault, from, to);
+      const storedVault = byCase.get(vault.toLowerCase());
+      if (!storedVault) continue;
+      const evs = await this.reader.getForwardQueueLogs(queue, storedVault, from, to);
       for (const e of evs) await this.repo.applyForwardEvent(e);
       forwardCount += evs.length;
     }
 
     // In-kind mint/redeem → per-account activity feed (every vault type emits Created/Redeemed).
-    const allVaults = (await this.repo.getAllVaultAddresses()) as `0x${string}`[];
     const activity = await this.reader.getVaultActivityLogs(allVaults, from, to);
     let activityCount = 0;
     for (const e of activity) {

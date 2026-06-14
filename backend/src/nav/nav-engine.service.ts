@@ -73,11 +73,13 @@ export class NavEngineService {
     });
     if (!basket) throw new Error(`NAV: unknown basket ${vault}`);
 
-    const unitSize = BigInt(basket.unitSize.toString());
+    // toFixed(0), not toString(): Prisma Decimal.toString() emits scientific notation (e.g. "1e+21")
+    // for values >= 1e21, which BigInt() can't parse.
+    const unitSize = BigInt(basket.unitSize.toFixed(0));
     let valuePerUnit = 0n; // 18-dec USD value of one creation unit
     for (const c of basket.constituents) {
       const price = await this.demoPrice(c.token);
-      valuePerUnit += (BigInt(c.unitQty.toString()) * price) / SCALE;
+      valuePerUnit += (BigInt(c.unitQty.toFixed(0)) * price) / SCALE;
     }
     const baseNavPerShare = unitSize > 0n ? (valuePerUnit * SCALE) / unitSize : valuePerUnit;
     const nav = applyDrift(baseNavPerShare, vault);

@@ -302,3 +302,25 @@ it("routes managed + committed creation events to the repository", async () => {
   expect(repo.applyManagedBasketCreated).toHaveBeenCalledOnce();
   expect(repo.applyCommittedBasketCreated).toHaveBeenCalledOnce();
 });
+
+it("indexes forward-queue logs with the Basket's stored (checksummed) vault, not the registry's lowercased key", async () => {
+  const CHECKSUM = "0x7C4627158652a6950A091Cbf126d744F4E6BCa9E";
+  const QUEUE = "0x4103bc6ad1d45a5589dc9347380db0a228eb2db7";
+  const repo = makeRepo() as ReturnType<typeof makeRepo> & { applyForwardEvent: ReturnType<typeof vi.fn> };
+  repo.getAllVaultAddresses = vi.fn(async () => [CHECKSUM]);
+  repo.applyForwardEvent = vi.fn(async () => undefined);
+  const reader = makeReader();
+  reader.getForwardQueueLogs = vi.fn(async () => [{ vaultAddress: CHECKSUM }]) as never;
+  const config = { get: (k: string) => (k === "CHAIN_ID" ? 46630 : "") } as unknown as ConstructorParameters<typeof IndexerService>[0];
+  // Registry lowercases its keys → pairs() yields the lowercased vault.
+  const forwardQueues = {
+    pairs: () => [{ vault: CHECKSUM.toLowerCase(), queue: QUEUE }],
+    queueFor: () => QUEUE,
+    refresh: vi.fn(async () => {}),
+  };
+  const svc = new IndexerService(config, repo as never, reader as never, forwardQueues as never);
+  await svc.tick();
+  // The reader must be called with the checksummed Basket address so the ForwardTicket FK resolves.
+  expect(reader.getForwardQueueLogs).toHaveBeenCalledWith(QUEUE, CHECKSUM, expect.anything(), expect.anything());
+  expect(repo.applyForwardEvent).toHaveBeenCalledWith({ vaultAddress: CHECKSUM });
+});

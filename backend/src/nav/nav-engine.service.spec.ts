@@ -208,8 +208,8 @@ describe("NavEngineService.computeNav (DEMO_NAV)", () => {
       basket: {
         findUnique: vi.fn(async () => ({
           vaultAddress: "0xv",
-          unitSize: { toString: () => "1000000000000000000000" }, // 1000 shares / unit
-          constituents: [{ token: demo.address, unitQty: { toString: () => "1000000000000000000" } }], // 1.0
+          unitSize: { toFixed: () => "1000000000000000000000" }, // 1000 shares / unit
+          constituents: [{ token: demo.address, unitQty: { toFixed: () => "1000000000000000000" } }], // 1.0
         })),
       },
     };

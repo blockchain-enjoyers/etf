@@ -2,6 +2,7 @@ import { encodeFunctionData, erc20Abi, zeroAddress } from "viem";
 import { CloneFactoryAbi } from "@meridian/contracts";
 import type { ActionResult, BuiltStep } from "../action-registry.js";
 import { buildGenesisRoot } from "../registry-recipe.js";
+import { resolveKeeperEscrow } from "../keeper-escrow.js";
 
 const DEFAULT_SALT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
@@ -79,6 +80,11 @@ export async function buildDeploy(deps: DeployDeps, req: DeployTxRequest): Promi
   const unitQty = req.unitQty.map((q) => BigInt(q));
   const unitSize = BigInt(req.unitSize);
   const userSalt = (req.userSalt ?? DEFAULT_SALT) as `0x${string}`;
+  // Default an unset keeperEscrow to the manager so a keeperBps>0 rebalance/registry vault doesn't
+  // revert ZeroEscrow() — must match preview-deploy's simulate so the predicted address is real.
+  const manager = (req.manager ?? req.account) as `0x${string}`;
+  const keeperBps = req.keeperBps ?? 0;
+  const keeperEscrow = resolveKeeperEscrow(keeperBps, req.keeperEscrow, manager);
 
   let data: `0x${string}`;
 
@@ -123,10 +129,10 @@ export async function buildDeploy(deps: DeployDeps, req: DeployTxRequest): Promi
           unitSize,
           name: req.name,
           symbol: req.symbol,
-          manager: req.manager! as `0x${string}`,
+          manager,
           managerFeeBps: req.managerFeeBps! as number,
-          keeperBps: req.keeperBps! as number,
-          keeperEscrow: req.keeperEscrow! as `0x${string}`,
+          keeperBps,
+          keeperEscrow,
         },
         userSalt,
       ],
@@ -143,10 +149,10 @@ export async function buildDeploy(deps: DeployDeps, req: DeployTxRequest): Promi
           unitSize,
           name: req.name,
           symbol: req.symbol,
-          manager: req.manager! as `0x${string}`,
+          manager,
           managerFeeBps: req.managerFeeBps! as number,
-          keeperBps: req.keeperBps! as number,
-          keeperEscrow: req.keeperEscrow! as `0x${string}`,
+          keeperBps,
+          keeperEscrow,
         },
         userSalt,
       ],

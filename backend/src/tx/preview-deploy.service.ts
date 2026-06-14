@@ -8,9 +8,9 @@ import { TokenMetadataService } from "../contracts/token-metadata.service.js";
 import { CapabilityRegistry } from "../contracts/capability-registry.js";
 import { catalogPrice18 } from "../contracts/catalog-price.js";
 import { buildGenesisRoot } from "./registry-recipe.js";
+import { resolveKeeperEscrow } from "./keeper-escrow.js";
 
 const DEFAULT_SALT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 // CloneFactory.VaultType enum index per vaultKind (BASKET=0, COMMITTED=1, MANAGED=2, REBALANCE=3,
 // REGISTRY=4). registry deploy is a later slice — the index only feeds creationFee(VaultType) reads.
@@ -143,6 +143,10 @@ export class PreviewDeployService {
     const salt = (req.userSalt ?? DEFAULT_SALT) as `0x${string}`;
     const manager = (req.manager || req.account) as `0x${string}`;
     const account = req.account as `0x${string}`;
+    // Rebalance/registry vaults revert ZeroEscrow when keeperBps > 0 but keeperEscrow is unset.
+    // Keeper-fee shares accrue to the escrow, so default it to the manager when the wizard omits it.
+    const keeperBps = req.keeperBps ?? 0;
+    const keeperEscrow = resolveKeeperEscrow(keeperBps, req.keeperEscrow, manager);
     const base = { address: factory as `0x${string}`, abi: CloneFactoryAbi, account } as const;
     try {
       let sim: { result: unknown };
@@ -162,7 +166,7 @@ export class PreviewDeployService {
         sim = await this.chain.publicClient.simulateContract({
           ...base,
           functionName: "createRebalanceBasket",
-          args: [{ tokens, unitQty, unitSize, name: req.name, symbol: req.symbol, manager, managerFeeBps: req.managerFeeBps ?? 0, keeperBps: req.keeperBps ?? 0, keeperEscrow: (req.keeperEscrow ?? ZERO_ADDRESS) as `0x${string}` }, salt],
+          args: [{ tokens, unitQty, unitSize, name: req.name, symbol: req.symbol, manager, managerFeeBps: req.managerFeeBps ?? 0, keeperBps, keeperEscrow }, salt],
         });
       } else if (req.vaultKind === "registry") {
         // genesisRoot from sorted (tokens, unitQty, unitSize) Merkle leaves (must match the contract);
@@ -171,7 +175,7 @@ export class PreviewDeployService {
         sim = await this.chain.publicClient.simulateContract({
           ...base,
           functionName: "createRegistryIndex",
-          args: [{ genesisRoot, tokens: sortedTokens, unitSize, name: req.name, symbol: req.symbol, manager, managerFeeBps: req.managerFeeBps ?? 0, keeperBps: req.keeperBps ?? 0, keeperEscrow: (req.keeperEscrow ?? ZERO_ADDRESS) as `0x${string}` }, salt],
+          args: [{ genesisRoot, tokens: sortedTokens, unitSize, name: req.name, symbol: req.symbol, manager, managerFeeBps: req.managerFeeBps ?? 0, keeperBps, keeperEscrow }, salt],
         });
       } else {
         sim = await this.chain.publicClient.simulateContract({

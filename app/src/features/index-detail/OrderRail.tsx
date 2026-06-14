@@ -20,11 +20,10 @@ import { useForwardQueue } from "../../data/useForwardQueue";
 import { useSettleGateStatus } from "../../data/useSettleGateStatus";
 import { useTxPlan } from "../../wallet/use-tx-plan";
 
-const USDC_DECIMALS = 6;
-
-function parseUsdc(value: string): bigint {
+/** Parse a human cash amount into the cash token's base units (decimals vary per token: USDG 18, USDC 6). */
+function parseCash(value: string, decimals: number): bigint {
   try {
-    return parseUnits(value, USDC_DECIMALS);
+    return parseUnits(value, decimals);
   } catch {
     return 0n;
   }
@@ -313,16 +312,21 @@ function RegistryCreatePanel({ vaultAddress, basket }: Props) {
   const cashNotEnabled = createGate.enabled && queue !== undefined && !cashEnabled;
 
   const fees = queue?.fees ?? null;
-  const cash = parseUsdc(amount);
-  const cashToken = basket.cashToken ?? "";
-  // The plan's approve step targets the cash token, which isn't in the static address book — seed it.
-  const tx = useTxPlan(cashToken ? [cashToken] : []);
+  // Cash leg = the queue's stable token; its decimals vary (USDG 18-dec, MockUSDC 6-dec), so parse + the
+  // estimate use the queue-reported decimals, not a hardcoded 6. cashToken from the queue (registry has
+  // none on the Basket row), falling back to the basket's cashToken for managed/rebalance.
+  const cashDecimals = queue?.cashDecimals ?? 18;
+  const cashToken = queue?.cashToken ?? basket.cashToken ?? "";
+  const cash = parseCash(amount, cashDecimals);
+  // Plan destinations: approve → cash token, requestCreate → the queue. Neither is in the static address
+  // book (per-vault queue clone + the registry cash token), so seed both into the tx-plan allowlist.
+  const tx = useTxPlan([cashToken, queue?.queueAddress].filter(Boolean) as string[]);
   const running = tx.status === "running";
 
   // Estimate only (IRON RULE): shares = cash * 1e18 / navPerShare; struck for real at the next open.
   const navPerShare = gate?.navPerShare ? BigInt(gate.navPerShare) : 0n;
   const estShares =
-    navPerShare > 0n ? (parseUnits(formatUnits(cash, USDC_DECIMALS), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
+    navPerShare > 0n ? (parseUnits(formatUnits(cash, cashDecimals), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
 
   function handleCreate() {
     if (cash <= 0n) return;
@@ -461,17 +465,19 @@ function RedeemPanel({
   const inKindGate = caps.canRedeemInKind();
   // Cash redeem routes through the forward queue (rebalance/registry); gate on AP/forward presence.
   const cashGate = caps.canForwardRedeem();
-  // Registry redeem proceeds are net of a flat USDG redeem fee — disclose it from the queue DTO.
-  const { data: queue } = useForwardQueue(vaultAddress, isRegistry);
+  // Cash redeem routes through a per-vault forward queue (registry + rebalance) — fetch it so we can both
+  // disclose the fee and allowlist its address. Registry redeem proceeds are net of a flat USDG fee.
+  const hasForward = isRegistry || basket.vaultType === "rebalance";
+  const { data: queue } = useForwardQueue(vaultAddress, hasForward);
   const redeemFee = queue?.fees ?? null;
 
   // Registry forces cash; everything else honors the selected method.
   const effectiveMethod: RedeemMethod = isRegistry ? "cash" : method;
   const activeGate = effectiveMethod === "inkind" ? inKindGate : cashGate;
 
-  // Both legs' terminal/approve steps target the vault clone, which isn't in the static address
-  // book — seed it. (Forward requestRedeem targets the queue, already in the address book.)
-  const tx = useTxPlan([vaultAddress]);
+  // In-kind redeem targets the vault clone; cash redeem's requestRedeem targets the per-vault queue
+  // clone. Neither is in the static address book, so seed both into the tx-plan allowlist.
+  const tx = useTxPlan([vaultAddress, queue?.queueAddress].filter(Boolean) as string[]);
   const running = tx.status === "running";
 
   function handleRedeem() {

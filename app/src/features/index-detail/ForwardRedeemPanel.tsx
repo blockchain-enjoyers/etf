@@ -9,6 +9,7 @@ import { EstBadge } from "../../components/EstBadge";
 import { queryKeys } from "../../lib/query";
 import { useApi } from "../../lib/api";
 import { useCapabilities } from "../../capabilities/use-capabilities";
+import { useForwardQueue } from "../../data/useForwardQueue";
 import { useTxPlan } from "../../wallet/use-tx-plan";
 
 interface Props {
@@ -33,9 +34,10 @@ export function ForwardRedeemPanel({ vaultAddress, basket, gate }: Props) {
   const cap = useCapabilities("regular").canForwardRedeem();
 
   const shares = parse18(amount);
-  // The queue pulls escrowed shares via the share token (the vault); its approve step targets the
-  // vault clone, which isn't in the static address book — seed it.
-  const tx = useTxPlan([vaultAddress]);
+  // Plan destinations: approve → the share token (vault clone), requestRedeem → the per-vault queue
+  // clone. Neither is in the static address book, so seed both into the tx-plan allowlist.
+  const { data: queue } = useForwardQueue(vaultAddress, true);
+  const tx = useTxPlan([vaultAddress, queue?.queueAddress].filter(Boolean) as string[]);
   const running = tx.status === "running";
 
   // Estimate only (IRON RULE): est USD = shares(18-dec) * navPerShare(1e18 wad) / 1e18 -> 18-dec USD, shown human-readable. Real cashOut (net of AP spread) is struck at the next open print.

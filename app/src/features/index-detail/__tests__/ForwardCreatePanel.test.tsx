@@ -25,6 +25,11 @@ vi.mock("../../../wallet/use-tx-plan", () => ({
   useTxPlan: (seed?: string[]) => mockUseTxPlan(seed),
 }));
 
+// Cash leg decimals + token come from the forward queue (USDG 18-dec here).
+vi.mock("../../../data/useForwardQueue", () => ({
+  useForwardQueue: () => ({ data: { cashDecimals: 18, cashToken: "0xusdc" } }),
+}));
+
 import { queryKeys } from "../../../lib/query";
 import { ForwardCreatePanel } from "../ForwardCreatePanel";
 
@@ -74,7 +79,7 @@ describe("ForwardCreatePanel", () => {
     expect(mockUseTxPlan).toHaveBeenCalledWith(["0xusdc"]);
   });
 
-  it("queue create runs a buildForwardCreateTx fetcher with the 6-dec USDG base units", async () => {
+  it("queue create runs a buildForwardCreateTx fetcher with the cash token's (18-dec) base units", async () => {
     const user = userEvent.setup();
     render(<ForwardCreatePanel vaultAddress="0xv" basket={basket} gate={gate} bootstrapped={true} />, {
       wrapper: makeWrapper(),
@@ -86,7 +91,7 @@ describe("ForwardCreatePanel", () => {
     expect(mockRun).toHaveBeenCalledOnce();
     const [fetcher] = mockRun.mock.calls[0]!;
     fetcher();
-    expect(api.buildForwardCreateTx).toHaveBeenCalledWith("0xv", { cash: "1000000", account: "0xme" });
+    expect(api.buildForwardCreateTx).toHaveBeenCalledWith("0xv", { cash: "1000000000000000000", account: "0xme" });
   });
 
   it("invalidates the forward queries after the create resolves", async () => {

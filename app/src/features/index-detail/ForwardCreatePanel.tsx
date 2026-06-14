@@ -9,6 +9,7 @@ import { EstBadge } from "../../components/EstBadge";
 import { queryKeys } from "../../lib/query";
 import { useApi } from "../../lib/api";
 import { useCapabilities } from "../../capabilities/use-capabilities";
+import { useForwardQueue } from "../../data/useForwardQueue";
 import { useTxPlan } from "../../wallet/use-tx-plan";
 
 interface Props {
@@ -18,11 +19,9 @@ interface Props {
   bootstrapped: boolean;
 }
 
-const USDC_DECIMALS = 6;
-
-function parseUsdc(value: string): bigint {
+function parseCash(value: string, decimals: number): bigint {
   try {
-    return parseUnits(value, USDC_DECIMALS);
+    return parseUnits(value, decimals);
   } catch {
     return 0n;
   }
@@ -35,16 +34,21 @@ export function ForwardCreatePanel({ vaultAddress, basket, gate, bootstrapped }:
   const [amount, setAmount] = useState("");
   const cap = useCapabilities("regular").canForwardCreate(vaultAddress, bootstrapped);
 
-  const cash = parseUsdc(amount);
-  const cashToken = basket.cashToken ?? "";
-  // The plan's approve step targets the cash token, which isn't in the static address book — seed it.
-  const tx = useTxPlan(cashToken ? [cashToken] : []);
+  // Cash leg = the queue's stable token; decimals vary (USDG 18-dec, MockUSDC 6-dec), so parse + the
+  // estimate use the queue-reported decimals rather than a hardcoded 6.
+  const { data: queue } = useForwardQueue(vaultAddress, true);
+  const cashDecimals = queue?.cashDecimals ?? 18;
+  const cashToken = queue?.cashToken ?? basket.cashToken ?? "";
+  const cash = parseCash(amount, cashDecimals);
+  // Plan destinations: approve → cash token, requestCreate → the queue. Seed both into the allowlist
+  // (the per-vault queue clone + the cash token aren't in the static address book).
+  const tx = useTxPlan([cashToken, queue?.queueAddress].filter(Boolean) as string[]);
   const running = tx.status === "running";
 
   // Estimate only (IRON RULE): shares = netCash(=cash, spread shown at settle) * 1e18 / navPerShare.
   const navPerShare = gate?.navPerShare ? BigInt(gate.navPerShare) : 0n;
   const estShares =
-    navPerShare > 0n ? (parseUnits(formatUnits(cash, USDC_DECIMALS), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
+    navPerShare > 0n ? (parseUnits(formatUnits(cash, cashDecimals), 18) * 1_000_000_000_000_000_000n) / navPerShare : 0n;
 
   function handleCreate() {
     if (cash <= 0n) return;

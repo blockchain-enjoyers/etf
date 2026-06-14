@@ -64,7 +64,22 @@ export class ForwardService {
     const tickets = pending.map((r) => this.toWire(r));
     const capacity = await this.capacity(vault, queue, pending);
     const fees = await this.forwardFees(vault, queue);
-    return { queueAddress: queue ?? null, tickets, capacity, fees };
+    const cash = await this.cashLeg(queue);
+    return { queueAddress: queue ?? null, cashToken: cash.token, cashDecimals: cash.decimals, tickets, capacity, fees };
+  }
+
+  /** The queue's stable (cash) token + its decimals — the cash leg the UI parses create amounts in. */
+  private async cashLeg(queue: string | undefined): Promise<{ token: string | null; decimals: number }> {
+    if (!queue) return { token: null, decimals: 18 };
+    try {
+      const token = await this.forward.stable(queue as `0x${string}`);
+      const decimals = Number(
+        await this.chain.publicClient.readContract({ address: token as `0x${string}`, abi: erc20Abi, functionName: "decimals" }),
+      );
+      return { token, decimals };
+    } catch {
+      return { token: null, decimals: 18 };
+    }
   }
 
   /**

@@ -334,6 +334,10 @@ export type ForwardQueueFees = z.infer<typeof forwardQueueFeesSchema>;
 
 export const forwardQueueSchema = z.object({
   queueAddress: z.string().nullable(),
+  // Cash leg = the queue's stable token. Decimals vary (USDG 18-dec, MockUSDC 6-dec), so the UI must
+  // parse the cash amount + estimate with these, not a hardcoded constant. Null/18 when no queue.
+  cashToken: z.string().nullable().optional(),
+  cashDecimals: z.number().int().optional(),
   tickets: z.array(forwardTicketSchema),
   capacity: queueCapacitySchema,
   fees: forwardQueueFeesSchema.nullable().optional(),

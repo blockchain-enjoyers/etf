@@ -24,6 +24,11 @@ vi.mock("../../../wallet/use-tx-plan", () => ({
   useTxPlan: (seed?: string[]) => mockUseTxPlan(seed),
 }));
 
+// Queue lookup for the allowlist seed (undefined → seed is just the vault clone).
+vi.mock("../../../data/useForwardQueue", () => ({
+  useForwardQueue: () => ({ data: undefined }),
+}));
+
 import { queryKeys } from "../../../lib/query";
 import { ForwardRedeemPanel } from "../ForwardRedeemPanel";
 
